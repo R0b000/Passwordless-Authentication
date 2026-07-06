@@ -1,9 +1,11 @@
-﻿using System;
+﻿using PasswordlessApi.Api.Models.RequestModel.Auth;
+using PasswordlessApi.Api.Models.ResponseModel.Auth;
 
-public class IAuthService
+namespace PasswordlessApi.Api.Service.Interface.Auth
 {
-	public IAuthService()
-	{
-		
-	}
+    public interface IAuthService
+    {
+        Task<AuthResponse> RegisterAsync(RegisterRequest request);
+        Task<AuthResponse> LoginAsync(LoginRequest request);
+    }
 }

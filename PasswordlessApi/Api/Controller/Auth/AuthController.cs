@@ -1,6 +1,9 @@
 using Microsoft.AspNetCore.Mvc;
+using PasswordlessApi.Api.Models.RequestModel.Auth;
+using PasswordlessApi.Api.Models.ResponseModel.Auth;
+using PasswordlessApi.Api.Service.Interface.Auth;
 
-namespace PasswordlessApi.Security.Auth.Controller
+namespace PasswordlessApi.Api.Controller.Auth
 {
     [Route("api/[controller]")]
     [ApiController]
@@ -10,6 +13,20 @@ namespace PasswordlessApi.Security.Auth.Controller
         public AuthController(IAuthService authService)
         {
             _authService = authService;
+        }
+
+        [HttpPost("register")]
+        public async Task<ActionResult<AuthResponse>> Register([FromBody] RegisterRequest request)
+        {
+            var result = await _authService.RegisterAsync(request);
+            return Ok(result);
+        }
+
+        [HttpPost("login")]
+        public async Task<ActionResult<AuthResponse>> Login([FromBody] LoginRequest request)
+        {
+            var result = await _authService.LoginAsync(request);
+            return Ok(result);
         }
     }
 }

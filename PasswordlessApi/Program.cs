@@ -28,6 +28,12 @@ builder.Services.AddAuthentication(x=>
 
 builder.Services.AddAuthentication();
 
+builder.Services.AddScoped<DapperContext>();
+builder.Services.AddScoped<IDapperRepository, DapperRepository>();
+builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
+builder.Services.AddScoped<IPasswordHash, PasswordHash>();
+builder.Services.AddScoped<IAuthService, AuthService>();
+
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
