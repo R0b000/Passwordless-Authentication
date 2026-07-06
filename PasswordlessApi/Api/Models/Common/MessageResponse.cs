@@ -1,4 +1,4 @@
-namespace PasswordlessApi.Models
+namespace PasswordlessApi.Api.Models.Common
 {
     public class MessageResponse
     {

@@ -1,6 +1,12 @@
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
+using PasswordlessApi.Api.Service.Implementation.Auth;
+using PasswordlessApi.Api.Service.Interface.Auth;
+using PasswordlessApi.Api.Configuration;
+using PasswordlessApi.Api.Service.Interface.Repository;
+using PasswordlessApi.Api.Service.Implementation.Repository;
+using PasswordlessApi.Api.Utility.PasswordHash;
 
 var builder = WebApplication.CreateBuilder(args);
 var key = Encoding.ASCII.GetBytes(builder.Configuration["JwtSettings:SecretKey"] ?? "fake_jwt_token");
@@ -8,7 +14,9 @@ var key = Encoding.ASCII.GetBytes(builder.Configuration["JwtSettings:SecretKey"]
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-builder.Services.AddAuthentication(x=>
+builder.Services.AddAuthorization();
+
+builder.Services.AddAuthentication(x =>
 {
     x.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
     x.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -25,8 +33,6 @@ builder.Services.AddAuthentication(x=>
         ClockSkew = TimeSpan.Zero
     };
 });
-
-builder.Services.AddAuthentication();
 
 builder.Services.AddScoped<DapperContext>();
 builder.Services.AddScoped<IDapperRepository, DapperRepository>();

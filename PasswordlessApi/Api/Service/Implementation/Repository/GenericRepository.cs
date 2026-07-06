@@ -1,8 +1,9 @@
-using PasswordlessApi.Models;
+using PasswordlessApi.Api.Models.Common;
+using PasswordlessApi.Api.Service.Interface.Repository;
 using System.Data;
 using Dapper;
 
-namespace PasswordlessApi.Data
+namespace PasswordlessApi.Api.Service.Implementation.Repository
 {
     public class GenericRepository<T> : IGenericRepository<T> where T : class
     {
@@ -22,7 +23,7 @@ namespace PasswordlessApi.Data
         public async Task<Response<T>> QuerySingleAsync(string procedureName, object dataType)
         {
             var result = await _dapperRepository.QuerySingleAsync<T>(procedureName, dataType);
-            return Response<T>.Success(result);
+            return Response<T>.Success(result!);
         }
 
         public async Task<Response<List<T>>> QueryAsync(string procedureName, object dataType)

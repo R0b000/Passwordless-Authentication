@@ -1,8 +1,9 @@
-using PasswordlessApi.Models;
+using PasswordlessApi.Api.Models;
+using PasswordlessApi.Api.Models.Common;
 using System.Data;
 using Dapper;
 
-namespace PasswordlessApi.Data
+namespace PasswordlessApi.Api.Service.Interface.Repository
 {
     public interface IDapperRepository
     {

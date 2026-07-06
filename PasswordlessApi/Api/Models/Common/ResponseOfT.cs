@@ -1,5 +1,5 @@
 // Models/ResponseOfT.cs
-namespace PasswordlessApi.Models
+namespace PasswordlessApi.Api.Models.Common
 {
     public class Response<T> : Response
     {

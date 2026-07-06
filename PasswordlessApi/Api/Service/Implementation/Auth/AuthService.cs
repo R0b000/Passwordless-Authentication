@@ -1,8 +1,8 @@
 ﻿using PasswordlessApi.Api.Models.RequestModel.Auth;
 using PasswordlessApi.Api.Models.ResponseModel.Auth;
-using PasswordlessApi.Models;
-using PasswordlessApi.Data;
-using PasswordlessApi.Security.PasswordHash;
+using PasswordlessApi.Api.Models;
+using PasswordlessApi.Api.Service.Interface.Repository;
+using PasswordlessApi.Api.Utility.PasswordHash;
 using PasswordlessApi.Api.Service.Interface.Auth;
 
 namespace PasswordlessApi.Api.Service.Implementation.Auth

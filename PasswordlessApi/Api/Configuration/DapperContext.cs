@@ -1,7 +1,7 @@
 using System.Data;
 using Microsoft.Data.SqlClient;
 
-namespace PasswordlessApi.Data
+namespace PasswordlessApi.Api.Configuration
 {
     public class DapperContext
     {

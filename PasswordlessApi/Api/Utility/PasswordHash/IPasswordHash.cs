@@ -1,4 +1,4 @@
-namespace PasswordlessApi.Security.PasswordHash
+namespace PasswordlessApi.Api.Utility.PasswordHash
 {
     public interface IPasswordHash
     {
