@@ -1,9 +1,13 @@
-﻿using PasswordlessApi.Api.Models.RequestModel.Auth;
-using PasswordlessApi.Api.Models.ResponseModel.Auth;
+﻿using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
+using Microsoft.IdentityModel.Tokens;
 using PasswordlessApi.Api.Models;
+using PasswordlessApi.Api.Models.RequestModel.Auth;
+using PasswordlessApi.Api.Models.ResponseModel.Auth;
+using PasswordlessApi.Api.Service.Interface.Auth;
 using PasswordlessApi.Api.Service.Interface.Repository;
 using PasswordlessApi.Api.Utility.PasswordHash;
-using PasswordlessApi.Api.Service.Interface.Auth;
 
 namespace PasswordlessApi.Api.Service.Implementation.Auth
 {
@@ -12,12 +16,14 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
         private readonly IGenericRepository<UserIdResult> _userIdRepository;
         private readonly IGenericRepository<User> _userRepository;
         private readonly IPasswordHash _passwordHash;
+        private readonly IConfiguration _configuration;
 
-        public AuthService(IGenericRepository<UserIdResult> userIdRepository, IGenericRepository<User> userRepository, IPasswordHash passwordHash)
+        public AuthService(IGenericRepository<UserIdResult> userIdRepository, IGenericRepository<User> userRepository, IPasswordHash passwordHash, IConfiguration configuration)
         {
             _userIdRepository = userIdRepository;
             _userRepository = userRepository;
             _passwordHash = passwordHash;
+            _configuration = configuration;
         }
 
         public async Task<AuthResponse> RegisterAsync(RegisterRequest request)
@@ -40,7 +46,8 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
             {
                 UserId = userIdResult.Data.UserId,
                 Username = request.Username,
-                Message = "Registered successfully"
+                Message = "Registered successfully",
+                Token = GenerateJwtToken(userIdResult.Data.UserId, request.Username)
             };
         }
 
@@ -84,8 +91,42 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
             {
                 UserId = user.Data.Id,
                 Username = user.Data.Username,
-                Message = "Login successful"
+                Message = "Login successful",
+                Token = GenerateJwtToken(user.Data.Id, user.Data.Username)
             };
+        }
+
+        private string GenerateJwtToken(Guid userId, string username)
+        {
+            var secret = _configuration["JwtSettings:SecretKey"] ?? Environment.GetEnvironmentVariable("JWT_SECRET_KEY");
+            if (string.IsNullOrWhiteSpace(secret) || secret is "fake_jwt_token" or "fake_local_key")
+            {
+                throw new InvalidOperationException("JWT signing secret is not configured.");
+            }
+
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret));
+            var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+            var claims = new List<Claim>
+            {
+                new(JwtRegisteredClaimNames.Sub, userId.ToString()),
+                new(JwtRegisteredClaimNames.UniqueName, username),
+                new(ClaimTypes.Name, username),
+                new(ClaimTypes.NameIdentifier, userId.ToString())
+            };
+
+            var issuer = _configuration["JwtSettings:Issuer"] ?? "PasswordlessApi";
+            var audience = _configuration["JwtSettings:Audience"] ?? "PasswordlessApiUsers";
+            var expiryMinutes = int.TryParse(_configuration["JwtSettings:ExpiryMinutes"], out var parsedMinutes) ? parsedMinutes : 60;
+
+            var token = new JwtSecurityToken(
+                issuer: issuer,
+                audience: audience,
+                claims: claims,
+                notBefore: DateTime.UtcNow,
+                expires: DateTime.UtcNow.AddMinutes(expiryMinutes),
+                signingCredentials: credentials);
+
+            return new JwtSecurityTokenHandler().WriteToken(token);
         }
     }
 }

@@ -5,5 +5,6 @@ namespace PasswordlessApi.Api.Models.ResponseModel.Auth
         public Guid UserId { get; set; }
         public string Username { get; set; } = string.Empty;
         public string? Message { get; set; }
+        public string? Token { get; set; }
     }
 }

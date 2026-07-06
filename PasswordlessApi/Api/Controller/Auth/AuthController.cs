@@ -1,6 +1,7 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using PasswordlessApi.Api.Models.RequestModel.Auth;
 using PasswordlessApi.Api.Models.ResponseModel.Auth;
+using PasswordlessApi.Api.Models.RequestModel.Auth;
 using PasswordlessApi.Api.Service.Interface.Auth;
 
 namespace PasswordlessApi.Api.Controller.Auth
@@ -27,6 +28,17 @@ namespace PasswordlessApi.Api.Controller.Auth
         {
             var result = await _authService.LoginAsync(request);
             return Ok(result);
+        }
+
+        [Authorize]
+        [HttpGet("me")]
+        public ActionResult<AuthResponse> Me()
+        {
+            return Ok(new AuthResponse
+            {
+                Username = User.Identity?.Name ?? string.Empty,
+                Message = "Authenticated"
+            });
         }
     }
 }
