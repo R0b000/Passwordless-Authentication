@@ -1,0 +1,14 @@
+using Auth.UI.src.Common;
+using Auth.UI.src.Model.Auth;
+
+namespace Auth.UI.src.Manager.Service.Interface
+{
+    public interface IAuthManager
+    {
+        Task<Response<AuthResponse>> RegisterAsync(RegisterRequest request);
+        Task<Response<AuthResponse>> LoginAsync(LoginRequest request);
+        Task<Response<AuthResponse>> GetCurrentUserAsync();
+        Task<Response<Fido2ChallengeResponse>> CreateFido2ChallengeAsync(int userId);
+        Task<Response<Fido2VerifyResponse>> VerifyFido2AssertionAsync(Fido2VerifyRequest request);
+    }
+}

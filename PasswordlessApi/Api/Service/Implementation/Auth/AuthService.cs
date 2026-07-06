@@ -1,13 +1,13 @@
-﻿using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
-using System.Text;
-using Microsoft.IdentityModel.Tokens;
-using PasswordlessApi.Api.Models;
+﻿using System.Linq;
 using PasswordlessApi.Api.Models.RequestModel.Auth;
 using PasswordlessApi.Api.Models.ResponseModel.Auth;
-using PasswordlessApi.Api.Service.Interface.Auth;
+using PasswordlessApi.Api.Models.Entities;
 using PasswordlessApi.Api.Service.Interface.Repository;
 using PasswordlessApi.Api.Utility.PasswordHash;
+using PasswordlessApi.Api.Service.Interface.Auth;
+using PasswordlessApi.Api.Utility.Jwt;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace PasswordlessApi.Api.Service.Implementation.Auth
 {
@@ -16,14 +16,18 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
         private readonly IGenericRepository<UserIdResult> _userIdRepository;
         private readonly IGenericRepository<User> _userRepository;
         private readonly IPasswordHash _passwordHash;
-        private readonly IConfiguration _configuration;
+        private readonly IJwtHelper _jwtHelper;
+        private readonly IFido2Service _fido2Service;
+        private readonly IDapperRepository _dapperRepository;
 
-        public AuthService(IGenericRepository<UserIdResult> userIdRepository, IGenericRepository<User> userRepository, IPasswordHash passwordHash, IConfiguration configuration)
+        public AuthService(IGenericRepository<UserIdResult> userIdRepository, IGenericRepository<User> userRepository, IPasswordHash passwordHash, IJwtHelper jwtHelper, IFido2Service fido2Service, IDapperRepository dapperRepository)
         {
             _userIdRepository = userIdRepository;
             _userRepository = userRepository;
             _passwordHash = passwordHash;
-            _configuration = configuration;
+            _jwtHelper = jwtHelper;
+            _fido2Service = fido2Service;
+            _dapperRepository = dapperRepository;
         }
 
         public async Task<AuthResponse> RegisterAsync(RegisterRequest request)
@@ -46,8 +50,7 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
             {
                 UserId = userIdResult.Data.UserId,
                 Username = request.Username,
-                Message = "Registered successfully",
-                Token = GenerateJwtToken(userIdResult.Data.UserId, request.Username)
+                Message = "Registered successfully"
             };
         }
 
@@ -57,7 +60,7 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
                 "sp_Users",
                 new { AuthType = "Login", Username = request.Username });
 
-            if (userIdResult == null || !userIdResult.Succeeded || userIdResult.Data == null || userIdResult.Data.UserId == Guid.Empty)
+            if (userIdResult == null || !userIdResult.Succeeded || userIdResult.Data == null || userIdResult.Data.UserId <= 0)
             {
                 return new AuthResponse
                 {
@@ -87,46 +90,57 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
                 };
             }
 
+            var hasFido2Credentials = await HasFido2CredentialsAsync(user.Data.Id);
+
+            if (hasFido2Credentials)
+            {
+                return new AuthResponse
+                {
+                    UserId = user.Data.Id,
+                    Username = user.Data.Username,
+                    Message = "FIDO2 verification required",
+                    RequiresFido2 = true
+                };
+            }
+
+            var token = _jwtHelper.GenerateToken(user.Data.Id, user.Data.Username);
+
             return new AuthResponse
             {
                 UserId = user.Data.Id,
                 Username = user.Data.Username,
+                Token = token,
                 Message = "Login successful",
-                Token = GenerateJwtToken(user.Data.Id, user.Data.Username)
+                RequiresFido2 = false
             };
         }
 
-        private string GenerateJwtToken(Guid userId, string username)
+        public async Task<Fido2ChallengeResponse> CreateFido2ChallengeAsync(Fido2ChallengeRequest request)
         {
-            var secret = _configuration["JwtSettings:SecretKey"] ?? Environment.GetEnvironmentVariable("JWT_SECRET_KEY");
-            if (string.IsNullOrWhiteSpace(secret) || secret is "fake_jwt_token" or "fake_local_key")
-            {
-                throw new InvalidOperationException("JWT signing secret is not configured.");
-            }
+            return await _fido2Service.CreateChallengeAsync(request.UserId);
+        }
 
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret));
-            var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-            var claims = new List<Claim>
-            {
-                new(JwtRegisteredClaimNames.Sub, userId.ToString()),
-                new(JwtRegisteredClaimNames.UniqueName, username),
-                new(ClaimTypes.Name, username),
-                new(ClaimTypes.NameIdentifier, userId.ToString())
-            };
+        public async Task<Fido2VerifyResponse> VerifyFido2AssertionAsync(Fido2VerifyRequest request)
+        {
+            return await _fido2Service.VerifyAssertionAsync(request);
+        }
 
-            var issuer = _configuration["JwtSettings:Issuer"] ?? "PasswordlessApi";
-            var audience = _configuration["JwtSettings:Audience"] ?? "PasswordlessApiUsers";
-            var expiryMinutes = int.TryParse(_configuration["JwtSettings:ExpiryMinutes"], out var parsedMinutes) ? parsedMinutes : 60;
+        public async Task<List<UserCredential>> GetUserCredentialsAsync(int userId)
+        {
+            var credentials = await _dapperRepository.QueryAsync<UserCredential>(
+                "sp_Users",
+                new { AuthType = "FIDO", FIDOOperation = "GetCredentialsByUserId", UserId = userId });
 
-            var token = new JwtSecurityToken(
-                issuer: issuer,
-                audience: audience,
-                claims: claims,
-                notBefore: DateTime.UtcNow,
-                expires: DateTime.UtcNow.AddMinutes(expiryMinutes),
-                signingCredentials: credentials);
+            return credentials.ToList();
+        }
 
-            return new JwtSecurityTokenHandler().WriteToken(token);
+        private async Task<bool> HasFido2CredentialsAsync(int userId)
+        {
+            var credentials = await _dapperRepository.QueryAsync<UserCredential>(
+                "sp_Users",
+                new { AuthType = "FIDO", FIDOOperation = "GetCredentialsByUserId", UserId = userId });
+
+            return credentials != null && credentials.Any();
         }
     }
 }

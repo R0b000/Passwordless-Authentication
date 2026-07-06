@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using PasswordlessApi.Api.Models.ResponseModel.Auth;
 using PasswordlessApi.Api.Models.RequestModel.Auth;
+using PasswordlessApi.Api.Models.ResponseModel.Auth;
 using PasswordlessApi.Api.Service.Interface.Auth;
 
 namespace PasswordlessApi.Api.Controller.Auth
@@ -27,6 +27,20 @@ namespace PasswordlessApi.Api.Controller.Auth
         public async Task<ActionResult<AuthResponse>> Login([FromBody] LoginRequest request)
         {
             var result = await _authService.LoginAsync(request);
+            return Ok(result);
+        }
+
+        [HttpPost("fido2/challenge")]
+        public async Task<ActionResult<Fido2ChallengeResponse>> CreateFido2Challenge([FromBody] Fido2ChallengeRequest request)
+        {
+            var result = await _authService.CreateFido2ChallengeAsync(request);
+            return Ok(result);
+        }
+
+        [HttpPost("fido2/verify")]
+        public async Task<ActionResult<Fido2VerifyResponse>> VerifyFido2Assertion([FromBody] Fido2VerifyRequest request)
+        {
+            var result = await _authService.VerifyFido2AssertionAsync(request);
             return Ok(result);
         }
 

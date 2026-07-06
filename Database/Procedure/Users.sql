@@ -1,8 +1,19 @@
+-- ============================================================================
+--  Legacy dispatcher (deprecated)
+--  The monolithic sp_Users has been refactored into per-concern procedures to
+--  follow the N-tier / single-responsibility architecture:
+--    * Database/Procedure/Users/Register.sql   -> dbo.sp_Users_Register
+--    * Database/Procedure/Users/Login.sql      -> dbo.sp_Users_Login
+--    * Database/Procedure/Fido/*.sql           -> dbo.sp_Fido_*
+--  This wrapper is retained only for backward compatibility and simply
+--  forwards to the new procedures. Prefer calling the dedicated procedures.
+-- ============================================================================
+
 CREATE OR ALTER PROCEDURE dbo.sp_Users
     @AuthType NVARCHAR(20),
     @Username NVARCHAR(200) = NULL,
     @PasswordHash NVARCHAR(200) = NULL,
-    @UserId UNIQUEIDENTIFIER = NULL,
+    @UserId INT = NULL,
     @FIDOOperation NVARCHAR(50) = NULL,
     @Challenge NVARCHAR(500) = NULL,
     @ExpiresAt DATETIME2 = NULL,
@@ -17,124 +28,30 @@ BEGIN
 
     IF @AuthType = 'Register'
     BEGIN
-        DECLARE @NewUserId UNIQUEIDENTIFIER;
-
-        SELECT @NewUserId = Id
-        FROM dbo.Users
-        WHERE Username = @Username;
-
-        IF @NewUserId IS NULL
-        BEGIN
-            SET @NewUserId = NEWID();
-
-            INSERT INTO dbo.Users (Id, Username, PasswordHash)
-            VALUES (@NewUserId, @Username, @PasswordHash);
-        END
-        ELSE
-        BEGIN
-            IF @PasswordHash IS NOT NULL
-            BEGIN
-                UPDATE dbo.Users
-                SET PasswordHash = @PasswordHash,
-                    UpdatedAt = SYSUTCDATETIME()
-                WHERE Id = @NewUserId;
-            END
-        END
-
-        SELECT @NewUserId AS UserId;
+        EXEC dbo.sp_Users_Register @Username = @Username, @PasswordHash = @PasswordHash;
+        RETURN;
     END
-    ELSE IF @AuthType = 'Login'
+
+    IF @AuthType = 'Login'
     BEGIN
-        IF @UserId IS NOT NULL
-        BEGIN
-            SELECT Id, Username, PasswordHash, CreatedAt, UpdatedAt
-            FROM dbo.Users
-            WHERE Id = @UserId;
-        END
-        ELSE IF @Username IS NOT NULL
-        BEGIN
-            DECLARE @FoundUserId UNIQUEIDENTIFIER;
-
-            SELECT @FoundUserId = Id
-            FROM dbo.Users
-            WHERE Username = @Username;
-
-            SELECT @FoundUserId AS UserId;
-        END
+        EXEC dbo.sp_Users_Login @UserId = @UserId, @Username = @Username;
+        RETURN;
     END
-    ELSE IF @AuthType = 'FIDO'
+
+    IF @AuthType = 'FIDO'
     BEGIN
         IF @FIDOOperation = 'CreateChallenge'
-        BEGIN
-            DECLARE @NewId UNIQUEIDENTIFIER = NEWID();
-
-            INSERT INTO dbo.AuthChallenges (Id, UserId, Challenge, ExpiresAt, UsedAt)
-            VALUES (@NewId, @UserId, @Challenge, @ExpiresAt, NULL);
-
-            SELECT @NewId AS Id;
-        END
+            EXEC dbo.sp_Fido_CreateChallenge @UserId = @UserId, @Challenge = @Challenge, @ExpiresAt = @ExpiresAt;
         ELSE IF @FIDOOperation = 'ConsumeChallenge'
-        BEGIN
-            IF @Now IS NULL SET @Now = SYSUTCDATETIME();
-
-            ;WITH c AS (
-                SELECT TOP 1 Id
-                FROM dbo.AuthChallenges
-                WHERE UserId = @UserId
-                  AND Challenge = @Challenge
-                  AND UsedAt IS NULL
-                  AND ExpiresAt > @Now
-                ORDER BY CreatedAt DESC
-            )
-            UPDATE ac
-            SET UsedAt = @Now
-            FROM dbo.AuthChallenges ac
-            INNER JOIN c ON c.Id = ac.Id;
-
-            SELECT CASE WHEN EXISTS (
-                SELECT 1
-                FROM dbo.AuthChallenges
-                WHERE UserId = @UserId
-                  AND Challenge = @Challenge
-                  AND UsedAt IS NOT NULL
-                  AND ExpiresAt > @Now
-            ) THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT) END AS Consumed;
-        END
+            EXEC dbo.sp_Fido_ConsumeChallenge @UserId = @UserId, @Challenge = @Challenge, @Now = @Now;
         ELSE IF @FIDOOperation = 'UpsertCredential'
-        BEGIN
-            IF EXISTS (
-                SELECT 1 FROM dbo.UserCredentials
-                WHERE UserId = @UserId AND CredentialId = @CredentialId
-            )
-            BEGIN
-                UPDATE dbo.UserCredentials
-                SET PublicKey = @PublicKey,
-                    SignCount = @SignCount,
-                    Transports = @Transports,
-                    UpdatedAt = SYSUTCDATETIME()
-                WHERE UserId = @UserId AND CredentialId = @CredentialId;
-            END
-            ELSE
-            BEGIN
-                INSERT INTO dbo.UserCredentials (UserId, CredentialId, PublicKey, SignCount, Transports)
-                VALUES (@UserId, @CredentialId, @PublicKey, @SignCount, @Transports);
-            END
-
-            SELECT 1 AS Result;
-        END
+            EXEC dbo.sp_Fido_UpsertCredential @UserId = @UserId, @CredentialId = @CredentialId,
+                 @PublicKey = @PublicKey, @SignCount = @SignCount, @Transports = @Transports;
         ELSE IF @FIDOOperation = 'GetCredential'
-        BEGIN
-            SELECT TOP 1
-                Id,
-                UserId,
-                CredentialId,
-                PublicKey,
-                SignCount,
-                Transports,
-                CreatedAt,
-                UpdatedAt
-            FROM dbo.UserCredentials
-            WHERE CredentialId = @CredentialId;
-        END
+            EXEC dbo.sp_Fido_GetCredential @CredentialId = @CredentialId;
+        ELSE IF @FIDOOperation = 'GetCredentialsByUserId'
+            EXEC dbo.sp_Fido_GetCredentialsByUserId @UserId = @UserId;
+        RETURN;
     END
 END;
+GO

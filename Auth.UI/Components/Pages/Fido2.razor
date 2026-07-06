@@ -1,0 +1,61 @@
+@page "/fido2"
+@namespace Auth.UI.Components.Pages
+@using static Microsoft.AspNetCore.Components.Web.RenderMode
+@rendermode InteractiveServer
+
+<PageTitle>Passkey - Passwordless Auth</PageTitle>
+
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+        <h1 class="mb-4">Passkey sign-in</h1>
+
+        @if (!string.IsNullOrEmpty(StatusMessage))
+        {
+            <div class="alert @(Succeeded ? "alert-success" : "alert-danger")" role="alert">@StatusMessage</div>
+        }
+
+        <div class="mb-3">
+            <label class="form-label">User Id</label>
+            <InputNumber class="form-control" @bind-Value="UserId" />
+        </div>
+
+        <button class="btn btn-dark w-100 mb-3" @onclick="@StartAssertionAsync">Request challenge</button>
+
+        @if (!string.IsNullOrEmpty(AssertionOptions))
+        {
+            <div class="mb-3">
+                <label class="form-label">Assertion options (from server)</label>
+                <pre class="border rounded p-2 bg-light small">@AssertionOptions</pre>
+            </div>
+
+            <h5>Submit assertion</h5>
+            <EditForm Model="@VerifyModel" OnValidSubmit="@VerifyAsync" FormName="verify">
+                <div class="mb-2">
+                    <label class="form-label">Credential Id</label>
+                    <InputText class="form-control" @bind-Value="VerifyModel.CredentialId" />
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">ClientDataJson</label>
+                    <InputText class="form-control" @bind-Value="VerifyModel.ClientDataJson" />
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">AuthenticatorData</label>
+                    <InputText class="form-control" @bind-Value="VerifyModel.AuthenticatorData" />
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Signature</label>
+                    <InputText class="form-control" @bind-Value="VerifyModel.Signature" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Counter</label>
+                    <InputNumber class="form-control" @bind-Value="VerifyModel.Counter" />
+                </div>
+                <button type="submit" class="btn btn-primary w-100">Verify assertion</button>
+            </EditForm>
+        }
+
+        <div class="mt-3">
+            <a class="btn btn-link" href="/">Back to credentials</a>
+        </div>
+    </div>
+</div>

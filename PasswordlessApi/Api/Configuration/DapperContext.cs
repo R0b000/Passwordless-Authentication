@@ -12,7 +12,8 @@ namespace PasswordlessApi.Api.Configuration
         {
             _configuration = configuration;
             _connectionString = _configuration.GetConnectionString("DefaultConnection")
-            ?? throw new InvalidCastException("Connection string 'DefaultConnection' not found in appsettings.json");
+                ?? _configuration["DefaultConnection"]
+                ?? throw new InvalidCastException("Connection string 'DefaultConnection' not found in appsettings.json");
         }
 
         public IDbConnection CreateConnection()

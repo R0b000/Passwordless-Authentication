@@ -1,4 +1,4 @@
-using PasswordlessApi.Api.Models;
+using PasswordlessApi.Api.Models.Entities;
 using PasswordlessApi.Api.Configuration;
 using PasswordlessApi.Api.Service.Interface.Repository;
 using PasswordlessApi.Api.Models.Common;

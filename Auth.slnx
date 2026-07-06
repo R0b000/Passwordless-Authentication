@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="Auth.UI/Auth.UI.csproj" />
+  <Project Path="PasswordlessApi/PasswordlessApi.csproj" />
+</Solution>

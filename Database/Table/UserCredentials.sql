@@ -1,6 +1,6 @@
 CREATE TABLE [dbo].[UserCredentials] (
     [Id] BIGINT IDENTITY(1,1) NOT NULL,
-    [UserId] UNIQUEIDENTIFIER NOT NULL,
+    [UserId] INT NOT NULL,
     [CredentialId] NVARCHAR(300) NOT NULL,
     [PublicKey] NVARCHAR(MAX) NOT NULL,
     [SignCount] BIGINT NOT NULL CONSTRAINT [DF_UserCredentials_SignCount] DEFAULT (0),
@@ -16,4 +16,4 @@ CREATE UNIQUE INDEX [IX_UserCredentials_UserId_CredentialId] ON [dbo].[UserCrede
 GO
 
 CREATE UNIQUE INDEX [IX_UserCredentials_CredentialId] ON [dbo].[UserCredentials] ([CredentialId]);
-GO 
+GO

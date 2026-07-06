@@ -6,6 +6,7 @@ using PasswordlessApi.Api.Service.Implementation.Auth;
 using PasswordlessApi.Api.Service.Implementation.Repository;
 using PasswordlessApi.Api.Service.Interface.Auth;
 using PasswordlessApi.Api.Service.Interface.Repository;
+using PasswordlessApi.Api.Utility.Jwt;
 using PasswordlessApi.Api.Utility.PasswordHash;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -25,6 +26,7 @@ var key = Encoding.UTF8.GetBytes(jwtSecret);
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+builder.Services.AddControllers();
 builder.Services.AddAuthorization();
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -48,7 +50,9 @@ builder.Services.AddScoped<DapperContext>();
 builder.Services.AddScoped<IDapperRepository, DapperRepository>();
 builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
 builder.Services.AddScoped<IPasswordHash, PasswordHash>();
+builder.Services.AddScoped<IJwtHelper, JwtHelper>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IFido2Service, Fido2Service>();
 
 var app = builder.Build();
 

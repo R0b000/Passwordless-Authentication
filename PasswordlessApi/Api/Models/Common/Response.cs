@@ -1,26 +1,25 @@
-// Models/Response.cs
 namespace PasswordlessApi.Api.Models.Common
 {
-    public class Response
+    public class Response<T> : MessageResponse
     {
-        public bool Succeeded { get; set; }
-        public string? Message { get; set; }
-        
-        public static Response Success(string? message = null)
+        public T? Data { get; set; }
+
+        public static Response<T> Success(T data, string? message = null)
         {
-            return new Response 
-            { 
-                Succeeded = true, 
-                Message = message ?? "Operation successful" 
+            return new Response<T>
+            {
+                Succeeded = true,
+                Data = data,
+                Message = message ?? "Operation successful"
             };
         }
-        
-        public static Response Failure(string message)
+
+        public new static Response<T> Failure(string message)
         {
-            return new Response 
-            { 
-                Succeeded = false, 
-                Message = message 
+            return new Response<T>
+            {
+                Succeeded = false,
+                Message = message
             };
         }
     }

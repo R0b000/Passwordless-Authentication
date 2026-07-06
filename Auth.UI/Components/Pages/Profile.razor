@@ -1,0 +1,35 @@
+@page "/profile"
+@namespace Auth.UI.Components.Pages
+@using static Microsoft.AspNetCore.Components.Web.RenderMode
+@rendermode InteractiveServer
+
+<PageTitle>Profile - Passwordless Auth</PageTitle>
+
+<div class="row justify-content-center">
+    <div class="col-md-6 col-lg-5">
+        <h1 class="mb-4">Your profile</h1>
+
+        @if (!string.IsNullOrEmpty(StatusMessage))
+        {
+            <div class="alert @(Succeeded ? "alert-success" : "alert-danger")" role="alert">@StatusMessage</div>
+        }
+
+        @if (CurrentUser is not null)
+        {
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Authenticated identity</h5>
+                    <p class="card-text">User Id: <strong>@CurrentUser.UserId</strong></p>
+                    <p class="card-text">Username: <strong>@CurrentUser.Username</strong></p>
+                    <p class="card-text">Message: @CurrentUser.Message</p>
+                </div>
+            </div>
+        }
+
+        <div class="mt-3 d-flex gap-2">
+            <button class="btn btn-outline-secondary" @onclick="@LoadProfileAsync">Refresh</button>
+            <a class="btn btn-link" href="/fido2">Passkey</a>
+            <a class="btn btn-link" href="/">Sign out</a>
+        </div>
+    </div>
+</div>

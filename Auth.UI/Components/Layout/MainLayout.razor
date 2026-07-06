@@ -1,0 +1,15 @@
+@namespace Auth.UI.Components.Layout
+@inherits LayoutComponentBase
+
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark px-3">
+    <a class="navbar-brand" href="/">Passwordless Auth</a>
+    <div class="navbar-nav">
+        <a class="nav-link" href="/">Credentials</a>
+        <a class="nav-link" href="/fido2">Passkey</a>
+        <a class="nav-link" href="/profile">Profile</a>
+    </div>
+</nav>
+
+<main class="container py-4">
+    @Body
+</main>
