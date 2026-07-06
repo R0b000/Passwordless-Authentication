@@ -11,6 +11,5 @@ namespace PasswordlessApi.Security.PasswordHash
         {
             return BCrypt.Net.BCrypt.Verify(password, hashedPassword);
         }
-        }
     }
 }

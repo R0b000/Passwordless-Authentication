@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 
-namespace PasswordlessApi.Security.Auth.Controller;
+namespace PasswordlessApi.Security.Auth.Controller
 {
     [Route("api/[controller]")]
     [ApiController]
@@ -12,5 +12,4 @@ namespace PasswordlessApi.Security.Auth.Controller;
             _authService = authService;
         }
     }
-
 }
