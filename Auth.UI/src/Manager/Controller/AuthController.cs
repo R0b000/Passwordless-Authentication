@@ -22,6 +22,12 @@ namespace Auth.UI.src.Manager.Controller
         public Task<Response<AuthResponse>> MeAsync()
             => _authManager.GetCurrentUserAsync();
 
+        public Task<Response<Fido2ChallengeResponse>> RequestAttestationOptionsAsync(Fido2AttestationOptionsRequest request)
+            => _authManager.RequestAttestationOptionsAsync(request);
+
+        public Task<Response<Fido2VerifyResponse>> RegisterCredentialAsync(Fido2RegisterRequest request)
+            => _authManager.RegisterCredentialAsync(request);
+
         public Task<Response<Fido2ChallengeResponse>> CreateFido2ChallengeAsync(int userId)
             => _authManager.CreateFido2ChallengeAsync(userId);
 

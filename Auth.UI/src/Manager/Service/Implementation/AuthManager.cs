@@ -58,6 +58,20 @@ namespace Auth.UI.src.Manager.Service.Implementation
             return await _authRepository.GetSingleAsync("api/auth/me", token);
         }
 
+        public async Task<Response<Fido2ChallengeResponse>> RequestAttestationOptionsAsync(Fido2AttestationOptionsRequest request)
+        {
+            var token = _tokenStore.GetToken();
+            var result = await _challengeRepository.QuerySingleAsync("api/auth/fido2/options/register", request, token);
+            return result;
+        }
+
+        public async Task<Response<Fido2VerifyResponse>> RegisterCredentialAsync(Fido2RegisterRequest request)
+        {
+            var token = _tokenStore.GetToken();
+            var result = await _verifyRepository.QuerySingleAsync("api/auth/fido2/register", request, token);
+            return result;
+        }
+
         public async Task<Response<Fido2ChallengeResponse>> CreateFido2ChallengeAsync(int userId)
         {
             var token = _tokenStore.GetToken();

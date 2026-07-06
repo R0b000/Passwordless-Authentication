@@ -115,6 +115,16 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
             };
         }
 
+        public async Task<Fido2ChallengeResponse> RequestAttestationOptionsAsync(Fido2AttestationOptionsRequest request)
+        {
+            return await _fido2Service.RequestAttestationOptionsAsync(request.UserId, request.Username);
+        }
+
+        public async Task<Fido2VerifyResponse> RegisterCredentialAsync(Fido2RegisterRequest request)
+        {
+            return await _fido2Service.RegisterCredentialAsync(request);
+        }
+
         public async Task<Fido2ChallengeResponse> CreateFido2ChallengeAsync(Fido2ChallengeRequest request)
         {
             return await _fido2Service.CreateChallengeAsync(request.UserId);

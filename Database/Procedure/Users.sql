@@ -1,14 +1,3 @@
--- ============================================================================
---  Legacy dispatcher (deprecated)
---  The monolithic sp_Users has been refactored into per-concern procedures to
---  follow the N-tier / single-responsibility architecture:
---    * Database/Procedure/Users/Register.sql   -> dbo.sp_Users_Register
---    * Database/Procedure/Users/Login.sql      -> dbo.sp_Users_Login
---    * Database/Procedure/Fido/*.sql           -> dbo.sp_Fido_*
---  This wrapper is retained only for backward compatibility and simply
---  forwards to the new procedures. Prefer calling the dedicated procedures.
--- ============================================================================
-
 CREATE OR ALTER PROCEDURE dbo.sp_Users
     @AuthType NVARCHAR(20),
     @Username NVARCHAR(200) = NULL,
@@ -28,30 +17,151 @@ BEGIN
 
     IF @AuthType = 'Register'
     BEGIN
-        EXEC dbo.sp_Users_Register @Username = @Username, @PasswordHash = @PasswordHash;
-        RETURN;
-    END
+        DECLARE @NewUserId INT;
 
-    IF @AuthType = 'Login'
+        SELECT @NewUserId = Id
+        FROM dbo.Users
+        WHERE Username = @Username;
+
+        IF @NewUserId IS NULL
+        BEGIN
+            INSERT INTO dbo.Users (Username, PasswordHash)
+            VALUES (@Username, @PasswordHash);
+
+            SET @NewUserId = SCOPE_IDENTITY();
+        END
+        ELSE
+        BEGIN
+            IF @PasswordHash IS NOT NULL
+            BEGIN
+                UPDATE dbo.Users
+                SET PasswordHash = @PasswordHash,
+                    UpdatedAt = SYSUTCDATETIME()
+                WHERE Id = @NewUserId;
+            END
+        END
+
+        SELECT @NewUserId AS UserId;
+    END
+    ELSE IF @AuthType = 'Login'
     BEGIN
-        EXEC dbo.sp_Users_Login @UserId = @UserId, @Username = @Username;
-        RETURN;
-    END
+        IF @UserId IS NOT NULL
+        BEGIN
+            SELECT Id, Username, PasswordHash, CreatedAt, UpdatedAt
+            FROM dbo.Users
+            WHERE Id = @UserId;
+        END
+        ELSE IF @Username IS NOT NULL
+        BEGIN
+            DECLARE @FoundUserId INT;
 
-    IF @AuthType = 'FIDO'
+            SELECT @FoundUserId = Id
+            FROM dbo.Users
+            WHERE Username = @Username;
+
+            SELECT @FoundUserId AS UserId;
+        END
+    END
+    ELSE IF @AuthType = 'FIDO'
     BEGIN
         IF @FIDOOperation = 'CreateChallenge'
-            EXEC dbo.sp_Fido_CreateChallenge @UserId = @UserId, @Challenge = @Challenge, @ExpiresAt = @ExpiresAt;
+        BEGIN
+            DECLARE @NewId UNIQUEIDENTIFIER = NEWID();
+
+            INSERT INTO dbo.AuthChallenges (Id, UserId, Challenge, ExpiresAt, UsedAt)
+            VALUES (@NewId, @UserId, @Challenge, @ExpiresAt, NULL);
+
+            SELECT @NewId AS Id, @Challenge AS Challenge;
+        END
+        ELSE IF @FIDOOperation = 'GetUserChallenge'
+        BEGIN
+            IF @Now IS NULL SET @Now = SYSUTCDATETIME();
+
+            SELECT TOP 1 Id, Challenge, ExpiresAt
+            FROM dbo.AuthChallenges
+            WHERE UserId = @UserId
+              AND Challenge = @Challenge
+              AND UsedAt IS NULL
+              AND ExpiresAt > @Now
+            ORDER BY CreatedAt DESC;
+        END
         ELSE IF @FIDOOperation = 'ConsumeChallenge'
-            EXEC dbo.sp_Fido_ConsumeChallenge @UserId = @UserId, @Challenge = @Challenge, @Now = @Now;
+        BEGIN
+            IF @Now IS NULL SET @Now = SYSUTCDATETIME();
+
+            ;WITH c AS (
+                SELECT TOP 1 Id
+                FROM dbo.AuthChallenges
+                WHERE UserId = @UserId
+                  AND Challenge = @Challenge
+                  AND UsedAt IS NULL
+                  AND ExpiresAt > @Now
+                ORDER BY CreatedAt DESC
+            )
+            UPDATE ac
+            SET UsedAt = @Now
+            FROM dbo.AuthChallenges ac
+            INNER JOIN c ON c.Id = ac.Id;
+
+            SELECT CASE WHEN EXISTS (
+                SELECT 1
+                FROM dbo.AuthChallenges
+                WHERE UserId = @UserId
+                  AND Challenge = @Challenge
+                  AND UsedAt IS NOT NULL
+                  AND ExpiresAt > @Now
+            ) THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT) END AS Consumed;
+        END
         ELSE IF @FIDOOperation = 'UpsertCredential'
-            EXEC dbo.sp_Fido_UpsertCredential @UserId = @UserId, @CredentialId = @CredentialId,
-                 @PublicKey = @PublicKey, @SignCount = @SignCount, @Transports = @Transports;
+        BEGIN
+            IF EXISTS (
+                SELECT 1 FROM dbo.UserCredentials
+                WHERE UserId = @UserId AND CredentialId = @CredentialId
+            )
+            BEGIN
+                UPDATE dbo.UserCredentials
+                SET PublicKey = @PublicKey,
+                    SignCount = @SignCount,
+                    Transports = @Transports,
+                    UpdatedAt = SYSUTCDATETIME()
+                WHERE UserId = @UserId AND CredentialId = @CredentialId;
+            END
+            ELSE
+            BEGIN
+                INSERT INTO dbo.UserCredentials (UserId, CredentialId, PublicKey, SignCount, Transports)
+                VALUES (@UserId, @CredentialId, @PublicKey, @SignCount, @Transports);
+            END
+
+            SELECT 1 AS Result;
+        END
         ELSE IF @FIDOOperation = 'GetCredential'
-            EXEC dbo.sp_Fido_GetCredential @CredentialId = @CredentialId;
+        BEGIN
+            SELECT TOP 1
+                Id,
+                UserId,
+                CredentialId,
+                PublicKey,
+                SignCount,
+                Transports,
+                CreatedAt,
+                UpdatedAt
+            FROM dbo.UserCredentials
+            WHERE CredentialId = @CredentialId;
+        END
         ELSE IF @FIDOOperation = 'GetCredentialsByUserId'
-            EXEC dbo.sp_Fido_GetCredentialsByUserId @UserId = @UserId;
-        RETURN;
+        BEGIN
+            SELECT
+                Id,
+                UserId,
+                CredentialId,
+                PublicKey,
+                SignCount,
+                Transports,
+                CreatedAt,
+                UpdatedAt
+            FROM dbo.UserCredentials
+            WHERE UserId = @UserId;
+        END
     END
 END;
 GO

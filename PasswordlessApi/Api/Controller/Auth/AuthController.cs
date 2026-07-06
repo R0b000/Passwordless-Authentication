@@ -30,6 +30,20 @@ namespace PasswordlessApi.Api.Controller.Auth
             return Ok(result);
         }
 
+        [HttpPost("fido2/options/register")]
+        public async Task<ActionResult<Fido2ChallengeResponse>> RequestAttestationOptions([FromBody] Fido2AttestationOptionsRequest request)
+        {
+            var result = await _authService.RequestAttestationOptionsAsync(request);
+            return Ok(result);
+        }
+
+        [HttpPost("fido2/register")]
+        public async Task<ActionResult<Fido2VerifyResponse>> RegisterCredential([FromBody] Fido2RegisterRequest request)
+        {
+            var result = await _authService.RegisterCredentialAsync(request);
+            return Ok(result);
+        }
+
         [HttpPost("fido2/challenge")]
         public async Task<ActionResult<Fido2ChallengeResponse>> CreateFido2Challenge([FromBody] Fido2ChallengeRequest request)
         {
