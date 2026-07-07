@@ -11,6 +11,10 @@ using PasswordlessApi.Api.Utility.PasswordHash;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Pin the API to a fixed HTTP address so the Blazor UI (BaseUrl http://localhost:5000)
+// can always reach it, independent of which launch profile is selected.
+builder.WebHost.UseUrls("http://localhost:5000");
+
 var jwtSecret = builder.Configuration["JwtSettings:SecretKey"] ?? Environment.GetEnvironmentVariable("JWT_SECRET_KEY");
 if (string.IsNullOrWhiteSpace(jwtSecret) || jwtSecret is "fake_jwt_token" or "fake_local_key")
 {
@@ -53,6 +57,8 @@ builder.Services.AddScoped<IPasswordHash, PasswordHash>();
 builder.Services.AddScoped<IJwtHelper, JwtHelper>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IFido2Service, Fido2Service>();
+builder.Services.AddScoped<IOtpService, OtpService>();
+builder.Services.AddScoped<IUserCredentialService, UserCredentialService>();
 
 var app = builder.Build();
 
@@ -62,7 +68,10 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();

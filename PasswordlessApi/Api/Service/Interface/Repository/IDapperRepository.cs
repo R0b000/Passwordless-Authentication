@@ -12,7 +12,6 @@ namespace PasswordlessApi.Api.Service.Interface.Repository
         Task<T?> QuerySingleAsync<T>(string procedureName, object dataType, CommandType queryType = CommandType.StoredProcedure);
         Task<T?> QueryFirstAsync<T>(string procedureName, object dataType, CommandType queryType = CommandType.StoredProcedure);
         Task<SqlMapper.GridReader> QueryMultipleAsync(string procedureName, object dataType, CommandType queryType = CommandType.StoredProcedure);
-
         Task<List<TResult>> GetAllAsync<TResult>(string spName, object obj, CommandType queryType = CommandType.StoredProcedure);
         Task<TResult> GetAsync<TResult>(string spName, object obj, CommandType queryType = CommandType.StoredProcedure);
         Task<SqlMapper.GridReader> GetMultipleListAsync(string spName, object obj, CommandType queryType = CommandType.StoredProcedure);

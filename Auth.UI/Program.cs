@@ -11,7 +11,7 @@ builder.Services.AddRazorComponents()
 
 builder.Services.AddScoped(sp =>
 {
-    var baseUrl = builder.Configuration["ApiSettings:BaseUrl"] ?? "https://didactic-goggles-px4974rp7jg2v7-5001.app.github.dev/";
+    var baseUrl = builder.Configuration["ApiSettings:BaseUrl"] ?? "http://localhost:5000";
     var handler = new HttpClientHandler { ServerCertificateCustomValidationCallback = (_, _, _, _) => true };
     return new HttpClient(handler) { BaseAddress = new Uri(baseUrl) };
 });

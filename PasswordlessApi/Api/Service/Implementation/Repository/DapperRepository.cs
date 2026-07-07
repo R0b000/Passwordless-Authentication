@@ -1,9 +1,13 @@
-using PasswordlessApi.Api.Models.Entities;
-using PasswordlessApi.Api.Configuration;
-using PasswordlessApi.Api.Service.Interface.Repository;
-using PasswordlessApi.Api.Models.Common;
-using System.Data;
 using Dapper;
+using PasswordlessApi.Api.Configuration;
+using PasswordlessApi.Api.Models.Common;
+using PasswordlessApi.Api.Models.Entities;
+using PasswordlessApi.Api.Models.ResponseModel.Auth;
+using PasswordlessApi.Api.Service.Interface.Auth;
+using PasswordlessApi.Api.Service.Interface.Repository;
+using PasswordlessApi.Api.Utility.Jwt;
+using PasswordlessApi.Api.Utility.PasswordHash;
+using System.Data;
 
 namespace PasswordlessApi.Api.Service.Implementation.Repository
 {
@@ -148,5 +152,7 @@ namespace PasswordlessApi.Api.Service.Implementation.Repository
             if (set3 != null) result.AddRange(set3.Cast<object>());
             return result;
         }
+
+
     }
 }

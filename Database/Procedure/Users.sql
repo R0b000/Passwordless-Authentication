@@ -1,3 +1,7 @@
+SET QUOTED_IDENTIFIER ON;
+SET ANSI_NULLS ON;
+GO
+
 CREATE OR ALTER PROCEDURE dbo.sp_Users
     @AuthType NVARCHAR(20),
     @Username NVARCHAR(200) = NULL,
@@ -77,6 +81,8 @@ BEGIN
     BEGIN
         IF @FIDOOperation = 'CreateChallenge'
         BEGIN
+            DELETE FROM dbo.AuthChallenges WHERE UserId = @UserId;
+
             DECLARE @NewId UNIQUEIDENTIFIER = NEWID();
 
             INSERT INTO dbo.AuthChallenges (Id, UserId, Challenge, ExpiresAt, UsedAt)

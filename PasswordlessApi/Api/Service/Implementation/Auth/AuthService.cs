@@ -232,6 +232,22 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
             };
         }
 
+        public async Task<List<UserCredential>> GetUserCredentialsAsync(int userId)
+        {
+            var param = new
+            {
+                AuthType = "FIDO",
+                FIDOOperation = "GetCredentialsByUserId",
+                UserId = userId
+            };
+
+            var credentials = await _dapperRepository.QueryAsync<UserCredential>(
+                ProcedureName,
+                param);
+
+            return credentials.ToList();
+        }
+
         public async Task<Fido2ChallengeResponse> RequestAttestationOptionsAsync(Fido2AttestationOptionsRequest request)
         {
             return await _fido2Service.RequestAttestationOptionsAsync(request.UserId, request.Username);
@@ -250,22 +266,6 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
         public async Task<Fido2VerifyResponse> VerifyFido2AssertionAsync(Fido2VerifyRequest request)
         {
             return await _fido2Service.VerifyAssertionAsync(request);
-        }
-
-        public async Task<List<UserCredential>> GetUserCredentialsAsync(int userId)
-        {
-            var param = new
-            {
-                AuthType = "FIDO",
-                FIDOOperation = "GetCredentialsByUserId",
-                UserId = userId
-            };
-
-            var credentials = await _dapperRepository.QueryAsync<UserCredential>(
-                ProcedureName,
-                param);
-
-            return credentials.ToList();
         }
 
         private async Task<bool> HasFido2CredentialsAsync(int userId)

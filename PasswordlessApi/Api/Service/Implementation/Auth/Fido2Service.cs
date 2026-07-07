@@ -177,9 +177,7 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
 
             var allowedCredentials = credentials.Select(c =>
             {
-                var transports = string.IsNullOrEmpty(c.Transports)
-                    ? null
-                    : System.Text.Json.JsonSerializer.Deserialize<AuthenticatorTransport[]>(c.Transports);
+                var transports = ParseTransports(c.Transports);
                 return new PublicKeyCredentialDescriptor(
                     PublicKeyCredentialType.PublicKey,
                     Base64UrlDecode(c.CredentialId),
@@ -256,9 +254,7 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
 
             var allowedCredentials = userCredentials.Select(c =>
             {
-                var transports = string.IsNullOrEmpty(c.Transports)
-                    ? null
-                    : System.Text.Json.JsonSerializer.Deserialize<AuthenticatorTransport[]>(c.Transports);
+                var transports = ParseTransports(c.Transports);
                 return new PublicKeyCredentialDescriptor(
                     PublicKeyCredentialType.PublicKey,
                     Base64UrlDecode(c.CredentialId),
@@ -303,7 +299,10 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
             {
                 var result = await _fido2.MakeAssertionAsync(makeAssertionParams);
 
-                if (result.SignCount <= storedCount)
+                // Many authenticators (Windows Hello, Touch ID, platform passkeys) report a
+                // sign counter of 0 or a non-monotonic value. Only flag regression when a
+                // previously recorded non-zero counter decreases; an all-zero counter is valid.
+                if (storedCount != 0 && result.SignCount <= storedCount)
                 {
                     return new Fido2VerifyResponse { Success = false, Message = "Counter regression detected" };
                 }
@@ -358,6 +357,27 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
                 default: throw new FormatException("Invalid base64url string");
             }
             return Convert.FromBase64String(base64);
+        }
+
+        private static AuthenticatorTransport[]? ParseTransports(string? transports)
+        {
+            if (string.IsNullOrWhiteSpace(transports))
+            {
+                return null;
+            }
+
+            var trimmed = transports.Trim();
+            if (trimmed.StartsWith("[", StringComparison.Ordinal))
+            {
+                return System.Text.Json.JsonSerializer.Deserialize<AuthenticatorTransport[]>(trimmed);
+            }
+
+            return trimmed
+                .Split(',', StringSplitOptions.RemoveEmptyEntries)
+                .Select(t => Enum.TryParse<AuthenticatorTransport>(t.Trim(), ignoreCase: true, out var parsed) ? parsed : (AuthenticatorTransport?)null)
+                .Where(t => t.HasValue)
+                .Select(t => t!.Value)
+                .ToArray();
         }
     }
 }
