@@ -1,0 +1,46 @@
+@namespace Auth.UI.Components.UI.Tour
+
+@if (Visible)
+{
+    <div class="ui-tour-overlay" @onclick="Close"></div>
+    <div class="ui-tour-popover" style="@PositionStyle">
+        <div class="ui-tour-header">@Title</div>
+        <div class="ui-tour-body">@ChildContent</div>
+        <div class="ui-tour-footer">
+            <Button Variant="Button.ButtonVariant.Secondary" Size="Button.ButtonSize.Small" OnClick="Prev">Previous</Button>
+            <Button Variant="Button.ButtonVariant.Primary" Size="Button.ButtonSize.Small" OnClick="Next">
+                @(IsLast ? "Finish" : "Next")
+            </Button>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool Visible { get; set; }
+    [Parameter] public string Title { get; set; } = string.Empty;
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public int Step { get; set; } = 0;
+    [Parameter] public int TotalSteps { get; set; } = 1;
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback OnNext { get; set; }
+    [Parameter] public EventCallback OnPrev { get; set; }
+
+    private bool IsLast => Step >= TotalSteps - 1;
+    private string PositionStyle => "top: 20%; left: 50%; transform: translate(-50%, 0);";
+
+    private async Task Next()
+    {
+        await OnNext.InvokeAsync();
+    }
+
+    private async Task Prev()
+    {
+        await OnPrev.InvokeAsync();
+    }
+
+    private async Task Close()
+    {
+        Visible = false;
+        await OnClose.InvokeAsync();
+    }
+}

@@ -1,0 +1,30 @@
+@namespace Auth.UI.Components.UI.Tag
+
+<span class="ui-tag ui-tag-@Variant.ToString().ToLowerInvariant()">
+    @if (!string.IsNullOrWhiteSpace(TagIcon))
+    {
+        <Icon Name="@TagIcon" Size="Icon.IconSize.Small" />
+    }
+    <span>@ChildContent</span>
+    @if (Closable)
+    {
+        <button class="ui-tag-close" @onclick="Close" aria-label="Close">
+            <Icon Name="x" Size="Icon.IconSize.Small" />
+        </button>
+    }
+</span>
+
+@code {
+    [Parameter] public TagVariant Variant { get; set; } = TagVariant.Primary;
+    [Parameter] public string? TagIcon { get; set; }
+    [Parameter] public bool Closable { get; set; } = false;
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    public enum TagVariant { Primary, Secondary, Success, Danger, Warning, Info }
+
+    private async Task Close()
+    {
+        await OnClose.InvokeAsync();
+    }
+}

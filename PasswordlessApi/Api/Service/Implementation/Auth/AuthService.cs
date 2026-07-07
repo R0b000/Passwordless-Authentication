@@ -1,4 +1,3 @@
-using System.Linq;
 using PasswordlessApi.Api.Models.RequestModel.Auth;
 using PasswordlessApi.Api.Models.ResponseModel.Auth;
 using PasswordlessApi.Api.Models.Entities;
@@ -6,8 +5,7 @@ using PasswordlessApi.Api.Service.Interface.Repository;
 using PasswordlessApi.Api.Utility.PasswordHash;
 using PasswordlessApi.Api.Service.Interface.Auth;
 using PasswordlessApi.Api.Utility.Jwt;
-using System.Security.Cryptography;
-using System.Text;
+
 
 namespace PasswordlessApi.Api.Service.Implementation.Auth
 {
@@ -19,6 +17,7 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
         private readonly IJwtHelper _jwtHelper;
         private readonly IFido2Service _fido2Service;
         private readonly IDapperRepository _dapperRepository;
+        private static string ProcedureName = "sp_Users";
 
         public AuthService(IGenericRepository<UserIdResult> userIdRepository, IGenericRepository<User> userRepository, IPasswordHash passwordHash, IJwtHelper jwtHelper, IFido2Service fido2Service, IDapperRepository dapperRepository)
         {
@@ -34,9 +33,15 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
         {
             var passwordHash = _passwordHash.HashPassword(request.Password);
 
-            var userIdResult = await _userIdRepository.QuerySingleAsync(
-                "sp_Users",
-                new { AuthType = "Register", Username = request.Username, Email = request.Email, PasswordHash = passwordHash });
+            var param = new
+            {
+                AuthType = "Register",
+                Username = request.Username,
+                Email = request.Email,
+                PasswordHash = passwordHash
+            };
+
+            var userIdResult = await _userIdRepository.QuerySingleAsync(ProcedureName, param);
 
             if (userIdResult == null || !userIdResult.Succeeded || userIdResult.Data == null)
             {
@@ -57,9 +62,16 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
 
         public async Task<AuthResponse> LoginAsync(LoginRequest request)
         {
+            var param = new
+            {
+                AuthType = "Login",
+                Username = request.Username
+            };
+
             var userIdResult = await _userIdRepository.QuerySingleAsync(
-                "sp_Users",
-                new { AuthType = "Login", Username = request.Username });
+                ProcedureName,
+                param
+            );
 
             if (userIdResult == null || !userIdResult.Succeeded || userIdResult.Data == null || userIdResult.Data.UserId <= 0)
             {
@@ -69,9 +81,13 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
                 };
             }
 
-            var user = await _userRepository.QuerySingleAsync(
-                "sp_Users",
-                new { AuthType = "Login", UserId = userIdResult.Data.UserId });
+            var param_1 = new
+            {
+                AuthType = "Login",
+                UserId = userIdResult.Data.UserId
+            };
+            
+            var user = await _userRepository.QuerySingleAsync(ProcedureName, param_1);
 
             if (user == null || !user.Succeeded || user.Data == null || string.IsNullOrEmpty(user.Data.PasswordHash))
             {
@@ -121,7 +137,7 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
         public async Task<User?> GetUserByIdAsync(int userId)
         {
             var userResult = await _userRepository.QuerySingleAsync(
-                "sp_Users",
+                ProcedureName,
                 new { AuthType = "Login", UserId = userId });
             return userResult.Succeeded ? userResult.Data : null;
         }
@@ -129,7 +145,7 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
         public async Task<OtpResponse> RequestOtpAsync(OtpRequest request)
         {
             var userResult = await _userRepository.QuerySingleAsync(
-                "sp_Users",
+                ProcedureName,
                 new { AuthType = "Login", UserId = request.UserId });
 
             if (userResult == null || !userResult.Succeeded || userResult.Data == null)
@@ -148,7 +164,7 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
             var expiresAt = DateTime.UtcNow.AddMinutes(5);
 
             var dapperResult = await _dapperRepository.QuerySingleAsync<dynamic>(
-                "sp_Users",
+                ProcedureName,
                 new
                 {
                     AuthType = "EmailOtp",
@@ -169,10 +185,15 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
         public async Task<AuthResponse> VerifyOtpAsync(OtpVerifyRequest request)
         {
             var now = DateTime.UtcNow;
+            var param = new
+            {
+                AuthType = "Login",
+                UserId = request.UserId
+            };
 
             var userResult = await _userRepository.QuerySingleAsync(
-                "sp_Users",
-                new { AuthType = "Login", UserId = request.UserId });
+                ProcedureName,
+                param);
 
             if (userResult == null || !userResult.Succeeded || userResult.Data == null)
             {
@@ -180,17 +201,18 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
             }
 
             var user = userResult.Data;
+            var param_1 = new
+            {
+                AuthType = "EmailOtp",
+                FIDOOperation = "ConsumeOtp",
+                UserId = request.UserId,
+                Otp = request.Otp,
+                Now = now
+            };
 
             var isConsumed = await _dapperRepository.QuerySingleAsync<bool>(
-                "sp_Users",
-                new
-                {
-                    AuthType = "EmailOtp",
-                    FIDOOperation = "ConsumeOtp",
-                    UserId = request.UserId,
-                    Otp = request.Otp,
-                    Now = now
-                });
+                ProcedureName,
+                param_1);
 
             if (!isConsumed)
             {
@@ -232,18 +254,32 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
 
         public async Task<List<UserCredential>> GetUserCredentialsAsync(int userId)
         {
+            var param = new
+            {
+                AuthType = "FIDO",
+                FIDOOperation = "GetCredentialsByUserId",
+                UserId = userId
+            };
+
             var credentials = await _dapperRepository.QueryAsync<UserCredential>(
-                "sp_Users",
-                new { AuthType = "FIDO", FIDOOperation = "GetCredentialsByUserId", UserId = userId });
+                ProcedureName,
+                param);
 
             return credentials.ToList();
         }
 
         private async Task<bool> HasFido2CredentialsAsync(int userId)
         {
+            var param = new
+            {
+                AuthType = "FIDO",
+                FIDOOperation = "GetCredentialsByUserId",
+                UserId = userId
+            };
+
             var credentials = await _dapperRepository.QueryAsync<UserCredential>(
-                "sp_Users",
-                new { AuthType = "FIDO", FIDOOperation = "GetCredentialsByUserId", UserId = userId });
+                ProcedureName,
+                param);
 
             return credentials != null && credentials.Any();
         }

@@ -1,0 +1,37 @@
+@namespace Auth.UI.Components.UI.AutocompleteSelect
+
+<div class="ui-select @(Disabled ? "is-disabled" : "")">
+    <button type="button" class="ui-select-control" disabled="@Disabled" @onclick="Toggle">
+        <span class="@(string.IsNullOrEmpty(SelectedId) ? "ui-select-placeholder" : "")">
+            @(SelectedItem?.Value ?? Placeholder)
+        </span>
+        <Icon Name="chevron-down" Size="Icon.IconSize.Small" />
+    </button>
+
+    @if (IsOpen)
+    {
+        <div class="ui-select-backdrop" @onclick="Close"></div>
+        <div class="ui-select-menu" @onclick:stopPropagation>
+            @if (EnableSearch)
+            {
+                <div class="ui-select-search">
+                    <Icon Name="search" Size="Icon.IconSize.Small" />
+                    <input class="ui-input" type="text" placeholder="Search..." @bind-value="SearchText" @bind-value:event="oninput" />
+                </div>
+            }
+            <div class="ui-select-options">
+                @foreach (var option in FilteredOptions)
+                {
+                    <div class="ui-select-option @(option.Id == SelectedId ? "is-selected" : "")"
+                         @onclick="@(() => Select(option))">
+                        @option.Value
+                    </div>
+                }
+                @if (FilteredOptions.Count == 0)
+                {
+                    <div class="ui-select-empty">No options</div>
+                }
+            </div>
+        </div>
+    }
+</div>

@@ -1,0 +1,75 @@
+@namespace Auth.UI.Components.UI.Graph
+
+<div class="ui-graph ui-graph-@Size.ToString().ToLowerInvariant()">
+    @if (!string.IsNullOrWhiteSpace(Title))
+    {
+        <h6 class="ui-graph-title">@Title</h6>
+    }
+
+    <svg viewBox="0 0 @W @H" class="ui-graph-svg" preserveAspectRatio="xMidYMid meet" role="img">
+        @if (Type == GraphType.Line)
+        {
+            @foreach (var t in YTicks)
+            {
+                var y = YTickPositions[t];
+                <line x1="@MarginLeft" y1="@y" x2="@(W - MarginRight)" y2="@y" class="ui-graph-grid" />
+                @SvgText(MarginLeft - 8, y + 4, "end", "ui-graph-axis-label", t)
+            }
+            @foreach (var p in Points)
+            {
+                @SvgText(p.X, H - MarginBottom + 16, "middle", "ui-graph-axis-label", p.Label)
+            }
+            <polyline points="@LinePoints" class="ui-graph-line" fill="none" />
+            @foreach (var p in Points)
+            {
+                <circle cx="@p.X" cy="@p.Y" r="4" class="ui-graph-dot" />
+            }
+        }
+        else if (Type == GraphType.Bar)
+        {
+            @foreach (var t in YTicks)
+            {
+                var y = YTickPositions[t];
+                <line x1="@MarginLeft" y1="@y" x2="@(W - MarginRight)" y2="@y" class="ui-graph-grid" />
+                @SvgText(MarginLeft - 8, y + 4, "end", "ui-graph-axis-label", t)
+            }
+            @foreach (var bar in Bars)
+            {
+                <rect x="@bar.X" y="@bar.Y" width="@bar.Width" height="@bar.Height" class="ui-graph-bar" />
+                @SvgText(bar.X + bar.Width / 2, H - MarginBottom + 16, "middle", "ui-graph-axis-label", bar.Label)
+            }
+        }
+        else if (Type == GraphType.Pie)
+        {
+            @foreach (var seg in PieSegments)
+            {
+                <path d="@seg.Path" fill="@seg.Color" class="ui-graph-slice" />
+                @SvgText(seg.LabelX, seg.LabelY, "middle", "ui-graph-pie-label", $"{seg.Percent}%")
+            }
+        }
+        else if (Type == GraphType.Heatmap)
+        {
+            @foreach (var cell in HeatCells)
+            {
+                <rect x="@cell.X" y="@cell.Y" width="@cell.Size" height="@cell.Size" rx="2" fill="@cell.Color" class="ui-graph-heat" />
+                @if (cell.ShowLabel)
+                {
+                    @SvgText(cell.X + cell.Size / 2, cell.Y + cell.Size / 2 + 4, "middle", "ui-graph-heat-label", cell.Label)
+                }
+            }
+        }
+    </svg>
+
+    @if (Type == GraphType.Pie)
+    {
+        <div class="ui-graph-legend">
+            @foreach (var seg in PieSegments)
+            {
+                <span class="ui-graph-legend-item">
+                    <span class="ui-graph-legend-swatch" style="background:@seg.Color"></span>
+                    @seg.Label (@seg.Value)
+                </span>
+            }
+        </div>
+    }
+</div>

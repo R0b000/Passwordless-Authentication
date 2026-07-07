@@ -1,0 +1,33 @@
+@namespace Auth.UI.Components.UI.Breadcrumb
+
+<nav aria-label="breadcrumb">
+    <ol class="ui-breadcrumb">
+        @for (var i = 0; i < Items.Count; i++)
+        {
+            var item = Items[i];
+            var isLast = i == Items.Count - 1;
+            <li class="ui-breadcrumb-item @(isLast ? "active" : "")">
+                @if (isLast || string.IsNullOrWhiteSpace(item.Url))
+                {
+                    if (!string.IsNullOrWhiteSpace(item.Icon))
+                    {
+                        <Icon Name="@item.Icon" Size="Icon.IconSize.Small" />
+                    }
+                    <span aria-current="@(isLast ? "page" : null)">@item.Text</span>
+                }
+                else
+                {
+                    if (!string.IsNullOrWhiteSpace(item.Icon))
+                    {
+                        <Icon Name="@item.Icon" Size="Icon.IconSize.Small" />
+                    }
+                    <a href="@item.Url">@item.Text</a>
+                }
+                @if (!isLast)
+                {
+                    <Icon Name="chevron-right" Size="Icon.IconSize.Small" />
+                }
+            </li>
+        }
+    </ol>
+</nav>

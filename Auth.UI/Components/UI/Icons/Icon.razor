@@ -1,0 +1,8 @@
+@namespace Auth.UI.Components.UI.Icons
+
+<span class="ui-icon @(Size != IconSize.Medium ? $"ui-icon-{Size.ToString().ToLowerInvariant()}" : "")" style="@(Width != null ? $"width:{Width}px;height:{Width}px;" : "")">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="@StrokeWidth"
+         stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="@(Name)" class="ui-icon-svg">
+        @((MarkupString)InnerSvg)
+    </svg>
+</span>
