@@ -12,11 +12,29 @@ namespace Auth.UI.Components.Pages
         [Inject] private NavigationManager NavigationManager { get; set; } = default!;
         [Inject] private IJSRuntime JsRuntime { get; set; } = default!;
 
+        [Parameter] public int? UserIdParam { get; set; }
+
         protected int UserId { get; set; }
         protected Fido2VerifyRequest VerifyModel { get; set; } = new();
         protected string AssertionOptions { get; set; } = string.Empty;
         protected string StatusMessage { get; set; } = string.Empty;
         protected bool Succeeded { get; set; }
+
+        protected override void OnParametersSet()
+        {
+            if (UserIdParam.HasValue)
+            {
+                UserId = UserIdParam.Value;
+            }
+        }
+
+        protected override async Task OnAfterRenderAsync(bool firstRender)
+        {
+            if (firstRender && UserIdParam.HasValue)
+            {
+                await StartAssertionAsync();
+            }
+        }
 
         protected async Task StartAssertionAsync()
         {

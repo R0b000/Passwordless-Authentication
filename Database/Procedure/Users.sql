@@ -1,6 +1,7 @@
 CREATE OR ALTER PROCEDURE dbo.sp_Users
     @AuthType NVARCHAR(20),
     @Username NVARCHAR(200) = NULL,
+    @Email NVARCHAR(300) = NULL,
     @PasswordHash NVARCHAR(200) = NULL,
     @UserId INT = NULL,
     @FIDOOperation NVARCHAR(50) = NULL,
@@ -10,10 +11,13 @@ CREATE OR ALTER PROCEDURE dbo.sp_Users
     @PublicKey NVARCHAR(MAX) = NULL,
     @SignCount BIGINT = NULL,
     @Transports NVARCHAR(500) = NULL,
+    @Otp NVARCHAR(10) = NULL,
     @Now DATETIME2 = NULL
 AS
 BEGIN
     SET NOCOUNT ON;
+
+    IF @Now IS NULL SET @Now = SYSUTCDATETIME();
 
     IF @AuthType = 'Register'
     BEGIN
@@ -25,8 +29,8 @@ BEGIN
 
         IF @NewUserId IS NULL
         BEGIN
-            INSERT INTO dbo.Users (Username, PasswordHash)
-            VALUES (@Username, @PasswordHash);
+            INSERT INTO dbo.Users (Username, Email, PasswordHash)
+            VALUES (@Username, @Email, @PasswordHash);
 
             SET @NewUserId = SCOPE_IDENTITY();
         END
@@ -36,7 +40,8 @@ BEGIN
             BEGIN
                 UPDATE dbo.Users
                 SET PasswordHash = @PasswordHash,
-                    UpdatedAt = SYSUTCDATETIME()
+                    Email = ISNULL(@Email, Email),
+                    UpdatedAt = @Now
                 WHERE Id = @NewUserId;
             END
         END
@@ -47,7 +52,7 @@ BEGIN
     BEGIN
         IF @UserId IS NOT NULL
         BEGIN
-            SELECT Id, Username, PasswordHash, CreatedAt, UpdatedAt
+            SELECT Id, Username, Email, PasswordHash, CreatedAt, UpdatedAt
             FROM dbo.Users
             WHERE Id = @UserId;
         END
@@ -60,6 +65,12 @@ BEGIN
             WHERE Username = @Username;
 
             SELECT @FoundUserId AS UserId;
+        END
+        ELSE IF @Email IS NOT NULL
+        BEGIN
+            SELECT Id, Username, Email, PasswordHash, CreatedAt, UpdatedAt
+            FROM dbo.Users
+            WHERE Email = @Email;
         END
     END
     ELSE IF @AuthType = 'FIDO'
@@ -75,8 +86,6 @@ BEGIN
         END
         ELSE IF @FIDOOperation = 'GetUserChallenge'
         BEGIN
-            IF @Now IS NULL SET @Now = SYSUTCDATETIME();
-
             SELECT TOP 1 Id, Challenge, ExpiresAt
             FROM dbo.AuthChallenges
             WHERE UserId = @UserId
@@ -87,8 +96,6 @@ BEGIN
         END
         ELSE IF @FIDOOperation = 'ConsumeChallenge'
         BEGIN
-            IF @Now IS NULL SET @Now = SYSUTCDATETIME();
-
             ;WITH c AS (
                 SELECT TOP 1 Id
                 FROM dbo.AuthChallenges
@@ -123,7 +130,7 @@ BEGIN
                 SET PublicKey = @PublicKey,
                     SignCount = @SignCount,
                     Transports = @Transports,
-                    UpdatedAt = SYSUTCDATETIME()
+                    UpdatedAt = @Now
                 WHERE UserId = @UserId AND CredentialId = @CredentialId;
             END
             ELSE
@@ -161,6 +168,53 @@ BEGIN
                 UpdatedAt
             FROM dbo.UserCredentials
             WHERE UserId = @UserId;
+        END
+    END
+    ELSE IF @AuthType = 'EmailOtp'
+    BEGIN
+        IF @FIDOOperation = 'CreateOtp'
+        BEGIN
+            DECLARE @OtpId UNIQUEIDENTIFIER = NEWID();
+
+            INSERT INTO dbo.EmailOtps (Id, UserId, Otp, ExpiresAt, UsedAt)
+            VALUES (@OtpId, @UserId, @Otp, @ExpiresAt, NULL);
+
+            SELECT @OtpId AS Id, @Otp AS Otp;
+        END
+        ELSE IF @FIDOOperation = 'GetOtp'
+        BEGIN
+            SELECT TOP 1 Id, Otp, ExpiresAt
+            FROM dbo.EmailOtps
+            WHERE UserId = @UserId
+              AND Otp = @Otp
+              AND UsedAt IS NULL
+              AND ExpiresAt > @Now
+            ORDER BY CreatedAt DESC;
+        END
+        ELSE IF @FIDOOperation = 'ConsumeOtp'
+        BEGIN
+            ;WITH c AS (
+                SELECT TOP 1 Id
+                FROM dbo.EmailOtps
+                WHERE UserId = @UserId
+                  AND Otp = @Otp
+                  AND UsedAt IS NULL
+                  AND ExpiresAt > @Now
+                ORDER BY CreatedAt DESC
+            )
+            UPDATE eo
+            SET UsedAt = @Now
+            FROM dbo.EmailOtps eo
+            INNER JOIN c ON c.Id = eo.Id;
+
+            SELECT CASE WHEN EXISTS (
+                SELECT 1
+                FROM dbo.EmailOtps
+                WHERE UserId = @UserId
+                  AND Otp = @Otp
+                  AND UsedAt IS NOT NULL
+                  AND ExpiresAt > @Now
+            ) THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT) END AS Consumed;
         END
     END
 END;

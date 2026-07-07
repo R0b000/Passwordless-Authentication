@@ -60,13 +60,41 @@ namespace PasswordlessApi.Api.Controller.Auth
 
         [Authorize]
         [HttpGet("me")]
-        public ActionResult<AuthResponse> Me()
+        public async Task<ActionResult<AuthResponse>> Me()
         {
+            var userIdStr = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userIdStr) || !int.TryParse(userIdStr, out var userId))
+            {
+                return Unauthorized();
+            }
+
+            var user = await _authService.GetUserByIdAsync(userId);
+            if (user == null)
+            {
+                return NotFound();
+            }
+
             return Ok(new AuthResponse
             {
-                Username = User.Identity?.Name ?? string.Empty,
+                UserId = user.Id,
+                Username = user.Username,
+                Email = user.Email,
                 Message = "Authenticated"
             });
+        }
+
+        [HttpPost("otp/request")]
+        public async Task<ActionResult<OtpResponse>> RequestOtp([FromBody] OtpRequest request)
+        {
+            var result = await _authService.RequestOtpAsync(request);
+            return Ok(result);
+        }
+
+        [HttpPost("otp/verify")]
+        public async Task<ActionResult<AuthResponse>> VerifyOtp([FromBody] OtpVerifyRequest request)
+        {
+            var result = await _authService.VerifyOtpAsync(request);
+            return Ok(result);
         }
     }
 }

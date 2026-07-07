@@ -33,5 +33,11 @@ namespace Auth.UI.src.Manager.Controller
 
         public Task<Response<Fido2VerifyResponse>> VerifyFido2AssertionAsync(Fido2VerifyRequest request)
             => _authManager.VerifyFido2AssertionAsync(request);
+
+        public Task<Response<OtpResponse>> RequestOtpAsync(OtpRequest request)
+            => _authManager.RequestOtpAsync(request);
+
+        public Task<Response<AuthResponse>> VerifyOtpAsync(OtpVerifyRequest request)
+            => _authManager.VerifyOtpAsync(request);
     }
 }

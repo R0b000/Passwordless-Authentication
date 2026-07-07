@@ -1,4 +1,4 @@
-﻿using System.Linq;
+using System.Linq;
 using PasswordlessApi.Api.Models.RequestModel.Auth;
 using PasswordlessApi.Api.Models.ResponseModel.Auth;
 using PasswordlessApi.Api.Models.Entities;
@@ -36,7 +36,7 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
 
             var userIdResult = await _userIdRepository.QuerySingleAsync(
                 "sp_Users",
-                new { AuthType = "Register", Username = request.Username, PasswordHash = passwordHash });
+                new { AuthType = "Register", Username = request.Username, Email = request.Email, PasswordHash = passwordHash });
 
             if (userIdResult == null || !userIdResult.Succeeded || userIdResult.Data == null)
             {
@@ -50,6 +50,7 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
             {
                 UserId = userIdResult.Data.UserId,
                 Username = request.Username,
+                Email = request.Email,
                 Message = "Registered successfully"
             };
         }
@@ -98,6 +99,7 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
                 {
                     UserId = user.Data.Id,
                     Username = user.Data.Username,
+                    Email = user.Data.Email,
                     Message = "FIDO2 verification required",
                     RequiresFido2 = true
                 };
@@ -109,6 +111,99 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
             {
                 UserId = user.Data.Id,
                 Username = user.Data.Username,
+                Email = user.Data.Email,
+                Token = token,
+                Message = "Login successful",
+                RequiresFido2 = false
+            };
+        }
+
+        public async Task<User?> GetUserByIdAsync(int userId)
+        {
+            var userResult = await _userRepository.QuerySingleAsync(
+                "sp_Users",
+                new { AuthType = "Login", UserId = userId });
+            return userResult.Succeeded ? userResult.Data : null;
+        }
+
+        public async Task<OtpResponse> RequestOtpAsync(OtpRequest request)
+        {
+            var userResult = await _userRepository.QuerySingleAsync(
+                "sp_Users",
+                new { AuthType = "Login", UserId = request.UserId });
+
+            if (userResult == null || !userResult.Succeeded || userResult.Data == null)
+            {
+                return new OtpResponse { Success = false, Message = "User not found" };
+            }
+
+            var user = userResult.Data;
+            if (string.IsNullOrEmpty(user.Email))
+            {
+                return new OtpResponse { Success = false, Message = "User does not have an email configured" };
+            }
+
+            var random = new Random();
+            var otp = random.Next(100000, 999999).ToString();
+            var expiresAt = DateTime.UtcNow.AddMinutes(5);
+
+            var dapperResult = await _dapperRepository.QuerySingleAsync<dynamic>(
+                "sp_Users",
+                new
+                {
+                    AuthType = "EmailOtp",
+                    FIDOOperation = "CreateOtp",
+                    UserId = user.Id,
+                    Otp = otp,
+                    ExpiresAt = expiresAt
+                });
+
+            return new OtpResponse
+            {
+                Success = true,
+                Message = $"OTP sent to {user.Email} (Demo OTP: {otp})",
+                Otp = otp
+            };
+        }
+
+        public async Task<AuthResponse> VerifyOtpAsync(OtpVerifyRequest request)
+        {
+            var now = DateTime.UtcNow;
+
+            var userResult = await _userRepository.QuerySingleAsync(
+                "sp_Users",
+                new { AuthType = "Login", UserId = request.UserId });
+
+            if (userResult == null || !userResult.Succeeded || userResult.Data == null)
+            {
+                return new AuthResponse { Message = "User not found" };
+            }
+
+            var user = userResult.Data;
+
+            var isConsumed = await _dapperRepository.QuerySingleAsync<bool>(
+                "sp_Users",
+                new
+                {
+                    AuthType = "EmailOtp",
+                    FIDOOperation = "ConsumeOtp",
+                    UserId = request.UserId,
+                    Otp = request.Otp,
+                    Now = now
+                });
+
+            if (!isConsumed)
+            {
+                return new AuthResponse { Message = "Invalid or expired OTP" };
+            }
+
+            var token = _jwtHelper.GenerateToken(user.Id, user.Username);
+
+            return new AuthResponse
+            {
+                UserId = user.Id,
+                Username = user.Username,
+                Email = user.Email,
                 Token = token,
                 Message = "Login successful",
                 RequiresFido2 = false

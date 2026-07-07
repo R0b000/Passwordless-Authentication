@@ -39,8 +39,23 @@
 
             @if (RequiresFido2)
             {
-                <div class="mt-3">
-                    <button class="btn btn-outline-dark w-100" @onclick="@GoToFido2">Continue with passkey</button>
+                <div class="mt-3 d-flex flex-column gap-2">
+                    <button class="btn btn-outline-dark w-100" @onclick="@GoToFido2" type="button">Continue with passkey</button>
+                    
+                    <hr />
+                    
+                    @if (!OtpRequested)
+                    {
+                        <button class="btn btn-outline-secondary w-100" @onclick="@RequestOtpAsync" type="button">Lost Passkey? Send Login OTP to Email</button>
+                    }
+                    else
+                    {
+                        <div class="border rounded p-3 bg-light text-start">
+                            <label class="form-label font-weight-bold">Enter the OTP sent to your email:</label>
+                            <InputText class="form-control mb-2" @bind-Value="OtpCode" placeholder="6-digit OTP" />
+                            <button class="btn btn-success w-100" @onclick="@VerifyOtpAsync" type="button">Verify OTP & Login</button>
+                        </div>
+                    }
                 </div>
             }
         }
@@ -50,6 +65,10 @@
                 <div class="mb-3">
                     <label class="form-label">Username</label>
                     <InputText class="form-control" @bind-Value="RegisterModel.Username" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Email</label>
+                    <InputText type="email" class="form-control" @bind-Value="RegisterModel.Email" />
                 </div>
                 <div class="mb-3">
                     <label class="form-label">Password</label>

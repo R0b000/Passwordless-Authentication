@@ -11,17 +11,20 @@ namespace Auth.UI.src.Manager.Service.Implementation
         private readonly GenericHttpRepository<AuthResponse> _authRepository;
         private readonly GenericHttpRepository<Fido2ChallengeResponse> _challengeRepository;
         private readonly GenericHttpRepository<Fido2VerifyResponse> _verifyRepository;
+        private readonly GenericHttpRepository<OtpResponse> _otpRepository;
         private readonly ITokenStore _tokenStore;
 
         public AuthManager(
             GenericHttpRepository<AuthResponse> authRepository,
             GenericHttpRepository<Fido2ChallengeResponse> challengeRepository,
             GenericHttpRepository<Fido2VerifyResponse> verifyRepository,
+            GenericHttpRepository<OtpResponse> otpRepository,
             ITokenStore tokenStore)
         {
             _authRepository = authRepository;
             _challengeRepository = challengeRepository;
             _verifyRepository = verifyRepository;
+            _otpRepository = otpRepository;
             _tokenStore = tokenStore;
         }
 
@@ -83,6 +86,23 @@ namespace Auth.UI.src.Manager.Service.Implementation
         {
             var token = _tokenStore.GetToken();
             var result = await _verifyRepository.QuerySingleAsync("api/auth/fido2/verify", request, token);
+            if (result.Succeeded && result.Data?.Token is not null)
+            {
+                _tokenStore.SetToken(result.Data.Token);
+            }
+
+            return result;
+        }
+
+        public async Task<Response<OtpResponse>> RequestOtpAsync(OtpRequest request)
+        {
+            var result = await _otpRepository.QuerySingleAsync("api/auth/otp/request", request);
+            return result;
+        }
+
+        public async Task<Response<AuthResponse>> VerifyOtpAsync(OtpVerifyRequest request)
+        {
+            var result = await _authRepository.QuerySingleAsync("api/auth/otp/verify", request);
             if (result.Succeeded && result.Data?.Token is not null)
             {
                 _tokenStore.SetToken(result.Data.Token);
