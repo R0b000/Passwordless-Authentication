@@ -15,6 +15,7 @@ namespace Auth.UI.Components.Pages
 
         [Parameter] public int? UserId { get; set; }
         [Parameter] public EventCallback OnCompleted { get; set; }
+        [Parameter] public bool AutoStart { get; set; }
 
         protected PasskeyState State { get; set; } = PasskeyState.Idle;
         protected int ResolvedUserId { get; set; }
@@ -28,6 +29,10 @@ namespace Auth.UI.Components.Pages
         protected string? ResolvedUsername { get; set; }
         protected string StatusMessage { get; set; } = string.Empty;
         protected bool Succeeded { get; set; }
+
+        protected bool IsStepUp => UserId.HasValue;
+        protected bool OtpRequested { get; set; }
+        protected string OtpCode { get; set; } = string.Empty;
 
         private IJSObjectReference? _webAuthnModule;
 
@@ -46,7 +51,7 @@ namespace Auth.UI.Components.Pages
             {
                 _webAuthnModule = await JsRuntime.InvokeAsync<IJSObjectReference>("import", "./webauthn.js");
 
-                if (UserId.HasValue)
+                if (AutoStart && UserId.HasValue)
                 {
                     await StartAssertionAsync();
                 }
@@ -115,6 +120,38 @@ namespace Auth.UI.Components.Pages
             State = PasskeyState.Idle;
             StatusDetail = string.Empty;
         }
+
+        protected async Task RequestOtpAsync()
+        {
+            StatusMessage = string.Empty;
+            var response = await AuthController.RequestOtpAsync(new OtpRequest { UserId = ResolvedUserId });
+            if (response.Succeeded)
+            {
+                OtpRequested = true;
+            }
+            else
+            {
+                Succeeded = false;
+                StatusMessage = response.Message ?? "Failed to request OTP";
+            }
+        }
+
+        protected async Task VerifyOtpAsync()
+        {
+            StatusMessage = string.Empty;
+            var response = await AuthController.VerifyOtpAsync(new OtpVerifyRequest { UserId = ResolvedUserId, Otp = OtpCode });
+            if (response.Succeeded)
+            {
+                await OnCompleted.InvokeAsync();
+                NavigationManager.NavigateTo("/profile");
+                return;
+            }
+
+            Succeeded = false;
+            StatusMessage = response.Message ?? "Failed to verify OTP";
+        }
+
+        protected void HideOtp() => OtpRequested = false;
 
         protected async Task StartAssertionAsync(string? authenticatorAttachment = null)
         {

@@ -21,10 +21,6 @@ namespace Auth.UI.Components.Pages
         protected LoginRequest LoginModel { get; set; } = new();
         protected string StatusMessage { get; set; } = string.Empty;
         protected bool Succeeded { get; set; }
-        protected bool RequiresFido2 { get; set; }
-        protected bool ShowPasskeyNudge { get; set; }
-        protected bool OtpRequested { get; set; }
-        protected string OtpCode { get; set; } = string.Empty;
         protected int LoggedInUserId { get; set; }
         protected bool ShowPassword { get; set; }
 
@@ -45,8 +41,6 @@ namespace Auth.UI.Components.Pages
         protected async Task RegisterAsync()
         {
             StatusMessage = string.Empty;
-            RequiresFido2 = false;
-            ShowPasskeyNudge = false;
 
             var result = await AuthController.RegisterAsync(RegisterModel);
             Succeeded = result.Succeeded;
@@ -57,16 +51,12 @@ namespace Auth.UI.Components.Pages
                 Mode = "login";
                 LoginModel.Username = RegisterModel.Username;
                 StatusMessage = "Registration successful. You can now sign in with your credentials and add a passkey from your profile.";
-                ShowPasskeyNudge = true;
             }
         }
 
         protected async Task LoginAsync()
         {
             StatusMessage = string.Empty;
-            RequiresFido2 = false;
-            OtpRequested = false;
-            ShowPasskeyNudge = false;
 
             var result = await AuthController.LoginAsync(LoginModel);
             Succeeded = result.Succeeded;
@@ -76,8 +66,8 @@ namespace Auth.UI.Components.Pages
             {
                 if (result.Data?.RequiresFido2 == true)
                 {
-                    RequiresFido2 = true;
                     LoggedInUserId = result.Data.UserId;
+                    PasskeyVisible = true;
                 }
                 else
                 {
@@ -89,6 +79,8 @@ namespace Auth.UI.Components.Pages
         protected Modal PasskeyModal { get; set; } = default!;
         protected bool PasskeyVisible { get; set; }
 
+        protected string PasskeyModalTitle => LoggedInUserId > 0 ? "Verify it's you" : "Sign in with a passkey";
+
         protected void OpenPasskeyModal()
         {
             PasskeyVisible = true;
@@ -99,28 +91,10 @@ namespace Auth.UI.Components.Pages
             PasskeyVisible = false;
         }
 
-        protected async Task RequestOtpAsync()
+        protected void OnPasskeyCancel()
         {
-            StatusMessage = string.Empty;
-            var response = await AuthController.RequestOtpAsync(new OtpRequest { UserId = LoggedInUserId });
-            Succeeded = response.Succeeded;
-            StatusMessage = response.Message ?? "Failed to request OTP";
-            if (response.Succeeded)
-            {
-                OtpRequested = true;
-            }
-        }
-
-        protected async Task VerifyOtpAsync()
-        {
-            StatusMessage = string.Empty;
-            var response = await AuthController.VerifyOtpAsync(new OtpVerifyRequest { UserId = LoggedInUserId, Otp = OtpCode });
-            Succeeded = response.Succeeded;
-            StatusMessage = response.Message ?? "Failed to verify OTP";
-            if (response.Succeeded)
-            {
-                NavigationManager.NavigateTo("/profile");
-            }
+            PasskeyVisible = false;
+            LoggedInUserId = 0;
         }
     }
 }

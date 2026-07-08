@@ -9,7 +9,48 @@
 
     @if (State == PasskeyState.Idle)
     {
-        @if (!IsEmailResolved)
+        @if (IsStepUp)
+        {
+            <div class="lp-passkey-hero">
+                <div class="lp-biometric is-static">
+                    <Icon Name="fingerprint" Size="Icon.IconSize.Large" />
+                </div>
+                <h2 class="lp-passkey-title">Verify it's you</h2>
+                <p class="lp-passkey-sub">Your password was accepted. Complete sign-in with your passkey or security key.</p>
+            </div>
+
+            <button class="lp-submit" @onclick="@(() => StartAssertionAsync())" type="button">
+                <Icon Name="fingerprint" Size="Icon.IconSize.Small" />
+                Continue with passkey
+            </button>
+
+            <div class="lp-passkey-options">
+                <button class="lp-passkey-ghost" @onclick="@(() => StartAssertionAsync("cross-platform"))" type="button">
+                    <Icon Name="usb" Size="Icon.IconSize.Small" /> Use a security key
+                </button>
+                @if (!OtpRequested)
+                {
+                    <button class="lp-passkey-ghost" @onclick="@RequestOtpAsync" type="button">Email me a code</button>
+                }
+                else
+                {
+                    <button class="lp-passkey-ghost" @onclick="@HideOtp" type="button">Hide code entry</button>
+                }
+            </div>
+
+            @if (OtpRequested)
+            {
+                <div class="lp-field" style="text-align:left; margin-top:1rem;">
+                    <label class="lp-label" for="pk-otp">Enter the 6-digit code sent to your email:</label>
+                    <div class="lp-input">
+                        <Icon Name="lock" Size="Icon.IconSize.Small" />
+                        <input id="pk-otp" class="lp-control" @bind="OtpCode" placeholder="6-digit code" />
+                    </div>
+                    <button class="lp-submit" @onclick="@VerifyOtpAsync" type="button">Verify code &amp; sign in</button>
+                </div>
+            }
+        }
+        else if (!IsEmailResolved)
         {
             <div class="lp-passkey-hero">
                 <div class="lp-biometric is-static">

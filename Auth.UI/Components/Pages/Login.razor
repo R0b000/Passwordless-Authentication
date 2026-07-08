@@ -151,37 +151,6 @@
                 <div class="lp-footer">
                     <a class="lp-link" href="#" @onclick="@(() => SocialAsync("reset"))" @onclick:preventDefault>Forgot login or password?</a>
                 </div>
-
-                @if (RequiresFido2)
-                {
-                    <div class="lp-status is-awaiting">
-                        <div class="lp-biometric is-static">
-                            <Icon Name="fingerprint" Size="Icon.IconSize.Small" />
-                        </div>
-                        <p class="lp-status-text">Verify it's you</p>
-                        <p class="lp-status-detail">Your password was accepted. Complete sign-in with your passkey or security key.</p>
-                        <div class="lp-status-options">
-                            <button class="lp-btn lp-btn-primary" @onclick="@OpenPasskeyModal" type="button">Continue with passkey</button>
-                            @if (!OtpRequested)
-                            {
-                                <button class="lp-btn lp-btn-ghost" @onclick="@RequestOtpAsync" type="button">Email me a code</button>
-                            }
-                            else
-                            {
-                                <button class="lp-btn lp-btn-ghost" @onclick="@(() => OtpRequested = false)" type="button">Hide code entry</button>
-                            }
-                        </div>
-                    </div>
-
-                    @if (OtpRequested)
-                    {
-                        <div class="lp-otp">
-                            <label class="lp-label">Enter the 6-digit code sent to your email:</label>
-                            <InputText class="lp-control" @bind-Value="OtpCode" placeholder="6-digit code" />
-                            <button class="lp-btn lp-btn-success" @onclick="@VerifyOtpAsync" type="button">Verify code &amp; sign in</button>
-                        </div>
-                    }
-                }
             }
             else
             {
@@ -219,12 +188,15 @@
         </div>
     </section>
 
-    <Modal @ref="PasskeyModal" Title="Sign in with a passkey"
+    <Modal @ref="PasskeyModal" Title="@PasskeyModalTitle"
            Size="ModalSize.Medium" ShowSubmitButton="false" CancelText="Close"
+           OnCancel="OnPasskeyCancel"
            @bind-Visible="PasskeyVisible">
         @if (PasskeyVisible)
         {
-            <PasskeyLogin UserId="@(LoggedInUserId > 0 ? LoggedInUserId : null)" OnCompleted="HandlePasskeyCompleted" />
+            <PasskeyLogin UserId="@(LoggedInUserId > 0 ? LoggedInUserId : null)"
+                          AutoStart="false"
+                          OnCompleted="HandlePasskeyCompleted" />
         }
     </Modal>
 </div>
