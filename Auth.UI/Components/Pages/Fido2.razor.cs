@@ -22,6 +22,13 @@ namespace Auth.UI.Components.Pages
         protected string AssertionOptions { get; set; } = string.Empty;
         protected string StatusDetail { get; set; } = string.Empty;
 
+        protected string Email { get; set; } = string.Empty;
+        protected bool IsEmailResolved { get; set; }
+        protected bool IsResolving { get; set; }
+        protected string? ResolvedUsername { get; set; }
+        protected string StatusMessage { get; set; } = string.Empty;
+        protected bool Succeeded { get; set; }
+
         private IJSObjectReference? _webAuthnModule;
 
         protected override void OnParametersSet()
@@ -29,6 +36,7 @@ namespace Auth.UI.Components.Pages
             if (UserIdParam.HasValue)
             {
                 UserId = UserIdParam.Value;
+                IsEmailResolved = true;
             }
         }
 
@@ -45,12 +53,75 @@ namespace Auth.UI.Components.Pages
             }
         }
 
+        protected async Task ResolveAccountAsync()
+        {
+            StatusMessage = string.Empty;
+            if (string.IsNullOrWhiteSpace(Email))
+            {
+                StatusMessage = "Please enter your email address.";
+                Succeeded = false;
+                return;
+            }
+
+            if (!Email.Contains("@") || !Email.Contains("."))
+            {
+                StatusMessage = "Please enter a valid email address.";
+                Succeeded = false;
+                return;
+            }
+
+            IsResolving = true;
+            State = PasskeyState.Requesting;
+            StatusDetail = "Resolving your account…";
+
+            try
+            {
+                var result = await AuthController.GetUserByEmailAsync(Email);
+                if (result.Succeeded && result.Data is not null)
+                {
+                    UserId = result.Data.UserId;
+                    ResolvedUsername = result.Data.Username;
+                    IsEmailResolved = true;
+                    State = PasskeyState.Idle;
+                    StatusDetail = string.Empty;
+                    Succeeded = true;
+                }
+                else
+                {
+                    State = PasskeyState.Idle;
+                    StatusMessage = result.Message ?? "No account found with this email address.";
+                    Succeeded = false;
+                }
+            }
+            catch (Exception ex)
+            {
+                State = PasskeyState.Idle;
+                StatusMessage = $"An error occurred during account resolution: {ex.Message}";
+                Succeeded = false;
+            }
+            finally
+            {
+                IsResolving = false;
+            }
+        }
+
+        protected void ResetEmailLookup()
+        {
+            Email = string.Empty;
+            IsEmailResolved = false;
+            UserId = 0;
+            ResolvedUsername = null;
+            StatusMessage = string.Empty;
+            State = PasskeyState.Idle;
+            StatusDetail = string.Empty;
+        }
+
         protected async Task StartAssertionAsync(string? authenticatorAttachment = null)
         {
             if (UserId <= 0)
             {
                 State = PasskeyState.Error;
-                StatusDetail = "Enter your account ID to continue, or go back and sign in with your password.";
+                StatusDetail = "Account resolution required to continue. Please go back and enter your email.";
                 return;
             }
 
@@ -79,7 +150,7 @@ namespace Auth.UI.Components.Pages
                     "getCredential",
                     result.Data.PublicKeyCredentialCreationOptions,
                     result.Data.Challenge,
-                    new { authenticatorAttachment = authenticatorAttachment, userVerification = "preferred" });
+                    new { authenticatorAttachment = authenticatorAttachment, userVerification = "required" });
 
                 VerifyModel.Challenge = cred.challenge;
                 VerifyModel.CredentialId = cred.id;

@@ -61,6 +61,11 @@ namespace Auth.UI.src.Manager.Service.Implementation
             return await _authRepository.GetSingleAsync("api/auth/me", token);
         }
 
+        public async Task<Response<AuthResponse>> GetUserByEmailAsync(string email)
+        {
+            return await _authRepository.GetSingleAsync($"api/auth/lookup?email={Uri.EscapeDataString(email)}");
+        }
+
         public async Task<Response<Fido2ChallengeResponse>> RequestAttestationOptionsAsync(Fido2AttestationOptionsRequest request)
         {
             var token = _tokenStore.GetToken();

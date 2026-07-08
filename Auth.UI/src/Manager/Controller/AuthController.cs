@@ -22,6 +22,9 @@ namespace Auth.UI.src.Manager.Controller
         public Task<Response<AuthResponse>> MeAsync()
             => _authManager.GetCurrentUserAsync();
 
+        public Task<Response<AuthResponse>> GetUserByEmailAsync(string email)
+            => _authManager.GetUserByEmailAsync(email);
+
         public Task<Response<Fido2ChallengeResponse>> RequestAttestationOptionsAsync(Fido2AttestationOptionsRequest request)
             => _authManager.RequestAttestationOptionsAsync(request);
 

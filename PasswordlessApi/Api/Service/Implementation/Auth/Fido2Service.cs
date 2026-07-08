@@ -219,9 +219,10 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
                 throw new ArgumentException("UserId is required for assertion");
             }
 
+            var credentialIdBase64 = Convert.ToBase64String(Base64UrlDecode(request.CredentialId));
             var credential = await _dapperRepository.QueryFirstAsync<UserCredential>(
                 "sp_Users",
-                new { AuthType = "FIDO", FIDOOperation = "GetCredential", CredentialId = request.CredentialId });
+                new { AuthType = "FIDO", FIDOOperation = "GetCredential", CredentialId = credentialIdBase64 });
 
             if (credential == null)
             {

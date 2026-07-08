@@ -51,11 +51,14 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
                 };
             }
 
+            var token = _jwtHelper.GenerateToken(userIdResult.Data.UserId, request.Username);
+
             return new AuthResponse
             {
                 UserId = userIdResult.Data.UserId,
                 Username = request.Username,
                 Email = request.Email,
+                Token = token,
                 Message = "Registered successfully"
             };
         }
@@ -139,6 +142,14 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
             var userResult = await _userRepository.QuerySingleAsync(
                 ProcedureName,
                 new { AuthType = "Login", UserId = userId });
+            return userResult.Succeeded ? userResult.Data : null;
+        }
+
+        public async Task<User?> GetUserByEmailAsync(string email)
+        {
+            var userResult = await _userRepository.QuerySingleAsync(
+                ProcedureName,
+                new { AuthType = "Login", Email = email });
             return userResult.Succeeded ? userResult.Data : null;
         }
 

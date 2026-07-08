@@ -83,6 +83,29 @@ namespace PasswordlessApi.Api.Controller.Auth
             });
         }
 
+        [HttpGet("lookup")]
+        public async Task<ActionResult<AuthResponse>> Lookup([FromQuery] string email)
+        {
+            if (string.IsNullOrEmpty(email))
+            {
+                return BadRequest(new AuthResponse { Message = "Email is required" });
+            }
+
+            var user = await _authService.GetUserByEmailAsync(email);
+            if (user == null)
+            {
+                return NotFound(new AuthResponse { Message = "User not found" });
+            }
+
+            return Ok(new AuthResponse
+            {
+                UserId = user.Id,
+                Username = user.Username,
+                Email = user.Email,
+                Message = "User resolved"
+            });
+        }
+
         [HttpPost("otp/request")]
         public async Task<ActionResult<OtpResponse>> RequestOtp([FromBody] OtpRequest request)
         {

@@ -8,6 +8,7 @@ namespace Auth.UI.src.Manager.Service.Interface
         Task<Response<AuthResponse>> RegisterAsync(RegisterRequest request);
         Task<Response<AuthResponse>> LoginAsync(LoginRequest request);
         Task<Response<AuthResponse>> GetCurrentUserAsync();
+        Task<Response<AuthResponse>> GetUserByEmailAsync(string email);
         Task<Response<Fido2ChallengeResponse>> RequestAttestationOptionsAsync(Fido2AttestationOptionsRequest request);
         Task<Response<Fido2VerifyResponse>> RegisterCredentialAsync(Fido2RegisterRequest request);
         Task<Response<Fido2ChallengeResponse>> CreateFido2ChallengeAsync(int userId);

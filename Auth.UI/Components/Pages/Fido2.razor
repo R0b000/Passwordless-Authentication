@@ -13,15 +13,79 @@
             <span>Passwordless Auth</span>
         </div>
 
+        @if (!string.IsNullOrEmpty(StatusMessage))
+        {
+            <div class="alert alert-danger" role="alert">@StatusMessage</div>
+        }
+
         @if (State == PasskeyState.Idle)
         {
-            <div class="auth-hero">
-                <div class="passkey-badge">
-                    <Icon Name="fingerprint" Size="Icon.IconSize.Large" />
+            @if (!IsEmailResolved)
+            {
+                <div class="auth-hero">
+                    <div class="passkey-badge">
+                        <Icon Name="fingerprint" Size="Icon.IconSize.Large" />
+                    </div>
+                    <h1 class="auth-title">Sign in with a passkey</h1>
+                    <p class="auth-subtitle">Use your device biometric or a security key — no password needed.</p>
                 </div>
-                <h1 class="auth-title">Sign in with a passkey</h1>
-                <p class="auth-subtitle">Use your device biometric or a security key — no password needed.</p>
-            </div>
+
+                <div class="mb-3 text-start">
+                    <label class="form-label font-weight-bold">Email address</label>
+                    <InputText class="form-control" @bind-Value="Email" placeholder="you@example.com" />
+                    <div class="form-text text-muted">Enter the email address linked to your account.</div>
+                </div>
+
+                <button class="btn btn-primary w-100" @onclick="@ResolveAccountAsync" type="button">
+                    Continue
+                </button>
+
+                <div class="auth-footer-link mt-3">
+                    <a class="btn btn-link" href="/">Use password instead</a>
+                </div>
+            }
+            else
+            {
+                <div class="auth-hero">
+                    <div class="passkey-badge">
+                        <Icon Name="fingerprint" Size="Icon.IconSize.Large" />
+                    </div>
+                    <h1 class="auth-title">Choose your method</h1>
+                    <p class="auth-subtitle">Verify your identity to complete sign-in.</p>
+                </div>
+
+                <div class="card mb-3">
+                    <div class="card-body text-start d-flex justify-content-between align-items-center py-2 px-3">
+                        <div>
+                            <div class="small text-muted">Signing in as</div>
+                            <strong>@ResolvedUsername</strong> <span class="text-muted">(@Email)</span>
+                        </div>
+                        @if (UserIdParam == null)
+                        {
+                            <button class="btn btn-sm btn-link text-decoration-none" @onclick="@ResetEmailLookup" type="button">Change</button>
+                        }
+                    </div>
+                </div>
+
+                <button class="passkey-btn" @onclick="@(() => StartAssertionAsync())" type="button">
+                    <Icon Name="fingerprint" Size="Icon.IconSize.Small" />
+                    Sign in with a passkey
+                </button>
+
+                <div class="auth-options mt-2">
+                    <button class="btn btn-outline-secondary" @onclick="@(() => StartAssertionAsync("cross-platform"))" type="button">
+                        <Icon Name="usb" Size="Icon.IconSize.Small" /> Use a security key
+                    </button>
+                    @if (UserIdParam == null)
+                    {
+                        <button class="btn btn-link" @onclick="@ResetEmailLookup" type="button">Use a different email</button>
+                    }
+                    else
+                    {
+                        <a class="btn btn-link" href="/">Use password instead</a>
+                    }
+                </div>
+            }
         }
         else
         {
@@ -65,30 +129,7 @@
             }
         </div>
 
-        @if (State == PasskeyState.Idle)
-        {
-            @if (UserIdParam == null)
-            {
-                <div class="mb-3">
-                    <label class="form-label">Account ID</label>
-                    <InputNumber class="form-control" @bind-Value="UserId" placeholder="your account id" />
-                    <div class="form-text text-muted">Enter the account ID linked to your passkey, then choose how to verify.</div>
-                </div>
-            }
-
-            <button class="passkey-btn" @onclick="@(() => StartAssertionAsync())" type="button">
-                <Icon Name="fingerprint" Size="Icon.IconSize.Small" />
-                Sign in with a passkey
-            </button>
-
-            <div class="auth-options mt-2">
-                <button class="btn btn-outline-secondary" @onclick="@(() => StartAssertionAsync("cross-platform"))" type="button">
-                    <Icon Name="usb" Size="Icon.IconSize.Small" /> Use a security key
-                </button>
-                <a class="btn btn-link" href="/">Use password instead</a>
-            </div>
-        }
-        else if (State == PasskeyState.Error)
+        @if (State == PasskeyState.Error)
         {
             <div class="auth-options">
                 <button class="btn btn-primary" @onclick="@(() => StartAssertionAsync())" type="button">
@@ -99,6 +140,10 @@
                 </button>
             </div>
             <div class="auth-footer-link">
+                @if (UserIdParam == null)
+                {
+                    <button class="btn btn-link" @onclick="@ResetEmailLookup" type="button">Try another account</button>
+                }
                 <a class="btn btn-link" href="/">Back to sign in</a>
             </div>
         }

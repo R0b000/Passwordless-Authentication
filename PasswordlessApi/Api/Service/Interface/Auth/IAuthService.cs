@@ -9,6 +9,7 @@ namespace PasswordlessApi.Api.Service.Interface.Auth
         Task<AuthResponse> RegisterAsync(RegisterRequest request);
         Task<AuthResponse> LoginAsync(LoginRequest request);
         Task<User?> GetUserByIdAsync(int userId);
+        Task<User?> GetUserByEmailAsync(string email);
         Task<OtpResponse> RequestOtpAsync(OtpRequest request);
         Task<AuthResponse> VerifyOtpAsync(OtpVerifyRequest request);
         Task<Fido2ChallengeResponse> RequestAttestationOptionsAsync(Fido2AttestationOptionsRequest request);
