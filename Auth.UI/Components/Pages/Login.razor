@@ -5,77 +5,131 @@
 
 <PageTitle>Sign in - Passwordless Auth</PageTitle>
 
-<div class="row justify-content-center">
-    <div class="col-md-6 col-lg-5">
-        <h1 class="mb-4">Passwordless Auth</h1>
+<div class="auth-shell">
+    <div class="auth-card">
+        <div class="auth-brand">
+            <Icon Name="shield" Size="Icon.IconSize.Small" />
+            <span>Passwordless Auth</span>
+        </div>
+
+        <ul class="nav nav-tabs mb-3" role="tablist">
+            <li class="nav-item">
+                <button class="nav-link @(Mode == "login" ? "active" : "")" @onclick="@(() => Mode = "login")" type="button">Sign in</button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link @(Mode == "register" ? "active" : "")" @onclick="@(() => Mode = "register")" type="button">Create account</button>
+            </li>
+        </ul>
 
         @if (!string.IsNullOrEmpty(StatusMessage))
         {
             <div class="alert @(Succeeded ? "alert-success" : "alert-danger")" role="alert">@StatusMessage</div>
         }
 
-        <ul class="nav nav-tabs mb-3" role="tablist">
-            <li class="nav-item">
-                <button class="nav-link @(Mode == "login" ? "active" : "")" @onclick="@(() => Mode = "login")" type="button">Login</button>
-            </li>
-            <li class="nav-item">
-                <button class="nav-link @(Mode == "register" ? "active" : "")" @onclick="@(() => Mode = "register")" type="button">Register</button>
-            </li>
-        </ul>
-
         @if (Mode == "login")
         {
+            <div class="hero-auth">
+                <div class="passkey-badge">
+                    <Icon Name="fingerprint" Size="Icon.IconSize.Large" />
+                </div>
+                <h1 class="auth-title">Sign in</h1>
+                <p class="auth-subtitle">Use your passkey, security key, or password.</p>
+            </div>
+
+            <button class="passkey-btn" @onclick="@GoToFido2" type="button">
+                <Icon Name="fingerprint" Size="Icon.IconSize.Small" />
+                Sign in with a passkey
+            </button>
+
+            <div class="auth-hint">
+                <Icon Name="smartphone" Size="Icon.IconSize.Small" />
+                <span>Use the biometric unlock on your device (Face ID, fingerprint) or a connected security key. No password required.</span>
+            </div>
+
+            <div class="auth-divider">or use your password</div>
+
             <EditForm Model="@LoginModel" OnValidSubmit="@LoginAsync" FormName="login">
                 <div class="mb-3">
                     <label class="form-label">Username</label>
-                    <InputText class="form-control" @bind-Value="LoginModel.Username" />
+                    <InputText class="form-control" @bind-Value="LoginModel.Username" placeholder="your username" />
                 </div>
                 <div class="mb-3">
                     <label class="form-label">Password</label>
-                    <InputText type="password" class="form-control" @bind-Value="LoginModel.Password" />
+                    <InputText type="password" class="form-control" @bind-Value="LoginModel.Password" placeholder="your password" />
                 </div>
-                <button type="submit" class="btn btn-primary w-100">Login</button>
+                <button type="submit" class="btn btn-outline-dark w-100">Sign in with password</button>
             </EditForm>
 
             @if (RequiresFido2)
             {
-                <div class="mt-3 d-flex flex-column gap-2">
-                    <button class="btn btn-outline-dark w-100" @onclick="@GoToFido2" type="button">Continue with passkey</button>
-                    
-                    <hr />
-                    
-                    @if (!OtpRequested)
-                    {
-                        <button class="btn btn-outline-secondary w-100" @onclick="@RequestOtpAsync" type="button">Lost Passkey? Send Login OTP to Email</button>
-                    }
-                    else
-                    {
-                        <div class="border rounded p-3 bg-light text-start">
-                            <label class="form-label font-weight-bold">Enter the OTP sent to your email:</label>
-                            <InputText class="form-control mb-2" @bind-Value="OtpCode" placeholder="6-digit OTP" />
-                            <button class="btn btn-success w-100" @onclick="@VerifyOtpAsync" type="button">Verify OTP & Login</button>
-                        </div>
-                    }
+                <div class="auth-status is-awaiting mt-3">
+                    <div class="biometric-ring is-static">
+                        <Icon Name="fingerprint" Size="Icon.IconSize.Small" />
+                    </div>
+                    <p class="auth-status-text">Verify it's you</p>
+                    <p class="auth-status-detail">Your password was accepted. Complete sign-in with your passkey or security key.</p>
+                    <div class="auth-options">
+                        <button class="btn btn-primary" @onclick="@GoToFido2" type="button">Continue with passkey</button>
+                        @if (!OtpRequested)
+                        {
+                            <button class="btn btn-outline-secondary" @onclick="@RequestOtpAsync" type="button">Lost access? Email me a code</button>
+                        }
+                        else
+                        {
+                            <button class="btn btn-outline-secondary" @onclick="@(() => OtpRequested = false)" type="button">Hide code entry</button>
+                        }
+                    </div>
                 </div>
+
+                @if (OtpRequested)
+                {
+                    <div class="border rounded p-3 bg-light text-start mt-2">
+                        <label class="form-label font-weight-bold">Enter the 6-digit code sent to your email:</label>
+                        <InputText class="form-control mb-2" @bind-Value="OtpCode" placeholder="6-digit code" />
+                        <button class="btn btn-success w-100" @onclick="@VerifyOtpAsync" type="button">Verify code &amp; sign in</button>
+                    </div>
+                }
             }
         }
         else
         {
+            <div class="auth-hero">
+                <div class="passkey-badge">
+                    <Icon Name="user" Size="Icon.IconSize.Large" />
+                </div>
+                <h1 class="auth-title">Create your account</h1>
+                <p class="auth-subtitle">Pick a username and password, then add a passkey for fast, passwordless sign-in.</p>
+            </div>
+
             <EditForm Model="@RegisterModel" OnValidSubmit="@RegisterAsync" FormName="register">
                 <div class="mb-3">
                     <label class="form-label">Username</label>
-                    <InputText class="form-control" @bind-Value="RegisterModel.Username" />
+                    <InputText class="form-control" @bind-Value="RegisterModel.Username" placeholder="choose a username" />
                 </div>
                 <div class="mb-3">
                     <label class="form-label">Email</label>
-                    <InputText type="email" class="form-control" @bind-Value="RegisterModel.Email" />
+                    <InputText type="email" class="form-control" @bind-Value="RegisterModel.Email" placeholder="you@example.com" />
                 </div>
                 <div class="mb-3">
                     <label class="form-label">Password</label>
-                    <InputText type="password" class="form-control" @bind-Value="RegisterModel.Password" />
+                    <InputText type="password" class="form-control" @bind-Value="RegisterModel.Password" placeholder="create a password" />
                 </div>
-                <button type="submit" class="btn btn-primary w-100">Register</button>
+                <button type="submit" class="btn btn-primary w-100">Create account</button>
             </EditForm>
+
+            @if (ShowPasskeyNudge)
+            {
+                <div class="auth-status is-success mt-3">
+                    <div class="biometric-ring is-static" style="border-color: rgba(46,139,87,.35); color: var(--ui-success);">
+                        <Icon Name="key" Size="Icon.IconSize.Small" />
+                    </div>
+                    <p class="auth-status-text">Account created</p>
+                    <p class="auth-status-detail">Add a passkey so you can sign in with just your fingerprint, face, or security key.</p>
+                    <div class="auth-options">
+                        <a class="btn btn-success" href="/profile">Add a passkey</a>
+                    </div>
+                </div>
+            }
         }
     </div>
 </div>

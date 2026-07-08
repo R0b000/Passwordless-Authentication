@@ -8,17 +8,21 @@ namespace Auth.UI.Components.Pages
 {
     public partial class Fido2 : ComponentBase
     {
+        public enum PasskeyState { Idle, Requesting, Awaiting, Verifying, Success, Error }
+
         [Inject] private AuthController AuthController { get; set; } = default!;
         [Inject] private NavigationManager NavigationManager { get; set; } = default!;
         [Inject] private IJSRuntime JsRuntime { get; set; } = default!;
 
         [Parameter] public int? UserIdParam { get; set; }
 
+        protected PasskeyState State { get; set; } = PasskeyState.Idle;
         protected int UserId { get; set; }
         protected Fido2VerifyRequest VerifyModel { get; set; } = new();
         protected string AssertionOptions { get; set; } = string.Empty;
-        protected string StatusMessage { get; set; } = string.Empty;
-        protected bool Succeeded { get; set; }
+        protected string StatusDetail { get; set; } = string.Empty;
+
+        private IJSObjectReference? _webAuthnModule;
 
         protected override void OnParametersSet()
         {
@@ -30,36 +34,52 @@ namespace Auth.UI.Components.Pages
 
         protected override async Task OnAfterRenderAsync(bool firstRender)
         {
-            if (firstRender && UserIdParam.HasValue)
+            if (firstRender)
             {
-                await StartAssertionAsync();
+                _webAuthnModule = await JsRuntime.InvokeAsync<IJSObjectReference>("import", "./webauthn.js");
+
+                if (UserIdParam.HasValue)
+                {
+                    await StartAssertionAsync();
+                }
             }
         }
 
-        protected async Task StartAssertionAsync()
+        protected async Task StartAssertionAsync(string? authenticatorAttachment = null)
         {
-            StatusMessage = string.Empty;
-            AssertionOptions = string.Empty;
-            VerifyModel = new Fido2VerifyRequest { UserId = UserId };
+            if (UserId <= 0)
+            {
+                State = PasskeyState.Error;
+                StatusDetail = "Enter your account ID to continue, or go back and sign in with your password.";
+                return;
+            }
+
+            State = PasskeyState.Requesting;
+            StatusDetail = "Contacting the server to prepare your passkey challenge…";
 
             var result = await AuthController.CreateFido2ChallengeAsync(UserId);
-            Succeeded = result.Succeeded;
-            StatusMessage = result.Message ?? "Failed to create challenge";
-
             if (!result.Succeeded || result.Data is null)
             {
+                State = PasskeyState.Error;
+                StatusDetail = result.Message ?? "Unable to start passkey sign-in. Please try again.";
                 return;
             }
 
             AssertionOptions = result.Data.PublicKeyCredentialCreationOptions;
+            VerifyModel = new Fido2VerifyRequest { UserId = UserId };
+
+            State = PasskeyState.Awaiting;
+            StatusDetail = authenticatorAttachment == "cross-platform"
+                ? "Insert your security key and tap it when it blinks."
+                : "Use your fingerprint, face, or screen lock on this device.";
 
             try
             {
-                var jsModule = await JsRuntime.InvokeAsync<IJSObjectReference>("import", "./webauthn.js");
-                var cred = await jsModule.InvokeAsync<WebAuthnAssertion>(
+                var cred = await _webAuthnModule!.InvokeAsync<WebAuthnAssertion>(
                     "getCredential",
                     result.Data.PublicKeyCredentialCreationOptions,
-                    result.Data.Challenge);
+                    result.Data.Challenge,
+                    new { authenticatorAttachment = authenticatorAttachment, userVerification = "preferred" });
 
                 VerifyModel.Challenge = cred.challenge;
                 VerifyModel.CredentialId = cred.id;
@@ -72,23 +92,38 @@ namespace Auth.UI.Components.Pages
             }
             catch (Exception ex)
             {
-                Succeeded = false;
-                StatusMessage = $"Passkey assertion failed: {ex.Message}";
+                State = PasskeyState.Error;
+                StatusDetail = await MapErrorAsync(ex);
             }
         }
 
         protected async Task VerifyAsync()
         {
-            StatusMessage = string.Empty;
-            VerifyModel.UserId = UserId;
+            State = PasskeyState.Verifying;
+            StatusDetail = "Verifying your passkey with the server…";
 
             var result = await AuthController.VerifyFido2AssertionAsync(VerifyModel);
-            Succeeded = result.Succeeded;
-            StatusMessage = result.Data?.Message ?? result.Message ?? "Verification failed";
-
             if (result.Succeeded)
             {
+                State = PasskeyState.Success;
+                StatusDetail = result.Data?.Message ?? "You're signed in.";
                 NavigationManager.NavigateTo("/profile");
+                return;
+            }
+
+            State = PasskeyState.Error;
+            StatusDetail = result.Data?.Message ?? result.Message ?? "The passkey could not be verified. Please try again.";
+        }
+
+        private async Task<string> MapErrorAsync(Exception ex)
+        {
+            try
+            {
+                return await _webAuthnModule!.InvokeAsync<string>("describeWebAuthnError", ex);
+            }
+            catch
+            {
+                return ex.Message;
             }
         }
     }

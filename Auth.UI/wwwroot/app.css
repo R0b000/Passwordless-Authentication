@@ -2,3 +2,220 @@ html, body {
     margin: 0;
     font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
+
+/* ---------- Auth / Passkey layout ---------- */
+.auth-shell {
+    min-height: calc(100vh - 120px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+}
+
+.auth-card {
+    width: 100%;
+    max-width: 440px;
+    background: #fff;
+    border: 1px solid var(--ui-border, #dee2e6);
+    border-radius: var(--ui-radius, 8px);
+    box-shadow: var(--ui-shadow, 0 10px 30px rgba(0, 0, 0, 0.18));
+    padding: 2rem 1.75rem;
+}
+
+.auth-brand {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    justify-content: center;
+    color: var(--ui-primary, #4e79a7);
+    font-weight: 600;
+    font-size: .95rem;
+    margin-bottom: 1.25rem;
+}
+
+.auth-hero {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    margin-bottom: 1.25rem;
+}
+
+.passkey-badge {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    background: linear-gradient(135deg, var(--ui-primary, #4e79a7), var(--ui-info, #2980b9));
+    box-shadow: 0 8px 20px rgba(78, 121, 167, .35);
+    margin-bottom: .75rem;
+}
+
+.passkey-badge .ui-icon-svg {
+    width: 1.9em;
+    height: 1.9em;
+}
+
+.auth-title {
+    font-size: 1.35rem;
+    font-weight: 700;
+    margin: 0 0 .25rem;
+}
+
+.auth-subtitle {
+    margin: 0;
+    color: var(--ui-secondary, #6c757d);
+    font-size: .92rem;
+}
+
+/* Primary passkey action */
+.passkey-btn {
+    width: 100%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: .55rem;
+    padding: .7rem 1rem;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #fff;
+    border: none;
+    border-radius: var(--ui-radius, 8px);
+    background: linear-gradient(135deg, var(--ui-primary, #4e79a7), var(--ui-info, #2980b9));
+    cursor: pointer;
+    transition: filter .15s ease, box-shadow .15s ease, transform .05s ease;
+    box-shadow: 0 6px 16px rgba(78, 121, 167, .3);
+}
+
+.passkey-btn:hover:not(:disabled) {
+    filter: brightness(1.05);
+}
+
+.passkey-btn:active:not(:disabled) {
+    transform: translateY(1px);
+}
+
+/* Divider with label */
+.auth-divider {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    color: var(--ui-secondary, #6c757d);
+    font-size: .8rem;
+    margin: 1.1rem 0;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: var(--ui-border, #dee2e6);
+}
+
+.auth-hint {
+    display: flex;
+    gap: .5rem;
+    align-items: flex-start;
+    font-size: .82rem;
+    color: var(--ui-secondary, #6c757d);
+    background: var(--ui-light, #f1f3f5);
+    border-radius: 8px;
+    padding: .6rem .75rem;
+    margin-top: .75rem;
+}
+
+.auth-hint .ui-icon {
+    flex-shrink: 0;
+    margin-top: 1px;
+}
+
+/* Status panel (awaiting authenticator) */
+.auth-status {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: .75rem;
+    padding: 1rem;
+    border-radius: var(--ui-radius, 8px);
+    border: 1px solid var(--ui-border, #dee2e6);
+    background: #fafbfc;
+    margin-bottom: 1rem;
+}
+
+.auth-status.is-awaiting {
+    border-color: rgba(78, 121, 167, .4);
+    background: rgba(78, 121, 167, .06);
+}
+
+.auth-status.is-success {
+    border-color: rgba(46, 139, 87, .4);
+    background: rgba(46, 139, 87, .08);
+}
+
+.auth-status.is-error {
+    border-color: rgba(192, 57, 43, .4);
+    background: rgba(192, 57, 43, .07);
+}
+
+.biometric-ring {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    border: 3px solid rgba(78, 121, 167, .25);
+    border-top-color: var(--ui-primary, #4e79a7);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--ui-primary, #4e79a7);
+    animation: biospin .9s linear infinite;
+}
+
+.biometric-ring.is-static {
+    animation: none;
+    border-color: rgba(78, 121, 167, .25);
+}
+
+@keyframes biospin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.auth-status-text {
+    margin: 0;
+    font-size: .95rem;
+    font-weight: 500;
+    color: #212529;
+}
+
+.auth-status-detail {
+    margin: 0;
+    font-size: .82rem;
+    color: var(--ui-secondary, #6c757d);
+}
+
+.auth-options {
+    display: flex;
+    gap: .5rem;
+    flex-wrap: wrap;
+    margin-top: .5rem;
+}
+
+.auth-options .btn,
+.auth-options .ui-btn {
+    flex: 1;
+    min-width: 140px;
+}
+
+.auth-footer-link {
+    margin-top: 1rem;
+    text-align: center;
+    font-size: .85rem;
+}

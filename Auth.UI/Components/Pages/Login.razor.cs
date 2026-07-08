@@ -19,6 +19,7 @@ namespace Auth.UI.Components.Pages
         protected string StatusMessage { get; set; } = string.Empty;
         protected bool Succeeded { get; set; }
         protected bool RequiresFido2 { get; set; }
+        protected bool ShowPasskeyNudge { get; set; }
         protected bool OtpRequested { get; set; }
         protected string OtpCode { get; set; } = string.Empty;
         protected int LoggedInUserId { get; set; }
@@ -27,6 +28,7 @@ namespace Auth.UI.Components.Pages
         {
             StatusMessage = string.Empty;
             RequiresFido2 = false;
+            ShowPasskeyNudge = false;
 
             var result = await AuthController.RegisterAsync(RegisterModel);
             Succeeded = result.Succeeded;
@@ -36,7 +38,8 @@ namespace Auth.UI.Components.Pages
             {
                 Mode = "login";
                 LoginModel.Username = RegisterModel.Username;
-                StatusMessage = "Registration successful. You can now login with your credentials and configure a passkey in your profile.";
+                StatusMessage = "Registration successful. You can now sign in with your credentials and add a passkey from your profile.";
+                ShowPasskeyNudge = true;
             }
         }
 
@@ -45,6 +48,7 @@ namespace Auth.UI.Components.Pages
             StatusMessage = string.Empty;
             RequiresFido2 = false;
             OtpRequested = false;
+            ShowPasskeyNudge = false;
 
             var result = await AuthController.LoginAsync(LoginModel);
             Succeeded = result.Succeeded;
@@ -66,7 +70,14 @@ namespace Auth.UI.Components.Pages
 
         protected void GoToFido2()
         {
-            NavigationManager.NavigateTo($"/fido2/{LoggedInUserId}");
+            if (LoggedInUserId > 0)
+            {
+                NavigationManager.NavigateTo($"/fido2/{LoggedInUserId}");
+            }
+            else
+            {
+                NavigationManager.NavigateTo("/fido2");
+            }
         }
 
         protected async Task RequestOtpAsync()

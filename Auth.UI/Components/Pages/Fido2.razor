@@ -4,59 +4,111 @@
 @using static Microsoft.AspNetCore.Components.Web.RenderMode
 @rendermode InteractiveServer
 
-<PageTitle>Passkey - Passwordless Auth</PageTitle>
+<PageTitle>Passkey sign-in - Passwordless Auth</PageTitle>
 
-<div class="row justify-content-center">
-    <div class="col-md-8 col-lg-6">
-        <h1 class="mb-4">Passkey sign-in</h1>
-
-        @if (!string.IsNullOrEmpty(StatusMessage))
-        {
-            <div class="alert @(Succeeded ? "alert-success" : "alert-danger")" role="alert">@StatusMessage</div>
-        }
-
-        <div class="mb-3">
-            <label class="form-label">User Id</label>
-            <InputNumber class="form-control" @bind-Value="UserId" />
+<div class="auth-shell">
+    <div class="auth-card">
+        <div class="auth-brand">
+            <Icon Name="shield" Size="Icon.IconSize.Small" />
+            <span>Passwordless Auth</span>
         </div>
 
-        <button class="btn btn-dark w-100 mb-3" @onclick="@StartAssertionAsync">Request challenge</button>
+        @if (State == PasskeyState.Idle)
+        {
+            <div class="auth-hero">
+                <div class="passkey-badge">
+                    <Icon Name="fingerprint" Size="Icon.IconSize.Large" />
+                </div>
+                <h1 class="auth-title">Sign in with a passkey</h1>
+                <p class="auth-subtitle">Use your device biometric or a security key — no password needed.</p>
+            </div>
+        }
+        else
+        {
+            <div class="auth-hero">
+                <div class="passkey-badge">
+                    <Icon Name="fingerprint" Size="Icon.IconSize.Large" />
+                </div>
+                <h1 class="auth-title">Verify it's you</h1>
+            </div>
+        }
+
+        <div class="auth-status @(State == PasskeyState.Awaiting || State == PasskeyState.Requesting ? "is-awaiting" : State == PasskeyState.Success ? "is-success" : State == PasskeyState.Error ? "is-error" : "")"
+             role="status" aria-live="polite">
+            @if (State == PasskeyState.Awaiting || State == PasskeyState.Requesting || State == PasskeyState.Verifying)
+            {
+                <div class="biometric-ring @(State == PasskeyState.Verifying ? "is-static" : "")">
+                    <Icon Name="fingerprint" Size="Icon.IconSize.Small" />
+                </div>
+                <p class="auth-status-text">
+                    @(State == PasskeyState.Requesting ? "Preparing your passkey…"
+                        : State == PasskeyState.Verifying ? "Checking your passkey…"
+                        : "Waiting for your fingerprint, face, or security key…")
+                </p>
+                <p class="auth-status-detail">@StatusDetail</p>
+            }
+            else if (State == PasskeyState.Success)
+            {
+                <div class="biometric-ring is-static" style="border-color: rgba(46,139,87,.35); color: var(--ui-success);">
+                    <Icon Name="check" Size="Icon.IconSize.Small" />
+                </div>
+                <p class="auth-status-text">Signed in</p>
+                <p class="auth-status-detail">@StatusDetail</p>
+            }
+            else if (State == PasskeyState.Error)
+            {
+                <div class="biometric-ring is-static" style="border-color: rgba(192,57,43,.35); color: var(--ui-danger);">
+                    <Icon Name="alert-triangle" Size="Icon.IconSize.Small" />
+                </div>
+                <p class="auth-status-text">Passkey sign-in couldn't be completed</p>
+                <p class="auth-status-detail">@StatusDetail</p>
+            }
+        </div>
+
+        @if (State == PasskeyState.Idle)
+        {
+            @if (UserIdParam == null)
+            {
+                <div class="mb-3">
+                    <label class="form-label">Account ID</label>
+                    <InputNumber class="form-control" @bind-Value="UserId" placeholder="your account id" />
+                    <div class="form-text text-muted">Enter the account ID linked to your passkey, then choose how to verify.</div>
+                </div>
+            }
+
+            <button class="passkey-btn" @onclick="@(() => StartAssertionAsync())" type="button">
+                <Icon Name="fingerprint" Size="Icon.IconSize.Small" />
+                Sign in with a passkey
+            </button>
+
+            <div class="auth-options mt-2">
+                <button class="btn btn-outline-secondary" @onclick="@(() => StartAssertionAsync("cross-platform"))" type="button">
+                    <Icon Name="usb" Size="Icon.IconSize.Small" /> Use a security key
+                </button>
+                <a class="btn btn-link" href="/">Use password instead</a>
+            </div>
+        }
+        else if (State == PasskeyState.Error)
+        {
+            <div class="auth-options">
+                <button class="btn btn-primary" @onclick="@(() => StartAssertionAsync())" type="button">
+                    <Icon Name="fingerprint" Size="Icon.IconSize.Small" /> Try again
+                </button>
+                <button class="btn btn-outline-secondary" @onclick="@(() => StartAssertionAsync("cross-platform"))" type="button">
+                    <Icon Name="usb" Size="Icon.IconSize.Small" /> Use a security key
+                </button>
+            </div>
+            <div class="auth-footer-link">
+                <a class="btn btn-link" href="/">Back to sign in</a>
+            </div>
+        }
 
         @if (!string.IsNullOrEmpty(AssertionOptions))
         {
-            <div class="mb-3">
-                <label class="form-label">Assertion options (from server)</label>
-                <pre class="border rounded p-2 bg-light small">@AssertionOptions</pre>
-            </div>
-
-            <h5>Submit assertion</h5>
-            <EditForm Model="@VerifyModel" OnValidSubmit="@VerifyAsync" FormName="verify">
-                <div class="mb-2">
-                    <label class="form-label">Credential Id</label>
-                    <InputText class="form-control" @bind-Value="VerifyModel.CredentialId" />
-                </div>
-                <div class="mb-2">
-                    <label class="form-label">ClientDataJson</label>
-                    <InputText class="form-control" @bind-Value="VerifyModel.ClientDataJson" />
-                </div>
-                <div class="mb-2">
-                    <label class="form-label">AuthenticatorData</label>
-                    <InputText class="form-control" @bind-Value="VerifyModel.AuthenticatorData" />
-                </div>
-                <div class="mb-2">
-                    <label class="form-label">Signature</label>
-                    <InputText class="form-control" @bind-Value="VerifyModel.Signature" />
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Counter</label>
-                    <InputNumber class="form-control" @bind-Value="VerifyModel.Counter" />
-                </div>
-                <button type="submit" class="btn btn-primary w-100">Verify assertion</button>
-            </EditForm>
+            <details class="mt-3">
+                <summary class="text-muted small">Advanced: assertion options from server</summary>
+                <pre class="border rounded p-2 bg-light small mt-2">@AssertionOptions</pre>
+            </details>
         }
-
-        <div class="mt-3">
-            <a class="btn btn-link" href="/">Back to credentials</a>
-        </div>
     </div>
 </div>
