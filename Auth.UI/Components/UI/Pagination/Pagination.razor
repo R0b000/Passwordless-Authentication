@@ -1,0 +1,81 @@
+@namespace Auth.UI.Components.UI.Pagination
+
+<nav aria-label="Page navigation">
+    <ul class="ui-pagination">
+        <li>
+            <button class="ui-page-btn" @onclick="FirstPage" disabled="@(CurrentPage == 1)">
+                <Icon Name="chevron-left" Size="Icon.IconSize.Small" />
+                <Icon Name="chevron-left" Size="Icon.IconSize.Small" />
+            </button>
+        </li>
+        <li>
+            <button class="ui-page-btn" @onclick="PrevPage" disabled="@(CurrentPage == 1)">
+                <Icon Name="chevron-left" Size="Icon.IconSize.Small" />
+            </button>
+        </li>
+
+        @foreach (var p in GetPages())
+        {
+            if (p == -1)
+            {
+                <li class="ui-page-indicator">…</li>
+            }
+            else
+            {
+                <li>
+                    <button class="ui-page-btn @(p == CurrentPage ? "is-active" : "")" @onclick="@(() => GoToPage(p))">@p</button>
+                </li>
+            }
+        }
+
+        <li>
+            <button class="ui-page-btn" @onclick="NextPage" disabled="@(CurrentPage == TotalPages)">
+                <Icon Name="chevron-right" Size="Icon.IconSize.Small" />
+            </button>
+        </li>
+        <li>
+            <button class="ui-page-btn" @onclick="LastPage" disabled="@(CurrentPage == TotalPages)">
+                <Icon Name="chevron-right" Size="Icon.IconSize.Small" />
+                <Icon Name="chevron-right" Size="Icon.IconSize.Small" />
+            </button>
+        </li>
+    </ul>
+</nav>
+
+@code {
+    [Parameter] public int TotalPages { get; set; } = 1;
+    [Parameter] public int CurrentPage { get; set; } = 1;
+    [Parameter] public EventCallback<int> CurrentPageChanged { get; set; }
+
+    private async Task GoToPage(int p)
+    {
+        if (p == CurrentPage || p < 1 || p > TotalPages) return;
+        CurrentPage = p;
+        await CurrentPageChanged.InvokeAsync(p);
+    }
+
+    private Task FirstPage() => GoToPage(1);
+    private Task PrevPage() => GoToPage(CurrentPage - 1);
+    private Task NextPage() => GoToPage(CurrentPage + 1);
+    private Task LastPage() => GoToPage(TotalPages);
+
+    private List<int> GetPages()
+    {
+        var pages = new List<int>();
+        if (TotalPages <= 7)
+        {
+            for (int i = 1; i <= TotalPages; i++) pages.Add(i);
+        }
+        else
+        {
+            pages.Add(1);
+            if (CurrentPage > 3) pages.Add(-1);
+            var start = Math.Max(2, CurrentPage - 1);
+            var end = Math.Min(TotalPages - 1, CurrentPage + 1);
+            for (int i = start; i <= end; i++) pages.Add(i);
+            if (CurrentPage < TotalPages - 2) pages.Add(-1);
+            pages.Add(TotalPages);
+        }
+        return pages;
+    }
+}

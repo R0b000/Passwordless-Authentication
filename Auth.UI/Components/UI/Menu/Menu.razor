@@ -1,0 +1,51 @@
+@namespace Auth.UI.Components.UI.Menu
+
+<ul class="ui-menu">
+    @if (Header is not null)
+    {
+        <li class="ui-menu-header">@Header</li>
+    }
+    @foreach (var item in Items)
+    {
+        if (item is MenuDivider)
+        {
+            <li class="ui-menu-divider" role="separator"></li>
+        }
+        else if (item is MenuHeaderItem h)
+        {
+            <li class="ui-menu-header">@h.Text</li>
+        }
+        else if (item is MenuActionItem a)
+        {
+            <li class="ui-menu-item @(a.Disabled ? "is-disabled" : "")" @onclick="() => OnItemClicked(a)">
+                @if (!string.IsNullOrWhiteSpace(a.Icon))
+                {
+                    <Icon Name="@a.Icon" Size="Icon.IconSize.Small" />
+                }
+                <span>@a.Text</span>
+            </li>
+        }
+        else if (item is MenuLinkItem l)
+        {
+            <a class="ui-menu-item @(l.Disabled ? "is-disabled" : "")" href="@l.Url" @onclick:preventDefault="@l.PreventDefault">
+                @if (!string.IsNullOrWhiteSpace(l.Icon))
+                {
+                    <Icon Name="@l.Icon" Size="Icon.IconSize.Small" />
+                }
+                <span>@l.Text</span>
+            </a>
+        }
+    }
+</ul>
+
+@code {
+    [Parameter] public string? Header { get; set; }
+    [Parameter] public List<object> Items { get; set; } = new();
+    [Parameter] public EventCallback<MenuActionItem> OnAction { get; set; }
+
+    private async Task OnItemClicked(MenuActionItem item)
+    {
+        if (item.Disabled) return;
+        await OnAction.InvokeAsync(item);
+    }
+}

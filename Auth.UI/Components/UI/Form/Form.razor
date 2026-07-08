@@ -1,0 +1,40 @@
+@namespace Auth.UI.Components.UI.Form
+
+<EditForm Model="@Model" OnValidSubmit="@OnValidSubmit" OnInvalidSubmit="@OnInvalidSubmit">
+    <div class="ui-form">
+        @if (ChildContent is not null)
+        {
+            @ChildContent
+        }
+        @if (ShowActions)
+        {
+            <div class="ui-form-actions">
+                @if (ShowCancel)
+                {
+                    <Button Variant="Button.ButtonVariant.Secondary" OnClick="OnCancel">@CancelText</Button>
+                }
+                <Button Variant="Button.ButtonVariant.Primary" Type="submit" Disabled="@(!IsValid || IsSubmitting)">
+                    @if (IsSubmitting)
+                    {
+                        <span class="ui-spinner" aria-hidden="true"></span>
+                    }
+                    @SubmitText
+                </Button>
+            </div>
+        }
+    </div>
+</EditForm>
+
+@code {
+    [Parameter] public object? Model { get; set; }
+    [Parameter] public EventCallback<EditContext> OnValidSubmit { get; set; }
+    [Parameter] public EventCallback<EditContext> OnInvalidSubmit { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public bool ShowActions { get; set; } = true;
+    [Parameter] public bool ShowCancel { get; set; } = true;
+    [Parameter] public bool IsSubmitting { get; set; }
+    [Parameter] public bool IsValid { get; set; } = true;
+    [Parameter] public string SubmitText { get; set; } = "Submit";
+    [Parameter] public string CancelText { get; set; } = "Cancel";
+    [Parameter] public EventCallback OnCancel { get; set; }
+}

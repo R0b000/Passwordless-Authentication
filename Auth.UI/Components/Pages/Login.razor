@@ -1,0 +1,202 @@
+@page "/"
+@namespace Auth.UI.Components.Pages
+@layout LoginLayout
+@using static Microsoft.AspNetCore.Components.Web.RenderMode
+@rendermode InteractiveServer
+@using Auth.UI.Components.UI.Toaster
+
+<PageTitle>Log in - Passwordless Auth</PageTitle>
+
+<Toaster />
+
+<div class="lp">
+    <section class="lp-art" aria-hidden="true">
+        <svg class="lp-art-svg" viewBox="0 0 800 900" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+                <linearGradient id="lpSky" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0" stop-color="#e8f3e6" />
+                    <stop offset="1" stop-color="#cfe8cf" />
+                </linearGradient>
+                <linearGradient id="lpLeaf1" x1="0" y1="0" x2="1" y2="1">
+                    <stop offset="0" stop-color="#2f6b3f" />
+                    <stop offset="1" stop-color="#1f4d2c" />
+                </linearGradient>
+                <linearGradient id="lpLeaf2" x1="0" y1="0" x2="1" y2="1">
+                    <stop offset="0" stop-color="#3f8a52" />
+                    <stop offset="1" stop-color="#2c6340" />
+                </linearGradient>
+                <linearGradient id="lpLeaf3" x1="0" y1="0" x2="1" y2="1">
+                    <stop offset="0" stop-color="#56a86a" />
+                    <stop offset="1" stop-color="#3c7b4d" />
+                </linearGradient>
+                <linearGradient id="lpLeaf4" x1="0" y1="0" x2="1" y2="1">
+                    <stop offset="0" stop-color="#79c08a" />
+                    <stop offset="1" stop-color="#52a065" />
+                </linearGradient>
+                <filter id="lpShadow" x="-20%" y="-20%" width="140%" height="140%">
+                    <feDropShadow dx="0" dy="14" stdDeviation="14" flood-color="#0c2a14" flood-opacity="0.28" />
+                </filter>
+                <filter id="lpSoft" x="-20%" y="-20%" width="140%" height="140%">
+                    <feDropShadow dx="0" dy="8" stdDeviation="8" flood-color="#0c2a14" flood-opacity="0.2" />
+                </filter>
+            </defs>
+
+            <rect width="800" height="900" fill="url(#lpSky)" />
+
+            <path filter="url(#lpShadow)" fill="url(#lpLeaf1)" d="M-50 900 L-50 560 C120 600 280 540 420 600 C560 660 700 600 850 640 L850 900 Z" />
+            <path filter="url(#lpSoft)" fill="url(#lpLeaf2)" d="M-50 900 L-50 660 C140 690 300 640 460 690 C620 740 740 700 850 730 L850 900 Z" />
+
+            <g filter="url(#lpShadow)">
+                <path fill="url(#lpLeaf3)" d="M120 760 C60 600 110 430 250 360 C200 470 220 600 320 700 C250 740 180 760 120 760 Z" />
+                <path fill="#1f4d2c" stroke="#1f4d2c" stroke-width="3" d="M210 700 C190 600 200 500 250 420" fill-opacity="0.001" />
+                <path fill="#13351d" d="M250 420 L210 470 M250 470 L200 520 M250 520 L205 575 M250 575 L215 625" stroke="#13351d" stroke-width="4" stroke-linecap="round" />
+            </g>
+
+            <g filter="url(#lpShadow)">
+                <path fill="url(#lpLeaf2)" d="M690 820 C560 700 560 470 700 380 C660 500 700 650 760 760 C740 790 715 812 690 820 Z" />
+                <path fill="#143a20" d="M700 380 L660 450 M700 450 L650 520 M700 520 L655 590 M700 590 L670 655" stroke="#143a20" stroke-width="4" stroke-linecap="round" />
+            </g>
+
+            <g filter="url(#lpSoft)">
+                <path fill="url(#lpLeaf4)" d="M430 880 C360 740 420 560 560 500 C520 620 560 760 620 840 C560 870 490 882 430 880 Z" />
+                <path fill="#1f5633" d="M560 500 L520 560 M560 560 L515 625 M560 625 L525 690 M560 690 L540 750" stroke="#1f5633" stroke-width="4" stroke-linecap="round" />
+            </g>
+
+            <g filter="url(#lpSoft)" opacity="0.95">
+                <ellipse cx="600" cy="250" rx="22" ry="120" fill="url(#lpLeaf3)" transform="rotate(28 600 250)" />
+                <ellipse cx="660" cy="210" rx="18" ry="100" fill="url(#lpLeaf4)" transform="rotate(-18 660 210)" />
+                <ellipse cx="540" cy="300" rx="16" ry="90" fill="url(#lpLeaf2)" transform="rotate(48 540 300)" />
+            </g>
+
+            <g filter="url(#lpSoft)" opacity="0.9">
+                <circle cx="180" cy="240" r="80" fill="url(#lpLeaf4)" />
+                <path fill="#1f5633" d="M180 160 L180 320 M120 200 L240 280 M120 280 L240 200" stroke="#1f5633" stroke-width="4" stroke-linecap="round" />
+            </g>
+        </svg>
+    </section>
+
+    <section class="lp-panel">
+        <div class="lp-card">
+            @* <div class="lp-brand">
+                <Icon Name="shield" Size="Icon.IconSize.Small" />
+                <span>Passwordless Auth</span>
+            </div> *@
+
+            <ul class="lp-tabs" role="tablist">
+                <li>
+                    <button class="lp-tab @(Mode == "login" ? "is-active" : "")" @onclick="@(() => Mode = "login")" type="button">Log in</button>
+                </li>
+                <li>
+                    <button class="lp-tab @(Mode == "register" ? "is-active" : "")" @onclick="@(() => Mode = "register")" type="button">Create account</button>
+                </li>
+            </ul>
+
+            @if (!string.IsNullOrEmpty(StatusMessage))
+            {
+                <div class="lp-alert @(Succeeded ? "lp-alert-success" : "lp-alert-danger")" role="alert">@StatusMessage</div>
+            }
+
+            @if (Mode == "login")
+            {
+                <h1 class="lp-title">Log in</h1>
+                <p class="lp-sub">Welcome back. Sign in to continue to your account.</p>
+
+                <div class="lp-social">
+                    <button class="lp-social-btn" type="button" @onclick="@(() => SocialAsync("Google"))" aria-label="Continue with Google">
+                        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+                            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.27-4.74 3.27-8.1Z" />
+                            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.65l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84A11 11 0 0 0 12 23Z" />
+                            <path fill="#FBBC05" d="M5.84 14.1a6.6 6.6 0 0 1 0-4.2V7.06H2.18a11 11 0 0 0 0 9.88l3.66-2.84Z" />
+                            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84C6.71 7.31 9.14 5.38 12 5.38Z" />
+                        </svg>
+                    </button>
+                    <button class="lp-social-btn" type="button" @onclick="@(() => SocialAsync("Microsoft"))" aria-label="Continue with Microsoft">
+                        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+                            <path fill="#F25022" d="M2 2h9v9H2z" />
+                            <path fill="#7FBA00" d="M13 2h9v9h-9z" />
+                            <path fill="#00A4EF" d="M2 13h9v9H2z" />
+                            <path fill="#FFB900" d="M13 13h9v9h-9z" />
+                        </svg>
+                    </button>
+                    <button class="lp-social-btn lp-social-passkey" type="button" @onclick="@OpenPasskeyModal" aria-label="Continue with a passkey">
+                        <Icon Name="fingerprint" Size="Icon.IconSize.Small" />
+                    </button>
+                </div>
+
+                <div class="lp-divider"><span>or log in with</span></div>
+
+                <EditForm Model="@LoginModel" OnValidSubmit="@LoginAsync" FormName="login">
+                    <div class="lp-field">
+                        <label class="lp-label" for="login-id">Login, email or phone number</label>
+                        <div class="lp-input">
+                            <Icon Name="user" Size="Icon.IconSize.Small" />
+                            <InputText id="login-id" class="lp-control" @bind-Value="LoginModel.Username" placeholder="name@example.com" />
+                        </div>
+                    </div>
+
+                    <div class="lp-field">
+                        <label class="lp-label" for="login-pw">Password</label>
+                        <div class="lp-input">
+                            <Icon Name="lock" Size="Icon.IconSize.Small" />
+                            <InputText id="login-pw" type="@(ShowPassword ? "text" : "password")" class="lp-control" @bind-Value="LoginModel.Password" placeholder="Your password" />
+                            <button type="button" class="lp-eye" @onclick="@TogglePassword" aria-label="Toggle password visibility">
+                                <Icon Name="@(ShowPassword ? "eye-off" : "eye")" Size="Icon.IconSize.Small" />
+                            </button>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="lp-submit">Log in</button>
+                </EditForm>
+
+                <div class="lp-footer">
+                    <a class="lp-link" href="#" @onclick="@(() => SocialAsync("reset"))" @onclick:preventDefault>Forgot login or password?</a>
+                </div>
+            }
+            else
+            {
+                <h1 class="lp-title">Create account</h1>
+                <p class="lp-sub">Pick a username and password, then add a passkey for fast, passwordless sign-in.</p>
+
+                <EditForm Model="@RegisterModel" OnValidSubmit="@RegisterAsync" FormName="register">
+                    <div class="lp-field">
+                        <label class="lp-label" for="reg-user">Username</label>
+                        <div class="lp-input">
+                            <Icon Name="user" Size="Icon.IconSize.Small" />
+                            <InputText id="reg-user" class="lp-control" @bind-Value="RegisterModel.Username" placeholder="Choose a username" />
+                        </div>
+                    </div>
+                    <div class="lp-field">
+                        <label class="lp-label" for="reg-email">Email</label>
+                        <div class="lp-input">
+                            <Icon Name="user" Size="Icon.IconSize.Small" />
+                            <InputText id="reg-email" type="email" class="lp-control" @bind-Value="RegisterModel.Email" placeholder="you@example.com" />
+                        </div>
+                    </div>
+                    <div class="lp-field">
+                        <label class="lp-label" for="reg-pw">Password</label>
+                        <div class="lp-input">
+                            <Icon Name="lock" Size="Icon.IconSize.Small" />
+                            <InputText id="reg-pw" type="@(ShowPassword ? "text" : "password")" class="lp-control" @bind-Value="RegisterModel.Password" placeholder="Create a password" />
+                            <button type="button" class="lp-eye" @onclick="@TogglePassword" aria-label="Toggle password visibility">
+                                <Icon Name="@(ShowPassword ? "eye-off" : "eye")" Size="Icon.IconSize.Small" />
+                            </button>
+                        </div>
+                    </div>
+                    <button type="submit" class="lp-submit">Create account</button>
+                </EditForm>
+            }
+        </div>
+    </section>
+
+    <Modal @ref="PasskeyModal" Title="@PasskeyModalTitle"
+           Size="ModalSize.Medium" ShowSubmitButton="false" CancelText="Close"
+           OnCancel="OnPasskeyCancel"
+           @bind-Visible="PasskeyVisible">
+        @if (PasskeyVisible)
+        {
+            <PasskeyLogin UserId="@(LoggedInUserId > 0 ? LoggedInUserId : null)"
+                          AutoStart="false"
+                          OnCompleted="HandlePasskeyCompleted" />
+        }
+    </Modal>
+</div>

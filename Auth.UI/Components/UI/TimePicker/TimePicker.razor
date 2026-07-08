@@ -1,0 +1,50 @@
+@namespace Auth.UI.Components.UI.TimePicker
+
+<div class="ui-timepicker">
+    <input class="ui-timepicker-input" type="time" @bind="SelectedTime" disabled="@Disabled" />
+    @if (Popup)
+    {
+        <div class="ui-timepicker-popup">
+            <div class="ui-timepicker-column">
+                @foreach (var h in Enumerable.Range(0, 24).Select(i => i.ToString("00")))
+                {
+                    <button class="ui-timepicker-option @(SelectedHour == int.Parse(h) ? "is-selected" : "")"
+                            disabled="@Disabled" @onclick="@(() => SetHour(int.Parse(h)))">@h</button>
+                }
+            </div>
+            <div class="ui-timepicker-column">
+                @foreach (var m in Enumerable.Range(0, 60).Select(i => i.ToString("00")))
+                {
+                    <button class="ui-timepicker-option @(SelectedMinute == int.Parse(m) ? "is-selected" : "")"
+                            disabled="@Disabled" @onclick="@(() => SetMinute(int.Parse(m)))">@m</button>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public TimeOnly? SelectedTime { get; set; }
+    [Parameter] public EventCallback<TimeOnly?> SelectedTimeChanged { get; set; }
+    [Parameter] public bool Popup { get; set; } = false;
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public TimeOnly? Min { get; set; }
+    [Parameter] public TimeOnly? Max { get; set; }
+
+    private int SelectedHour => SelectedTime?.Hour ?? 0;
+    private int SelectedMinute => SelectedTime?.Minute ?? 0;
+
+    private async Task SetHour(int hour)
+    {
+        var ts = new TimeOnly(hour, SelectedMinute, 0);
+        SelectedTime = ts;
+        await SelectedTimeChanged.InvokeAsync(SelectedTime);
+    }
+
+    private async Task SetMinute(int minute)
+    {
+        var ts = new TimeOnly(SelectedHour, minute, 0);
+        SelectedTime = ts;
+        await SelectedTimeChanged.InvokeAsync(SelectedTime);
+    }
+}

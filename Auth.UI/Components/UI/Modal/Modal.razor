@@ -1,0 +1,32 @@
+@namespace Auth.UI.Components.UI.Modal
+
+@if (Visible)
+{
+    <div class="ui-modal-overlay" @onclick="OverlayClick" role="presentation">
+        <div class="ui-modal ui-modal-@Size.ToString().ToLowerInvariant()" role="dialog" aria-modal="true" @onclick:stopPropagation>
+            <div class="ui-modal-header">
+                <h5 class="ui-modal-title">@Title</h5>
+                <button type="button" class="ui-modal-close" aria-label="Close" @onclick="CancelAsync">
+                    <Icon Name="x" Size="Icon.IconSize.Small" />
+                </button>
+            </div>
+            <div class="ui-modal-body">
+                @ChildContent
+            </div>
+            <div class="ui-modal-footer">
+                <Button Variant="Button.ButtonVariant.Secondary" OnClick="CancelAsync">@CancelText</Button>
+                @if (ShowSubmitButton)
+                {
+                    <Button Variant="Button.ButtonVariant.Primary" IconName="@SubmitIcon"
+                            Disabled="@IsSubmitting" OnClick="SubmitAsync">
+                        @if (IsSubmitting)
+                        {
+                            <span class="ui-spinner" aria-hidden="true"></span>
+                        }
+                        @SubmitText
+                    </Button>
+                }
+            </div>
+        </div>
+    </div>
+}

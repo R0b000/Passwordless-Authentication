@@ -80,3 +80,6 @@ nunit-*.xml
 *~
 .DS_Store
 Thumbs.db
+.blackboxrules
+.gitignore
+TODO.md

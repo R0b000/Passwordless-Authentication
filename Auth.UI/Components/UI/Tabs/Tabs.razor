@@ -1,0 +1,37 @@
+@namespace Auth.UI.Components.UI.Tabs
+
+<div class="ui-tabs">
+    <div class="ui-tabs-list" role="tablist">
+        @foreach (var tab in TabItems)
+        {
+            <button class="ui-tab @(tab == ActiveTab ? "is-active" : "") @(tab.Disabled ? "is-disabled" : "")"
+                    role="tab"
+                    aria-selected="@(tab == ActiveTab)"
+                    @onclick="() => Activate(tab)"
+                    disabled="@tab.Disabled">
+                @if (!string.IsNullOrWhiteSpace(tab.Icon))
+                {
+                    <Icon Name="@tab.Icon" Size="Icon.IconSize.Small" />
+                }
+                <span>@tab.Title</span>
+            </button>
+        }
+    </div>
+    <div class="ui-tab-panel" role="tabpanel">
+        @ChildContent
+    </div>
+</div>
+
+@code {
+    [Parameter] public List<TabItem> TabItems { get; set; } = new();
+    [Parameter] public TabItem ActiveTab { get; set; } = new();
+    [Parameter] public EventCallback<TabItem> ActiveTabChanged { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private void Activate(TabItem tab)
+    {
+        if (tab.Disabled) return;
+        ActiveTab = tab;
+        ActiveTabChanged.InvokeAsync(tab);
+    }
+}
