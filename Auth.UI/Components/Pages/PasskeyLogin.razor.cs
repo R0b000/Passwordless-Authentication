@@ -2,11 +2,10 @@ using Auth.UI.src.Manager.Controller;
 using Auth.UI.src.Model.Auth;
 using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
-using System.Text.Json.Serialization;
 
 namespace Auth.UI.Components.Pages
 {
-    public partial class Fido2 : ComponentBase
+    public partial class PasskeyLogin : ComponentBase
     {
         public enum PasskeyState { Idle, Requesting, Awaiting, Verifying, Success, Error }
 
@@ -14,10 +13,11 @@ namespace Auth.UI.Components.Pages
         [Inject] private NavigationManager NavigationManager { get; set; } = default!;
         [Inject] private IJSRuntime JsRuntime { get; set; } = default!;
 
-        [Parameter] public int? UserIdParam { get; set; }
+        [Parameter] public int? UserId { get; set; }
+        [Parameter] public EventCallback OnCompleted { get; set; }
 
         protected PasskeyState State { get; set; } = PasskeyState.Idle;
-        protected int UserId { get; set; }
+        protected int ResolvedUserId { get; set; }
         protected Fido2VerifyRequest VerifyModel { get; set; } = new();
         protected string AssertionOptions { get; set; } = string.Empty;
         protected string StatusDetail { get; set; } = string.Empty;
@@ -33,9 +33,9 @@ namespace Auth.UI.Components.Pages
 
         protected override void OnParametersSet()
         {
-            if (UserIdParam.HasValue)
+            if (UserId.HasValue)
             {
-                UserId = UserIdParam.Value;
+                ResolvedUserId = UserId.Value;
                 IsEmailResolved = true;
             }
         }
@@ -46,7 +46,7 @@ namespace Auth.UI.Components.Pages
             {
                 _webAuthnModule = await JsRuntime.InvokeAsync<IJSObjectReference>("import", "./webauthn.js");
 
-                if (UserIdParam.HasValue)
+                if (UserId.HasValue)
                 {
                     await StartAssertionAsync();
                 }
@@ -79,7 +79,7 @@ namespace Auth.UI.Components.Pages
                 var result = await AuthController.GetUserByEmailAsync(Email);
                 if (result.Succeeded && result.Data is not null)
                 {
-                    UserId = result.Data.UserId;
+                    ResolvedUserId = result.Data.UserId;
                     ResolvedUsername = result.Data.Username;
                     IsEmailResolved = true;
                     State = PasskeyState.Idle;
@@ -109,7 +109,7 @@ namespace Auth.UI.Components.Pages
         {
             Email = string.Empty;
             IsEmailResolved = false;
-            UserId = 0;
+            ResolvedUserId = 0;
             ResolvedUsername = null;
             StatusMessage = string.Empty;
             State = PasskeyState.Idle;
@@ -118,7 +118,7 @@ namespace Auth.UI.Components.Pages
 
         protected async Task StartAssertionAsync(string? authenticatorAttachment = null)
         {
-            if (UserId <= 0)
+            if (ResolvedUserId <= 0)
             {
                 State = PasskeyState.Error;
                 StatusDetail = "Account resolution required to continue. Please go back and enter your email.";
@@ -128,7 +128,7 @@ namespace Auth.UI.Components.Pages
             State = PasskeyState.Requesting;
             StatusDetail = "Contacting the server to prepare your passkey challenge…";
 
-            var result = await AuthController.CreateFido2ChallengeAsync(UserId);
+            var result = await AuthController.CreateFido2ChallengeAsync(ResolvedUserId);
             if (!result.Succeeded || result.Data is null)
             {
                 State = PasskeyState.Error;
@@ -137,7 +137,7 @@ namespace Auth.UI.Components.Pages
             }
 
             AssertionOptions = result.Data.PublicKeyCredentialCreationOptions;
-            VerifyModel = new Fido2VerifyRequest { UserId = UserId };
+            VerifyModel = new Fido2VerifyRequest { UserId = ResolvedUserId };
 
             State = PasskeyState.Awaiting;
             StatusDetail = authenticatorAttachment == "cross-platform"
@@ -157,7 +157,7 @@ namespace Auth.UI.Components.Pages
                 VerifyModel.ClientDataJson = cred.response.clientDataJSON;
                 VerifyModel.AuthenticatorData = cred.response.authenticatorData;
                 VerifyModel.Signature = cred.response.signature;
-                VerifyModel.UserId = UserId;
+                VerifyModel.UserId = ResolvedUserId;
 
                 await VerifyAsync();
             }
@@ -178,6 +178,7 @@ namespace Auth.UI.Components.Pages
             {
                 State = PasskeyState.Success;
                 StatusDetail = result.Data?.Message ?? "You're signed in.";
+                await OnCompleted.InvokeAsync();
                 NavigationManager.NavigateTo("/profile");
                 return;
             }

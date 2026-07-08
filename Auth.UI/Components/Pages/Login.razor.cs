@@ -1,4 +1,6 @@
 using Auth.UI.Components.Pages;
+using Auth.UI.Components.UI.Modal;
+using Auth.UI.Components.UI.Toaster;
 using Auth.UI.src.Manager.Controller;
 using Auth.UI.src.Model.Auth;
 using Microsoft.AspNetCore.Components;
@@ -12,6 +14,7 @@ namespace Auth.UI.Components.Pages
         [Inject] private AuthController AuthController { get; set; } = default!;
         [Inject] private NavigationManager NavigationManager { get; set; } = default!;
         [Inject] private IJSRuntime JsRuntime { get; set; } = default!;
+        [Inject] private ToasterService Toaster { get; set; } = default!;
 
         protected string Mode { get; set; } = "login";
         protected RegisterRequest RegisterModel { get; set; } = new();
@@ -23,6 +26,21 @@ namespace Auth.UI.Components.Pages
         protected bool OtpRequested { get; set; }
         protected string OtpCode { get; set; } = string.Empty;
         protected int LoggedInUserId { get; set; }
+        protected bool ShowPassword { get; set; }
+
+        protected void TogglePassword() => ShowPassword = !ShowPassword;
+
+        protected void SocialAsync(string provider)
+        {
+            var message = provider switch
+            {
+                "Google" => "Google sign-in is not configured in this demo.",
+                "Microsoft" => "Microsoft sign-in is not configured in this demo.",
+                "reset" => "Password recovery is not configured in this demo.",
+                _ => "This sign-in method is not configured in this demo."
+            };
+            Toaster.ShowInfo(message);
+        }
 
         protected async Task RegisterAsync()
         {
@@ -68,16 +86,17 @@ namespace Auth.UI.Components.Pages
             }
         }
 
-        protected void GoToFido2()
+        protected Modal PasskeyModal { get; set; } = default!;
+        protected bool PasskeyVisible { get; set; }
+
+        protected void OpenPasskeyModal()
         {
-            if (LoggedInUserId > 0)
-            {
-                NavigationManager.NavigateTo($"/fido2/{LoggedInUserId}");
-            }
-            else
-            {
-                NavigationManager.NavigateTo("/fido2");
-            }
+            PasskeyVisible = true;
+        }
+
+        protected void HandlePasskeyCompleted()
+        {
+            PasskeyVisible = false;
         }
 
         protected async Task RequestOtpAsync()

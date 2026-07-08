@@ -1,5 +1,7 @@
+using Auth.UI.Components.UI.Menu;
 using Auth.UI.src.Manager.Controller;
 using Auth.UI.src.Model.Auth;
+using Auth.UI.src.Utility;
 using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
 
@@ -9,10 +11,25 @@ namespace Auth.UI.Components.Pages
     {
         [Inject] private AuthController AuthController { get; set; } = default!;
         [Inject] private IJSRuntime JsRuntime { get; set; } = default!;
+        [Inject] private NavigationManager NavigationManager { get; set; } = default!;
+        [Inject] private ITokenStore TokenStore { get; set; } = default!;
 
         protected AuthResponse? CurrentUser { get; set; }
         protected string StatusMessage { get; set; } = string.Empty;
         protected bool Succeeded { get; set; }
+
+        protected bool AccountMenuOpen { get; set; }
+        protected string AccountInitial =>
+            string.IsNullOrEmpty(CurrentUser?.Username) ? "?" : CurrentUser.Username[0].ToString().ToUpperInvariant();
+
+        protected List<object> MenuItems { get; set; } = new()
+        {
+            new MenuHeaderItem { Text = "Menu" },
+            new MenuLinkItem { Text = "Profile", Url = "/profile", Icon = "user" },
+            new MenuLinkItem { Text = "Passkeys", Url = "/fido2", Icon = "fingerprint" },
+            new MenuDivider(),
+            new MenuLinkItem { Text = "Sign in", Url = "/", Icon = "lock" }
+        };
 
         protected override async Task OnInitializedAsync()
         {
@@ -26,6 +43,21 @@ namespace Auth.UI.Components.Pages
             Succeeded = result.Succeeded;
             StatusMessage = result.Succeeded ? string.Empty : (result.Message ?? "Unauthorized");
             CurrentUser = result.Succeeded ? result.Data : null;
+        }
+
+        protected void ToggleAccountMenu() => AccountMenuOpen = !AccountMenuOpen;
+
+        protected void CloseAccountMenu() => AccountMenuOpen = false;
+
+        protected void OnMenuAction(MenuActionItem item)
+        {
+        }
+
+        protected void LogoutAsync()
+        {
+            TokenStore.Clear();
+            AccountMenuOpen = false;
+            NavigationManager.NavigateTo("/");
         }
 
         protected async Task RegisterPasskeyAsync(int userId, string username)

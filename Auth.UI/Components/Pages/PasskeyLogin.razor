@@ -1,0 +1,107 @@
+@namespace Auth.UI.Components.Pages
+@using Auth.UI.Components.UI.Icons
+
+<div class="lp-passkey">
+    @if (!string.IsNullOrEmpty(StatusMessage))
+    {
+        <div class="lp-alert lp-alert-danger" role="alert">@StatusMessage</div>
+    }
+
+    @if (State == PasskeyState.Idle)
+    {
+        @if (!IsEmailResolved)
+        {
+            <div class="lp-passkey-hero">
+                <div class="lp-biometric is-static">
+                    <Icon Name="fingerprint" Size="Icon.IconSize.Large" />
+                </div>
+                <h2 class="lp-passkey-title">Sign in with a passkey</h2>
+                <p class="lp-passkey-sub">Use your device biometric or a security key — no password needed.</p>
+            </div>
+
+            <div class="lp-field">
+                <label class="lp-label" for="pk-email">Email address</label>
+                <div class="lp-input">
+                    <Icon Name="user" Size="Icon.IconSize.Small" />
+                    <input id="pk-email" class="lp-control" type="email" @bind="Email" placeholder="you@example.com" />
+                </div>
+                <div class="lp-field-hint">Enter the email address linked to your account.</div>
+            </div>
+
+            <button class="lp-submit" @onclick="@ResolveAccountAsync" type="button">
+                @(IsResolving ? "Resolving…" : "Continue")
+            </button>
+        }
+        else
+        {
+            <div class="lp-passkey-hero">
+                <div class="lp-biometric is-static">
+                    <Icon Name="fingerprint" Size="Icon.IconSize.Large" />
+                </div>
+                <h2 class="lp-passkey-title">Choose your method</h2>
+                <p class="lp-passkey-sub">Verify your identity to complete sign-in.</p>
+            </div>
+
+            <div class="lp-passkey-account">
+                <div>
+                    <div class="lp-field-hint">Signing in as</div>
+                    <strong>@ResolvedUsername</strong> <span class="lp-muted">(@Email)</span>
+                </div>
+                @if (UserId == null)
+                {
+                    <button class="lp-passkey-link" @onclick="@ResetEmailLookup" type="button">Change</button>
+                }
+            </div>
+
+            <button class="lp-submit" @onclick="@(() => StartAssertionAsync())" type="button">
+                <Icon Name="fingerprint" Size="Icon.IconSize.Small" />
+                Sign in with a passkey
+            </button>
+
+            <div class="lp-passkey-options">
+                <button class="lp-passkey-ghost" @onclick="@(() => StartAssertionAsync("cross-platform"))" type="button">
+                    <Icon Name="usb" Size="Icon.IconSize.Small" /> Use a security key
+                </button>
+                @if (UserId == null)
+                {
+                    <button class="lp-passkey-ghost" @onclick="@ResetEmailLookup" type="button">Use a different email</button>
+                }
+            </div>
+        }
+    }
+    else
+    {
+        <div class="lp-passkey-hero">
+            <div class="lp-biometric @(State == PasskeyState.Verifying ? "is-static" : "")">
+                <Icon Name="@(State == PasskeyState.Success ? "check" : State == PasskeyState.Error ? "alert-triangle" : "fingerprint")"
+                      Size="Icon.IconSize.Large" />
+            </div>
+            <h2 class="lp-passkey-title">
+                @(State == PasskeyState.Success ? "Signed in"
+                    : State == PasskeyState.Error ? "Couldn't sign in"
+                    : "Verify it's you")
+            </h2>
+            <p class="lp-passkey-sub">@StatusDetail</p>
+        </div>
+
+        @if (State == PasskeyState.Error)
+        {
+            <div class="lp-passkey-options">
+                <button class="lp-submit" @onclick="@(() => StartAssertionAsync())" type="button">
+                    <Icon Name="fingerprint" Size="Icon.IconSize.Small" /> Try again
+                </button>
+                <button class="lp-passkey-ghost" @onclick="@(() => StartAssertionAsync("cross-platform"))" type="button">
+                    <Icon Name="usb" Size="Icon.IconSize.Small" /> Use a security key
+                </button>
+            </div>
+        }
+    }
+
+    @if (!string.IsNullOrEmpty(AssertionOptions) && State == PasskeyState.Error)
+    {
+        <details class="lp-passkey-advanced">
+            <summary>Advanced: assertion options from server</summary>
+            <pre>@AssertionOptions</pre>
+        </details>
+    }
+</div>
