@@ -5,6 +5,10 @@ using PasswordlessApi.Api.Service.Interface.Repository;
 using PasswordlessApi.Api.Utility.PasswordHash;
 using PasswordlessApi.Api.Service.Interface.Auth;
 using PasswordlessApi.Api.Utility.Jwt;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 
 
 namespace PasswordlessApi.Api.Service.Implementation.Auth
@@ -52,6 +56,7 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
             }
 
             var token = _jwtHelper.GenerateToken(userIdResult.Data.UserId, request.Username);
+            var refreshToken = await CreateRefreshTokenAsync(userIdResult.Data.UserId);
 
             return new AuthResponse
             {
@@ -59,6 +64,7 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
                 Username = request.Username,
                 Email = request.Email,
                 Token = token,
+                RefreshToken = refreshToken,
                 Message = "Registered successfully"
             };
         }
@@ -125,6 +131,7 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
             }
 
             var token = _jwtHelper.GenerateToken(user.Data.Id, user.Data.Username);
+            var refreshToken = await CreateRefreshTokenAsync(user.Data.Id);
 
             return new AuthResponse
             {
@@ -132,6 +139,7 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
                 Username = user.Data.Username,
                 Email = user.Data.Email,
                 Token = token,
+                RefreshToken = refreshToken,
                 Message = "Login successful",
                 RequiresFido2 = false
             };
@@ -231,6 +239,7 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
             }
 
             var token = _jwtHelper.GenerateToken(user.Id, user.Username);
+            var refreshToken = await CreateRefreshTokenAsync(user.Id);
 
             return new AuthResponse
             {
@@ -238,6 +247,7 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
                 Username = user.Username,
                 Email = user.Email,
                 Token = token,
+                RefreshToken = refreshToken,
                 Message = "Login successful",
                 RequiresFido2 = false
             };
@@ -293,6 +303,130 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
                 param);
 
             return credentials != null && credentials.Any();
+        }
+
+        private async Task<string> CreateRefreshTokenAsync(int userId)
+        {
+            var now = DateTime.UtcNow;
+            var refreshToken = _jwtHelper.GenerateRefreshToken();
+            var refreshExpiryDays = _jwtHelper.GetRefreshTokenExpiryDays();
+
+            await _dapperRepository.ExecuteAsync(
+                ProcedureName,
+                new
+                {
+                    AuthType = "RefreshToken",
+                    FIDOOperation = "CreateRefreshToken",
+                    UserId = userId,
+                    Token = refreshToken,
+                    ExpiresAt = now.AddDays(refreshExpiryDays),
+                    Now = now
+                });
+
+            return refreshToken;
+        }
+
+        public async Task<AuthResponse> RefreshTokenAsync(RefreshTokenRequest request)
+        {
+            var now = DateTime.UtcNow;
+            var tokenHandler = new JwtSecurityTokenHandler();
+            ClaimsPrincipal? principal = null;
+
+            try
+            {
+                principal = tokenHandler.ValidateToken(
+                    request.AccessToken,
+                    new TokenValidationParameters
+                    {
+                        ValidateIssuerSigningKey = true,
+                        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtHelper.GetSigningKey())),
+                        ValidateIssuer = true,
+                        ValidIssuer = _jwtHelper.Issuer,
+                        ValidateAudience = true,
+                        ValidAudience = _jwtHelper.Audience,
+                        ValidateLifetime = false,
+                        ClockSkew = TimeSpan.Zero
+                    },
+                    out _);
+            }
+            catch
+            {
+                return new AuthResponse { Message = "Invalid access token" };
+            }
+
+            var userIdClaim = principal.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            var usernameClaim = principal.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value;
+
+            if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
+            {
+                return new AuthResponse { Message = "Invalid access token claims" };
+            }
+
+            var storedRefreshToken = await _dapperRepository.QuerySingleAsync<RefreshToken>(
+                ProcedureName,
+                new
+                {
+                    AuthType = "RefreshToken",
+                    FIDOOperation = "GetRefreshToken",
+                    Token = request.RefreshToken
+                });
+
+            if (storedRefreshToken == null)
+            {
+                return new AuthResponse { Message = "Invalid refresh token" };
+            }
+
+            var refreshToken = storedRefreshToken;
+
+            if (refreshToken.UserId != userId)
+            {
+                return new AuthResponse { Message = "Refresh token does not belong to this user" };
+            }
+
+            if (refreshToken.IsRevoked)
+            {
+                return new AuthResponse { Message = "Refresh token has been revoked" };
+            }
+
+            if (refreshToken.ExpiresAt < now)
+            {
+                await _dapperRepository.ExecuteAsync(
+                    ProcedureName,
+                    new
+                    {
+                        AuthType = "RefreshToken",
+                        FIDOOperation = "RevokeRefreshToken",
+                        Token = request.RefreshToken,
+                        Now = now
+                    });
+
+                return new AuthResponse { Message = "Refresh token expired" };
+            }
+
+            var newAccessToken = _jwtHelper.GenerateToken(userId, usernameClaim ?? string.Empty);
+            var newRefreshToken = _jwtHelper.GenerateRefreshToken();
+            var refreshExpiryDays = _jwtHelper.GetRefreshTokenExpiryDays();
+
+            await _dapperRepository.ExecuteAsync(
+                ProcedureName,
+                new
+                {
+                    AuthType = "RefreshToken",
+                    FIDOOperation = "CreateRefreshToken",
+                    UserId = userId,
+                    Token = newRefreshToken,
+                    ExpiresAt = now.AddDays(refreshExpiryDays),
+                    Now = now
+                });
+
+            return new AuthResponse
+            {
+                UserId = userId,
+                Username = usernameClaim ?? string.Empty,
+                Token = newAccessToken,
+                RefreshToken = newRefreshToken,
+                Message = "Token refreshed successfully"
+            };
         }
     }
 }

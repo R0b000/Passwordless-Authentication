@@ -119,5 +119,12 @@ namespace PasswordlessApi.Api.Controller.Auth
             var result = await _authService.VerifyOtpAsync(request);
             return Ok(result);
         }
+
+        [HttpPost("auth/refresh")]
+        public async Task<ActionResult<AuthResponse>> RefreshToken([FromBody] RefreshTokenRequest request)
+        {
+            var result = await _authService.RefreshTokenAsync(request);
+            return Ok(result);
+        }
     }
 }

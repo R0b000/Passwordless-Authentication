@@ -223,5 +223,32 @@ BEGIN
             ) THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT) END AS Consumed;
         END
     END
+    ELSE IF @AuthType = 'RefreshToken'
+    BEGIN
+        IF @FIDOOperation = 'CreateRefreshToken'
+        BEGIN
+            INSERT INTO dbo.RefreshTokens (UserId, Token, ExpiresAt)
+            VALUES (@UserId, @Token, @ExpiresAt);
+
+            SELECT TOP 1 Id, UserId, Token, ExpiresAt, IsRevoked, CreatedAt, RevokedAt
+            FROM dbo.RefreshTokens
+            WHERE Token = @Token;
+        END
+        ELSE IF @FIDOOperation = 'GetRefreshToken'
+        BEGIN
+            SELECT TOP 1 Id, UserId, Token, ExpiresAt, IsRevoked, CreatedAt, RevokedAt
+            FROM dbo.RefreshTokens
+            WHERE Token = @Token;
+        END
+        ELSE IF @FIDOOperation = 'RevokeRefreshToken'
+        BEGIN
+            UPDATE dbo.RefreshTokens
+            SET IsRevoked = 1,
+                RevokedAt = @Now
+            WHERE Token = @Token;
+
+            SELECT @@ROWCOUNT AS RowsAffected;
+        END
+    END
 END;
 GO
