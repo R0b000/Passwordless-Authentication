@@ -6,10 +6,10 @@ namespace PasswordlessApi.Api.Service.Implementation.Security
 {
     public class AuditLogService : IAuditLogService
     {
-        private readonly IAuthRepository _authRepository;
+        private readonly IGenericRepository<AuditLog> _authRepository;
         private const string ProcedureName = "sp_Users";
 
-        public AuditLogService(IAuthRepository authRepository)
+        public AuditLogService(IGenericRepository<AuditLog> authRepository)
         {
             _authRepository = authRepository;
         }

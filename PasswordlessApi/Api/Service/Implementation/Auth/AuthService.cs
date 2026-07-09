@@ -18,7 +18,7 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
 {
     public class AuthService : IAuthService
     {
-        private readonly IAuthRepository _authRepository;
+        private readonly IGenericRepository<User> _authRepository;
         private readonly IPasswordHash _passwordHash;
         private readonly IJwtHelper _jwtHelper;
         private readonly IFido2Service _fido2Service;
@@ -29,7 +29,7 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
         private const string ProcedureName = "sp_Users";
 
         public AuthService(
-            IAuthRepository authRepository, 
+            IGenericRepository<User> authRepository, 
             IPasswordHash passwordHash, 
             IJwtHelper jwtHelper, 
             IFido2Service fido2Service,
@@ -314,11 +314,11 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
                 UserId = userId
             };
 
-            var credentials = await _authRepository.QueryAsync<UserCredential>(
+            var result = await _authRepository.QueryAsync<UserCredential>(
                 ProcedureName,
                 param);
 
-            return credentials.ToList();
+             return result.Data!.ToList();
         }
 
         public async Task<Fido2ChallengeResponse> RequestAttestationOptionsAsync(Fido2AttestationOptionsRequest request)
@@ -350,11 +350,11 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
                 UserId = userId
             };
 
-            var credentials = await _authRepository.QueryAsync<UserCredential>(
+            var result = await _authRepository.QueryAsync<UserCredential>(
                 ProcedureName,
                 param);
 
-            return credentials != null && credentials.Any();
+            return result.Succeeded && result.Data != null && result.Data.Any();
         }
 
         private class DeviceInfo
