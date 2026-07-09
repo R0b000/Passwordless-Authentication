@@ -313,5 +313,203 @@ BEGIN
             ORDER BY CreatedAt DESC;
         END
     END
+    ELSE IF @AuthType = 'GetProfile'
+    BEGIN
+        SELECT 
+            Id AS UserId,
+            Username,
+            Email,
+            Phone,
+            Bio,
+            AvatarUrl,
+            CreatedAt AS DateJoined,
+            UpdatedAt AS LastActive,
+            AccountStatus
+        FROM dbo.Users
+        WHERE Id = @UserId;
+    END
+    ELSE IF @AuthType = 'UpdateProfile'
+    BEGIN
+        UPDATE dbo.Users
+        SET Username = @Username,
+            Email = @Email,
+            Phone = @Phone,
+            Bio = @Bio,
+            UpdatedAt = @Now
+        WHERE Id = @UserId;
+
+        SELECT 
+            Id AS UserId,
+            Username,
+            Email,
+            Phone,
+            Bio,
+            AvatarUrl,
+            CreatedAt AS DateJoined,
+            UpdatedAt AS LastActive,
+            AccountStatus
+        FROM dbo.Users
+        WHERE Id = @UserId;
+    END
+    ELSE IF @AuthType = 'GetSettings'
+    BEGIN
+        SELECT 
+            Username,
+            Email,
+            DisplayName = Username,
+            EmailPreferences,
+            Timezone,
+            Language,
+            EmailNotifications,
+            PushNotifications,
+            SmsAlerts,
+            MarketingEmails
+        FROM dbo.Users
+        WHERE Id = @UserId;
+    END
+    ELSE IF @AuthType = 'UpdateSettings'
+    BEGIN
+        UPDATE dbo.Users
+        SET Username = @Username,
+            Email = @Email,
+            EmailPreferences = @EmailPreferences,
+            Timezone = @Timezone,
+            Language = @Language,
+            EmailNotifications = @EmailNotifications,
+            PushNotifications = @PushNotifications,
+            SmsAlerts = @SmsAlerts,
+            MarketingEmails = @MarketingEmails,
+            UpdatedAt = @Now
+        WHERE Id = @UserId;
+
+        SELECT 
+            Username,
+            Email,
+            DisplayName = Username,
+            EmailPreferences,
+            Timezone,
+            Language,
+            EmailNotifications,
+            PushNotifications,
+            SmsAlerts,
+            MarketingEmails
+        FROM dbo.Users
+        WHERE Id = @UserId;
+    END
+    ELSE IF @AuthType = 'GetPrivacy'
+    BEGIN
+        SELECT 
+            ProfileVisibility,
+            DataSharing,
+            ThirdPartyConnections,
+            CookiePreferences
+        FROM dbo.Users
+        WHERE Id = @UserId;
+    END
+    ELSE IF @AuthType = 'UpdatePrivacy'
+    BEGIN
+        UPDATE dbo.Users
+        SET ProfileVisibility = @ProfileVisibility,
+            DataSharing = @DataSharing,
+            ThirdPartyConnections = @ThirdPartyConnections,
+            CookiePreferences = @CookiePreferences,
+            UpdatedAt = @Now
+        WHERE Id = @UserId;
+
+        SELECT 
+            ProfileVisibility,
+            DataSharing,
+            ThirdPartyConnections,
+            CookiePreferences
+        FROM dbo.Users
+        WHERE Id = @UserId;
+    END
+    ELSE IF @AuthType = 'ResetPassword'
+    BEGIN
+        UPDATE dbo.Users
+        SET PasswordHash = @PasswordHash,
+            UpdatedAt = @Now
+        WHERE Id = @UserId;
+
+        SELECT @@ROWCOUNT AS RowsAffected;
+    END
+    ELSE IF @AuthType = 'DeleteAccount'
+    BEGIN
+        UPDATE dbo.Users
+        SET AccountStatus = 'deleted',
+            UpdatedAt = @Now
+        WHERE Id = @UserId;
+
+        SELECT @@ROWCOUNT AS RowsAffected;
+    END
+    ELSE IF @AuthType = 'GetSecurity'
+    BEGIN
+        SELECT 
+            LastPasswordChange = UpdatedAt,
+            TwoFactorEnabled,
+            TwoFactorMethod,
+            AlertOnNewDevice,
+            RequirePasswordForSensitive
+        FROM dbo.Users
+        WHERE Id = @UserId;
+    END
+    ELSE IF @AuthType = 'UpdateSecurity'
+    BEGIN
+        UPDATE dbo.Users
+        SET AlertOnNewDevice = @AlertOnNewDevice,
+            RequirePasswordForSensitive = @RequirePasswordForSensitive,
+            UpdatedAt = @Now
+        WHERE Id = @UserId;
+
+        SELECT 
+            LastPasswordChange = UpdatedAt,
+            TwoFactorEnabled,
+            TwoFactorMethod,
+            AlertOnNewDevice,
+            RequirePasswordForSensitive
+        FROM dbo.Users
+        WHERE Id = @UserId;
+    END
+    ELSE IF @AuthType = 'ChangePassword'
+    BEGIN
+        UPDATE dbo.Users
+        SET PasswordHash = @PasswordHash,
+            UpdatedAt = @Now
+        WHERE Id = @UserId;
+
+        SELECT @@ROWCOUNT AS RowsAffected;
+    END
+    ELSE IF @AuthType = 'Enable2FA'
+    BEGIN
+        UPDATE dbo.Users
+        SET TwoFactorEnabled = 1,
+            UpdatedAt = @Now
+        WHERE Id = @UserId;
+
+        SELECT 
+            LastPasswordChange = UpdatedAt,
+            TwoFactorEnabled = 1,
+            TwoFactorMethod,
+            AlertOnNewDevice,
+            RequirePasswordForSensitive
+        FROM dbo.Users
+        WHERE Id = @UserId;
+    END
+    ELSE IF @AuthType = 'Disable2FA'
+    BEGIN
+        UPDATE dbo.Users
+        SET TwoFactorEnabled = 0,
+            UpdatedAt = @Now
+        WHERE Id = @UserId;
+
+        SELECT 
+            LastPasswordChange = UpdatedAt,
+            TwoFactorEnabled = 0,
+            TwoFactorMethod,
+            AlertOnNewDevice,
+            RequirePasswordForSensitive
+        FROM dbo.Users
+        WHERE Id = @UserId;
+    END
 END;
 GO

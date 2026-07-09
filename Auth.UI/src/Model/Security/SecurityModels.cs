@@ -53,4 +53,32 @@ namespace Auth.UI.src.Model.Security
         public string Code { get; set; } = string.Empty;
         public bool TrustDevice { get; set; }
     }
+
+    public class DeviceSessionResponse
+    {
+        public int Id { get; set; }
+        public string IpAddress { get; set; } = string.Empty;
+        public string UserAgent { get; set; } = string.Empty;
+        public string? Location { get; set; }
+        public DateTime CreatedAt { get; set; }
+        public DateTime? LastUsedAt { get; set; }
+        public DateTime ExpiresAt { get; set; }
+        public bool IsCurrent { get; set; }
+    }
+
+    public class ActiveSessionsResponse
+    {
+        public List<SessionInfo> Sessions { get; set; } = new();
+    }
+
+    public class ActivityLogResponse
+    {
+        public List<ActivityLogEntry> Entries { get; set; } = new();
+    }
+
+    public class ActionResponse
+    {
+        public bool Succeeded { get; set; }
+        public string Message { get; set; } = string.Empty;
+    }
 }
