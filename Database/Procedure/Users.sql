@@ -16,7 +16,17 @@ CREATE OR ALTER PROCEDURE dbo.sp_Users
     @SignCount BIGINT = NULL,
     @Transports NVARCHAR(500) = NULL,
     @Otp NVARCHAR(10) = NULL,
-    @Now DATETIME2 = NULL
+    @Now DATETIME2 = NULL,
+    @TokenHash NVARCHAR(500) = NULL,
+    @IpAddress NVARCHAR(45) = NULL,
+    @UserAgent NVARCHAR(500) = NULL,
+    @Location NVARCHAR(200) = NULL,
+    @Action NVARCHAR(200) = NULL,
+    @EntityType NVARCHAR(200) = NULL,
+    @EntityId NVARCHAR(200) = NULL,
+    @OldValue NVARCHAR(MAX) = NULL,
+    @NewValue NVARCHAR(MAX) = NULL,
+    @SessionId INT = NULL
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -227,18 +237,26 @@ BEGIN
     BEGIN
         IF @FIDOOperation = 'CreateRefreshToken'
         BEGIN
-            INSERT INTO dbo.RefreshTokens (UserId, TokenHash, ExpiresAt)
-            VALUES (@UserId, @TokenHash, @ExpiresAt);
+            INSERT INTO dbo.RefreshTokens (UserId, TokenHash, ExpiresAt, IpAddress, UserAgent, Location)
+            VALUES (@UserId, @TokenHash, @ExpiresAt, @IpAddress, @UserAgent, @Location);
 
-            SELECT TOP 1 Id, UserId, TokenHash, ExpiresAt, IsRevoked, CreatedAt, RevokedAt
+            SELECT TOP 1 Id, UserId, TokenHash, ExpiresAt, IsRevoked, CreatedAt, RevokedAt, IpAddress, UserAgent, Location, LastUsedAt
             FROM dbo.RefreshTokens
             WHERE TokenHash = @TokenHash;
         END
         ELSE IF @FIDOOperation = 'GetRefreshToken'
         BEGIN
-            SELECT TOP 1 Id, UserId, TokenHash, ExpiresAt, IsRevoked, CreatedAt, RevokedAt
+            SELECT TOP 1 Id, UserId, TokenHash, ExpiresAt, IsRevoked, CreatedAt, RevokedAt, IpAddress, UserAgent, Location, LastUsedAt
             FROM dbo.RefreshTokens
-            WHERE TokenHash = @TokenHash;
+            WHERE TokenHash = @TokenHash
+              AND UserId = @UserId;
+        END
+        ELSE IF @FIDOOperation = 'GetRefreshTokenById'
+        BEGIN
+            SELECT TOP 1 Id, UserId, TokenHash, ExpiresAt, IsRevoked, CreatedAt, RevokedAt, IpAddress, UserAgent, Location, LastUsedAt
+            FROM dbo.RefreshTokens
+            WHERE Id = @SessionId
+              AND UserId = @UserId;
         END
         ELSE IF @FIDOOperation = 'RevokeRefreshToken'
         BEGIN
@@ -248,6 +266,51 @@ BEGIN
             WHERE TokenHash = @TokenHash;
 
             SELECT @@ROWCOUNT AS RowsAffected;
+        END
+        ELSE IF @FIDOOperation = 'RevokeAllForUser'
+        BEGIN
+            UPDATE dbo.RefreshTokens
+            SET IsRevoked = 1,
+                RevokedAt = @Now
+            WHERE UserId = @UserId
+              AND IsRevoked = 0
+              AND ExpiresAt > @Now;
+
+            SELECT @@ROWCOUNT AS RowsAffected;
+        END
+        ELSE IF @FIDOOperation = 'GetActiveTokensForUser'
+        BEGIN
+            SELECT Id, UserId, TokenHash, ExpiresAt, IsRevoked, CreatedAt, RevokedAt, IpAddress, UserAgent, Location, LastUsedAt
+            FROM dbo.RefreshTokens
+            WHERE UserId = @UserId
+              AND IsRevoked = 0
+              AND ExpiresAt > @Now
+            ORDER BY CreatedAt ASC;
+        END
+        ELSE IF @FIDOOperation = 'UpdateLastUsed'
+        BEGIN
+            UPDATE dbo.RefreshTokens
+            SET LastUsedAt = @Now
+            WHERE TokenHash = @TokenHash;
+
+            SELECT @@ROWCOUNT AS RowsAffected;
+        END
+    END
+    ELSE IF @AuthType = 'AuditLog'
+    BEGIN
+        IF @FIDOOperation = 'Create'
+        BEGIN
+            INSERT INTO dbo.AuditLogs (UserId, Action, EntityType, EntityId, OldValue, NewValue, IpAddress, UserAgent)
+            VALUES (@UserId, @Action, @EntityType, @EntityId, @OldValue, @NewValue, @IpAddress, @UserAgent);
+
+            SELECT SCOPE_IDENTITY() AS Id;
+        END
+        ELSE IF @FIDOOperation = 'GetByUser'
+        BEGIN
+            SELECT Id, UserId, Action, EntityType, EntityId, OldValue, NewValue, IpAddress, UserAgent, CreatedAt
+            FROM dbo.AuditLogs
+            WHERE UserId = @UserId
+            ORDER BY CreatedAt DESC;
         END
     END
 END;

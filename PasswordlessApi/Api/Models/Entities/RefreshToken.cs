@@ -9,5 +9,9 @@ namespace PasswordlessApi.Api.Models.Entities
         public bool IsRevoked { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime? RevokedAt { get; set; }
+        public string? IpAddress { get; set; }
+        public string? UserAgent { get; set; }
+        public string? Location { get; set; }
+        public DateTime? LastUsedAt { get; set; }
     }
 }

@@ -3,6 +3,10 @@ using Microsoft.AspNetCore.Mvc;
 using PasswordlessApi.Api.Models.RequestModel.Auth;
 using PasswordlessApi.Api.Models.ResponseModel.Auth;
 using PasswordlessApi.Api.Service.Interface.Auth;
+using PasswordlessApi.Api.Service.Interface.Security;
+using PasswordlessApi.Api.Models.RequestModel.Security;
+using Microsoft.AspNetCore.RateLimiting;
+using PasswordlessApi.Api.Middleware;
 
 namespace PasswordlessApi.Api.Controller.Auth
 {
@@ -11,9 +15,12 @@ namespace PasswordlessApi.Api.Controller.Auth
     public class AuthController : ControllerBase
     {
         private readonly IAuthService _authService;
-        public AuthController(IAuthService authService)
+        private readonly IRateLimiter _rateLimiter;
+
+        public AuthController(IAuthService authService, IRateLimiter rateLimiter)
         {
             _authService = authService;
+            _rateLimiter = rateLimiter;
         }
 
         [HttpPost("register")]
@@ -24,9 +31,18 @@ namespace PasswordlessApi.Api.Controller.Auth
         }
 
         [HttpPost("login")]
+        [EnableRateLimiting(SecurityRateLimiting.LoginPolicy)]
         public async Task<ActionResult<AuthResponse>> Login([FromBody] LoginRequest request)
         {
-            var result = await _authService.LoginAsync(request);
+            var ipAddress = GetClientIpAddress();
+            var userAgent = GetUserAgent();
+
+            if (!string.IsNullOrEmpty(ipAddress) && await _rateLimiter.IsLimitedAsync($"login:{ipAddress}", 5, TimeSpan.FromMinutes(15)))
+            {
+                return StatusCode(429, new AuthResponse { Message = "Too many login attempts. Please try again later." });
+            }
+
+            var result = await _authService.LoginAsync(request, ipAddress, userAgent);
             return Ok(result);
         }
 
@@ -121,10 +137,37 @@ namespace PasswordlessApi.Api.Controller.Auth
         }
 
         [HttpPost("auth/refresh")]
-        public async Task<ActionResult<AuthResponse>> RefreshToken([FromBody] RefreshTokenRequest request)
+        [EnableRateLimiting(SecurityRateLimiting.RefreshTokenPolicy)]
+        public async Task<ActionResult<AuthResponse>> RefreshToken([FromBody] PasswordlessApi.Api.Models.RequestModel.Security.RefreshTokenRequest request)
         {
-            var result = await _authService.RefreshTokenAsync(request);
+            var ipAddress = GetClientIpAddress();
+            var userAgent = GetUserAgent();
+
+            var enrichedRequest = new PasswordlessApi.Api.Models.RequestModel.Security.RefreshTokenRequest
+            {
+                AccessToken = request.AccessToken,
+                RefreshToken = request.RefreshToken,
+                IpAddress = ipAddress,
+                UserAgent = userAgent
+            };
+
+            var result = await _authService.RefreshTokenAsync(enrichedRequest);
             return Ok(result);
+        }
+
+        private string? GetClientIpAddress()
+        {
+            if (Request.Headers.TryGetValue("X-Forwarded-For", out var forwardedFor))
+            {
+                return forwardedFor.ToString().Split(',')[0].Trim();
+            }
+
+            return Request.HttpContext.Connection.RemoteIpAddress?.ToString();
+        }
+
+        private string? GetUserAgent()
+        {
+            return Request.Headers["User-Agent"].ToString();
         }
     }
 }

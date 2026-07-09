@@ -40,13 +40,4 @@ namespace PasswordlessApi.Api.Models.RequestModel.Auth
         [Required]
         public string Otp { get; set; } = string.Empty;
     }
-
-    public class RefreshTokenRequest
-    {
-        [Required]
-        public string AccessToken { get; set; } = string.Empty;
-
-        [Required]
-        public string RefreshToken { get; set; } = string.Empty;
-    }
 }
