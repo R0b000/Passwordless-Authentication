@@ -7,5 +7,6 @@ namespace PasswordlessApi.Api.Models.RequestModel.Auth
         public string AttestationResponse { get; set; } = string.Empty;
         public string AttestationChallenge { get; set; } = string.Empty;
         public string Transports { get; set; } = string.Empty;
+        public string? Origin { get; set; }
     }
 }

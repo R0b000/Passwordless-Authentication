@@ -31,12 +31,14 @@ namespace Auth.UI.src.Model.Auth
     public class Fido2ChallengeRequest
     {
         public int UserId { get; set; }
+        public string Origin { get; set; } = string.Empty;
     }
 
     public class Fido2AttestationOptionsRequest
     {
         public int UserId { get; set; }
         public string Username { get; set; } = string.Empty;
+        public string Origin { get; set; } = string.Empty;
     }
 
     public class Fido2RegisterRequest
@@ -46,6 +48,7 @@ namespace Auth.UI.src.Model.Auth
         public string AttestationResponse { get; set; } = string.Empty;
         public string AttestationChallenge { get; set; } = string.Empty;
         public string Transports { get; set; } = string.Empty;
+        public string Origin { get; set; } = string.Empty;
     }
 
     public class Fido2ChallengeResponse
@@ -64,6 +67,7 @@ namespace Auth.UI.src.Model.Auth
         public string Signature { get; set; } = string.Empty;
         public long? Counter { get; set; }
         public string Challenge { get; set; } = string.Empty;
+        public string Origin { get; set; } = string.Empty;
     }
 
     public class Fido2VerifyResponse

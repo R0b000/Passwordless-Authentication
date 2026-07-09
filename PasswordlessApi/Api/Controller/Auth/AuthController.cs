@@ -49,6 +49,7 @@ namespace PasswordlessApi.Api.Controller.Auth
         [HttpPost("fido2/options/register")]
         public async Task<ActionResult<Fido2ChallengeResponse>> RequestAttestationOptions([FromBody] Fido2AttestationOptionsRequest request)
         {
+            request.Origin ??= Request.Headers["Origin"].ToString();
             var result = await _authService.RequestAttestationOptionsAsync(request);
             return Ok(result);
         }
@@ -56,6 +57,7 @@ namespace PasswordlessApi.Api.Controller.Auth
         [HttpPost("fido2/register")]
         public async Task<ActionResult<Fido2VerifyResponse>> RegisterCredential([FromBody] Fido2RegisterRequest request)
         {
+            request.Origin ??= Request.Headers["Origin"].ToString();
             var result = await _authService.RegisterCredentialAsync(request);
             return Ok(result);
         }
@@ -63,6 +65,7 @@ namespace PasswordlessApi.Api.Controller.Auth
         [HttpPost("fido2/challenge")]
         public async Task<ActionResult<Fido2ChallengeResponse>> CreateFido2Challenge([FromBody] Fido2ChallengeRequest request)
         {
+            request.Origin ??= Request.Headers["Origin"].ToString();
             var result = await _authService.CreateFido2ChallengeAsync(request);
             return Ok(result);
         }
@@ -70,6 +73,7 @@ namespace PasswordlessApi.Api.Controller.Auth
         [HttpPost("fido2/verify")]
         public async Task<ActionResult<Fido2VerifyResponse>> VerifyFido2Assertion([FromBody] Fido2VerifyRequest request)
         {
+            request.Origin ??= Request.Headers["Origin"].ToString();
             var result = await _authService.VerifyFido2AssertionAsync(request);
             return Ok(result);
         }

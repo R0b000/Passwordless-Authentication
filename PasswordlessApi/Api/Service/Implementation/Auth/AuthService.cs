@@ -327,22 +327,22 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
 
         public async Task<Fido2ChallengeResponse> RequestAttestationOptionsAsync(Fido2AttestationOptionsRequest request)
         {
-            return await _fido2Service.RequestAttestationOptionsAsync(request.UserId, request.Username);
+            return await _fido2Service.RequestAttestationOptionsAsync(request.UserId, request.Username, request.Origin ?? string.Empty);
         }
 
         public async Task<Fido2VerifyResponse> RegisterCredentialAsync(Fido2RegisterRequest request)
         {
-            return await _fido2Service.RegisterCredentialAsync(request);
+            return await _fido2Service.RegisterCredentialAsync(request, request.Origin ?? string.Empty);
         }
 
         public async Task<Fido2ChallengeResponse> CreateFido2ChallengeAsync(Fido2ChallengeRequest request)
         {
-            return await _fido2Service.CreateChallengeAsync(request.UserId);
+            return await _fido2Service.CreateChallengeAsync(request.UserId, request.Origin ?? string.Empty);
         }
 
         public async Task<Fido2VerifyResponse> VerifyFido2AssertionAsync(Fido2VerifyRequest request)
         {
-            return await _fido2Service.VerifyAssertionAsync(request);
+            return await _fido2Service.VerifyAssertionAsync(request, request.Origin ?? string.Empty);
         }
 
         private async Task<bool> HasFido2CredentialsAsync(int userId)

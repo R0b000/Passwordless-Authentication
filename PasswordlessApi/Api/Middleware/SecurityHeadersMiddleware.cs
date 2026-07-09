@@ -21,7 +21,7 @@ namespace PasswordlessApi.Api.Middleware
             context.Response.Headers["X-XSS-Protection"] = "1; mode=block";
             context.Response.Headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
             context.Response.Headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()";
-            context.Response.Headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self'; frame-ancestors 'none';";
+            context.Response.Headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://bijayatestui.runasp.net https://bijayatestapi.runasp.net https://ray-champion-crow.ngrok-free.app https://silk-shaky-hedging.ngrok-free.dev; frame-ancestors 'none';";
             context.Response.Headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains; preload";
             context.Response.Headers.Remove("Server");
 
