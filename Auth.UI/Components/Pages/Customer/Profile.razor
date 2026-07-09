@@ -1,73 +1,88 @@
 @page "/profile"
+@page "/account/profile"
 @namespace Auth.UI.Components.Pages.Customer
-@layout LoginLayout
-@using static Microsoft.AspNetCore.Components.Web.RenderMode
-@using Auth.UI.Components.UI.Menu
-@rendermode InteractiveServer
+@layout AccountLayout
+@using Auth.UI.Components.UI.Toaster
+@using Auth.UI.Components.UI.Upload
+@using Auth.UI.Components.UI.Tag
 
 <PageTitle>Profile - Passwordless Auth</PageTitle>
 
-<div class="app-shell">
-    <aside class="app-sidebar">
-        <div class="app-brand">
-            <Icon Name="shield" Size="Icon.IconSize.Small" />
-            <span>Passwordless Auth</span>
+<div class="account-card">
+    <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+        <div>
+            <h3>Profile</h3>
+            <div class="section-sub">Manage your personal information and account overview.</div>
         </div>
-
-        <Menu Items="MenuItems" OnAction="OnMenuAction" />
-    </aside>
-
-    <div class="app-main">
-        <header class="app-header">
-            <h1 class="app-header-title">Profile</h1>
-
-            <div class="app-account">
-                <button type="button" class="app-account-badge" @onclick="ToggleAccountMenu" aria-haspopup="true" aria-expanded="@AccountMenuOpen">
-                    <span class="app-account-avatar">@AccountInitial</span>
-                    <span>@(CurrentUser?.Username ?? "Account")</span>
-                </button>
-
-                @if (AccountMenuOpen)
-                {
-                    <div class="app-dropdown-backdrop" @onclick="CloseAccountMenu"></div>
-                    <div class="app-account-dropdown" role="menu">
-                        <button type="button" class="app-dropdown-item" role="menuitem" @onclick="LogoutAsync">
-                            <Icon Name="x" Size="Icon.IconSize.Small" />
-                            <span>Logout</span>
-                        </button>
-                    </div>
-                }
-            </div>
-        </header>
-
-        <main class="app-content">
-            @if (!string.IsNullOrEmpty(StatusMessage))
-            {
-                <div class="alert @(Succeeded ? "alert-success" : "alert-danger") mb-3" role="alert">@StatusMessage</div>
-            }
-
-            <div class="app-profile-card">
-                <h5 class="mb-3">Authenticated identity</h5>
-                @if (CurrentUser is not null)
-                {
-                    <p class="mb-1">User Id: <strong>@CurrentUser.UserId</strong></p>
-                    <p class="mb-1">Username: <strong>@CurrentUser.Username</strong></p>
-                    <p class="mb-1">Email: <strong>@CurrentUser.Email</strong></p>
-                    <p class="mb-0">Status: <span class="badge bg-success">@CurrentUser.Message</span></p>
-                }
-                else
-                {
-                    <p class="text-muted mb-0">No authenticated identity. Please sign in.</p>
-                }
-
-                <div class="app-profile-actions">
-                    <button class="btn btn-outline-secondary" @onclick="@LoadProfileAsync">Refresh</button>
-                    @if (CurrentUser is not null)
-                    {
-                        <button class="btn btn-primary" @onclick="@(() => RegisterPasskeyAsync(CurrentUser.UserId, CurrentUser.Username))" type="button">Register Passkey</button>
-                    }
-                </div>
-            </div>
-        </main>
+        @if (!EditMode)
+        {
+            <Button Variant="Button.ButtonVariant.Primary" IconName="edit" OnClick="EnterEdit">Edit profile</Button>
+        }
     </div>
+
+    @if (!string.IsNullOrEmpty(StatusMessage))
+    {
+        <div class="alert @(Succeeded ? "alert-success" : "alert-danger") mb-3" role="alert">@StatusMessage</div>
+    }
+
+    <div class="avatar-block">
+        <div class="avatar-img">@Initials</div>
+        <div>
+            <div class="fw-semibold">Profile picture</div>
+            <div class="text-muted small mb-2">JPG or PNG, up to 5 MB.</div>
+            @if (EditMode)
+            {
+                <Upload Accept="image/*" MaxSize="5242880" OnFileSelected="OnAvatarSelected" />
+            }
+        </div>
+    </div>
+
+    @if (EditMode)
+    {
+        <div class="account-grid">
+            <div class="account-field">
+                <label>Display name</label>
+                <input class="form-control" @bind="Model!.DisplayName" />
+            </div>
+            <div class="account-field">
+                <label>Username</label>
+                <input class="form-control" @bind="Model!.Username" />
+            </div>
+            <div class="account-field">
+                <label>Email</label>
+                <input class="form-control" type="email" @bind="Model!.Email" />
+            </div>
+            <div class="account-field">
+                <label>Phone</label>
+                <input class="form-control" @bind="Model!.Phone" />
+            </div>
+            <div class="account-field" style="grid-column: 1 / -1;">
+                <label>Bio</label>
+                <textarea class="form-control" rows="3" @bind="Model!.Bio"></textarea>
+            </div>
+        </div>
+        <div class="account-actions">
+            <Button Variant="Button.ButtonVariant.Primary" OnClick="SaveAsync">Save changes</Button>
+            <Button Variant="Button.ButtonVariant.Secondary" Outline="true" OnClick="CancelEdit">Cancel</Button>
+        </div>
+    }
+    else
+    {
+        <div class="profile-meta">
+            <div class="meta-item"><div class="meta-label">Display name</div><div class="meta-value">@Model?.DisplayName</div></div>
+            <div class="meta-item"><div class="meta-label">Username</div><div class="meta-value">@Model?.Username</div></div>
+            <div class="meta-item"><div class="meta-label">Email</div><div class="meta-value">@Model?.Email</div></div>
+            <div class="meta-item"><div class="meta-label">Phone</div><div class="meta-value">@Model?.Phone</div></div>
+            <div class="meta-item" style="grid-column: 1 / -1;"><div class="meta-label">Bio</div><div class="meta-value">@Model?.Bio</div></div>
+            <div class="meta-item"><div class="meta-label">Date joined</div><div class="meta-value">@Model?.DateJoined.ToString("MMM d, yyyy")</div></div>
+            <div class="meta-item"><div class="meta-label">Last active</div><div class="meta-value">@Model?.LastActive.ToString("g")</div></div>
+            <div class="meta-item"><div class="meta-label">Last login</div><div class="meta-value">@(Model?.LastLoginAt?.ToString("g") ?? "—")</div></div>
+            <div class="meta-item"><div class="meta-label">Last login IP</div><div class="meta-value">@(Model?.LastLoginIp ?? "—")</div></div>
+            <div class="meta-item"><div class="meta-label">Account status</div><div class="meta-value">
+                <Tag Variant="@(Model?.AccountStatus == "active" ? Tag.TagVariant.Success : Tag.TagVariant.Danger)">@Model?.AccountStatus</Tag>
+            </div></div>
+        </div>
+    }
 </div>
+
+<Toaster Position="ToastPosition.TopRight" />

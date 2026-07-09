@@ -1,0 +1,119 @@
+@page "/account/security"
+@namespace Auth.UI.Components.Pages.Customer
+@layout AccountLayout
+@using Auth.UI.Components.UI.Toaster
+@using Auth.UI.Components.UI.Switch
+@using Auth.UI.Components.UI.Icons
+
+<PageTitle>Security - Passwordless Auth</PageTitle>
+
+<div class="account-card">
+    <h3>Security</h3>
+    <div class="section-sub">Protect your account with strong credentials and multi-factor authentication.</div>
+
+    @if (!string.IsNullOrEmpty(StatusMessage))
+    {
+        <div class="alert @(Succeeded ? "alert-success" : "alert-danger") mb-3" role="alert">@StatusMessage</div>
+    }
+
+    <div class="account-section">
+        <h4>Password</h4>
+        <div class="account-grid">
+            <div class="account-field">
+                <label>Current password</label>
+                <input type="password" class="form-control" @bind="Pw.CurrentPassword" />
+            </div>
+            <div class="account-field">
+                <label>New password</label>
+                <input type="password" class="form-control" @bind="Pw.NewPassword" />
+            </div>
+            <div class="account-field">
+                <label>Confirm new password</label>
+                <input type="password" class="form-control" @bind="Pw.ConfirmPassword" />
+            </div>
+        </div>
+        <div class="pw-strength">
+            <Progress Value="@(Strength.Score * 25)" Max="100" ShowLabel="true" />
+            <div class="strength-label @Strength.Color">@Strength.Label</div>
+        </div>
+        <div class="text-muted small mb-2">Last password change: @(Settings.LastPasswordChange?.ToString("g") ?? "—")</div>
+        <div class="account-actions">
+            <Button Variant="Button.ButtonVariant.Primary" OnClick="ChangePasswordAsync">Change password</Button>
+        </div>
+    </div>
+
+    <div class="account-section">
+        <h4>Two-Factor Authentication</h4>
+        <div class="switch-row">
+            <div>
+                <div class="switch-label">Enable two-factor authentication</div>
+                <div class="switch-desc">Require a second step when signing in.</div>
+            </div>
+            <Switch Checked="@Settings.TwoFactorEnabled" CheckedChanged="ToggleTwoFactor" Label="Two-factor authentication" />
+        </div>
+
+        @if (Settings.TwoFactorEnabled)
+        {
+            <div class="account-field" style="max-width:320px;">
+                <label>Method</label>
+                <select class="form-control" @bind="Settings.TwoFactorMethod">
+                    <option value="authenticator">Authenticator app</option>
+                    <option value="sms">SMS</option>
+                </select>
+            </div>
+
+            @if (Settings.TwoFactorMethod == "authenticator")
+            {
+                <div class="d-flex flex-wrap gap-3 align-items-start mt-2">
+                    <div class="qr-box">
+                        <Icon Name="key" Size="Icon.IconSize.Large" />
+                    </div>
+                    <div>
+                        <div class="fw-semibold mb-1">Scan with your authenticator app</div>
+                        <code class="d-inline-block mb-2">@Settings.QrCodeUri</code>
+                        <div class="fw-semibold mt-2">Backup codes</div>
+                        <div class="text-muted small">Use one of these if you lose access to your device.</div>
+                        <div class="backup-codes">
+                            @foreach (var backupCode in Settings.BackupCodes)
+                            {
+                                <code>@backupCode</code>
+                            }
+                        </div>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="text-muted small mt-2">We'll send a verification code to your phone when you sign in.</div>
+            }
+
+            <div class="account-actions">
+                <Button Variant="Button.ButtonVariant.Primary" OnClick="SaveTwoFactorAsync">Save 2FA settings</Button>
+                <Button Variant="Button.ButtonVariant.Danger" Outline="true" OnClick="DisableTwoFactorAsync">Disable 2FA</Button>
+            </div>
+        }
+    </div>
+
+    <div class="account-section">
+        <h4>Security Alerts</h4>
+        <div class="switch-row">
+            <div>
+                <div class="switch-label">Alert me when a new device logs in</div>
+                <div class="switch-desc">Get notified about unrecognised sign-ins.</div>
+            </div>
+            <Switch Checked="@Settings.AlertOnNewDevice" CheckedChanged="v => Settings.AlertOnNewDevice = v" Label="New device alerts" />
+        </div>
+        <div class="switch-row">
+            <div>
+                <div class="switch-label">Require password for sensitive actions</div>
+                <div class="switch-desc">Re-authenticate before changing security settings.</div>
+            </div>
+            <Switch Checked="@Settings.RequirePasswordForSensitive" CheckedChanged="v => Settings.RequirePasswordForSensitive = v" Label="Require password" />
+        </div>
+        <div class="account-actions">
+            <Button Variant="Button.ButtonVariant.Primary" OnClick="SaveAlertsAsync">Save alerts</Button>
+        </div>
+    </div>
+</div>
+
+<Toaster Position="ToastPosition.TopRight" />

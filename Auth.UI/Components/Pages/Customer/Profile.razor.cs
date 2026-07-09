@@ -1,113 +1,68 @@
-using Auth.UI.Components.UI.Menu;
+using Auth.UI.Components.UI.Toaster;
 using Auth.UI.src.Manager.Controller;
-using Auth.UI.src.Model.Auth;
-using Auth.UI.src.Utility;
+using Auth.UI.src.Model.Account;
 using Microsoft.AspNetCore.Components;
-using Microsoft.JSInterop;
+using Microsoft.AspNetCore.Components.Forms;
 
 namespace Auth.UI.Components.Pages.Customer
 {
     public partial class Profile : ComponentBase
     {
-        [Inject] private AuthController AuthController { get; set; } = default!;
-        [Inject] private IJSRuntime JsRuntime { get; set; } = default!;
-        [Inject] private NavigationManager NavigationManager { get; set; } = default!;
-        [Inject] private ITokenStore TokenStore { get; set; } = default!;
+        [Inject] private AccountController AccountController { get; set; } = default!;
+        [Inject] private ToasterService Toaster { get; set; } = default!;
 
-        protected AuthResponse? CurrentUser { get; set; }
+        protected UserProfile? Model { get; set; }
+        protected bool EditMode { get; set; }
         protected string StatusMessage { get; set; } = string.Empty;
         protected bool Succeeded { get; set; }
 
-        protected bool AccountMenuOpen { get; set; }
-        protected string AccountInitial =>
-            string.IsNullOrEmpty(CurrentUser?.Username) ? "?" : CurrentUser.Username[0].ToString().ToUpperInvariant();
-
-        protected List<object> MenuItems { get; set; } = new()
+        protected string Initials
         {
-            new MenuHeaderItem { Text = "Menu" },
-            new MenuLinkItem { Text = "Profile", Url = "/profile", Icon = "user" },
-            new MenuLinkItem { Text = "Passkeys", Url = "/fido2", Icon = "fingerprint" },
-            new MenuDivider(),
-            new MenuLinkItem { Text = "Sign in", Url = "/", Icon = "lock" }
-        };
+            get
+            {
+                if (string.IsNullOrWhiteSpace(Model?.DisplayName)) return "?";
+                var parts = Model.DisplayName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                var letters = parts.Length > 1
+                    ? parts[0][0].ToString() + parts[^1][0]
+                    : parts[0][0].ToString();
+                return letters.ToUpperInvariant();
+            }
+        }
 
         protected override async Task OnInitializedAsync()
         {
-            await LoadProfileAsync();
+            var result = await AccountController.GetProfileAsync();
+            Model = result.Succeeded ? result.Data : new UserProfile();
         }
 
-        protected async Task LoadProfileAsync()
+        protected void EnterEdit() => EditMode = true;
+
+        protected void CancelEdit()
         {
-            StatusMessage = string.Empty;
-            var result = await AuthController.MeAsync();
+            EditMode = false;
+            _ = ReloadAsync();
+        }
+
+        protected async Task ReloadAsync()
+        {
+            var result = await AccountController.GetProfileAsync();
+            if (result.Succeeded) Model = result.Data;
+        }
+
+        protected async Task SaveAsync()
+        {
+            if (Model is null) return;
+            var result = await AccountController.UpdateProfileAsync(Model);
             Succeeded = result.Succeeded;
-            StatusMessage = result.Succeeded ? string.Empty : (result.Message ?? "Unauthorized");
-            CurrentUser = result.Succeeded ? result.Data : null;
+            StatusMessage = result.Message ?? string.Empty;
+            EditMode = !result.Succeeded;
+            if (result.Succeeded) Toaster.ShowSuccess("Profile updated");
+            else Toaster.ShowDanger(StatusMessage);
         }
 
-        protected void ToggleAccountMenu() => AccountMenuOpen = !AccountMenuOpen;
-
-        protected void CloseAccountMenu() => AccountMenuOpen = false;
-
-        protected void OnMenuAction(MenuActionItem item)
+        protected void OnAvatarSelected(IBrowserFile file)
         {
-        }
-
-        protected void LogoutAsync()
-        {
-            TokenStore.Clear();
-            AccountMenuOpen = false;
-            NavigationManager.NavigateTo("/");
-        }
-
-        protected async Task RegisterPasskeyAsync(int userId, string username)
-        {
-            StatusMessage = string.Empty;
-            var optionsResult = await AuthController.RequestAttestationOptionsAsync(
-                new Fido2AttestationOptionsRequest { UserId = userId, Username = username });
-
-            if (!optionsResult.Succeeded || optionsResult.Data is null)
-            {
-                StatusMessage = optionsResult.Message ?? "Failed to get attestation options";
-                Succeeded = false;
-                return;
-            }
-
-            try
-            {
-                var jsModule = await JsRuntime.InvokeAsync<IJSObjectReference>("import", "./webauthn.js");
-
-                var cred = await jsModule.InvokeAsync<WebAuthnCredential>(
-                    "createCredential",
-                    optionsResult.Data.PublicKeyCredentialCreationOptions,
-                    optionsResult.Data.Challenge);
-
-                var fullResponse = new
-                {
-                    id = cred.id,
-                    rawId = cred.rawId,
-                    type = cred.type,
-                    response = cred.response
-                };
-
-                var registerResult = await AuthController.RegisterCredentialAsync(
-                    new Fido2RegisterRequest
-                    {
-                        UserId = userId,
-                        Username = username,
-                        AttestationResponse = System.Text.Json.JsonSerializer.Serialize(fullResponse),
-                        AttestationChallenge = optionsResult.Data.Challenge,
-                        Transports = cred.transports is null ? string.Empty : string.Join(",", cred.transports)
-                    });
-
-                Succeeded = registerResult.Succeeded;
-                StatusMessage = registerResult.Data?.Message ?? registerResult.Message ?? (registerResult.Succeeded ? "Passkey registered successfully" : "Passkey registration failed");
-            }
-            catch (Exception ex)
-            {
-                StatusMessage = $"Passkey registration failed: {ex.Message}";
-                Succeeded = false;
-            }
+            Toaster.ShowInfo("Profile picture updated (demo)");
         }
     }
 }

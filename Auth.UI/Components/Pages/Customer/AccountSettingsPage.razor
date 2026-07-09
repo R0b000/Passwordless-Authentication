@@ -1,0 +1,100 @@
+@page "/account/settings"
+@namespace Auth.UI.Components.Pages.Customer
+@layout AccountLayout
+@using Auth.UI.Components.UI.Toaster
+@using Auth.UI.Components.UI.Switch
+
+<PageTitle>Account Settings - Passwordless Auth</PageTitle>
+
+<div class="account-card">
+    <h3>Account Settings</h3>
+    <div class="section-sub">Configure how your account behaves across the app.</div>
+
+    @if (!string.IsNullOrEmpty(StatusMessage))
+    {
+        <div class="alert @(Succeeded ? "alert-success" : "alert-danger") mb-3" role="alert">@StatusMessage</div>
+    }
+
+    <div class="account-section">
+        <h4>General Settings</h4>
+        <div class="account-grid">
+            <div class="account-field">
+                <label>Display name</label>
+                <input class="form-control" @bind="Settings!.DisplayName" />
+            </div>
+            <div class="account-field">
+                <label>Username</label>
+                <input class="form-control" @bind="Settings!.Username" />
+            </div>
+            <div class="account-field">
+                <label>Email</label>
+                <input class="form-control" type="email" @bind="Settings!.Email" />
+            </div>
+            <div class="account-field">
+                <label>Timezone</label>
+                <select class="form-control" @bind="Settings!.Timezone">
+                    <option value="UTC">UTC</option>
+                    <option value="America/New_York">America/New_York</option>
+                    <option value="America/Los_Angeles">America/Los_Angeles</option>
+                    <option value="Europe/London">Europe/London</option>
+                    <option value="Europe/Berlin">Europe/Berlin</option>
+                    <option value="Asia/Kathmandu">Asia/Kathmandu</option>
+                </select>
+            </div>
+            <div class="account-field">
+                <label>Language</label>
+                <select class="form-control" @bind="Settings!.Language">
+                    <option value="en">English</option>
+                    <option value="es">Español</option>
+                    <option value="fr">Français</option>
+                    <option value="de">Deutsch</option>
+                    <option value="ne">नेपाली</option>
+                </select>
+            </div>
+            <div class="account-field">
+                <label class="d-flex align-items-center gap-2" style="font-weight:600;">
+                    <input type="checkbox" @bind="Settings!.EmailPreferences" /> Email preferences
+                </label>
+            </div>
+        </div>
+    </div>
+
+    <div class="account-section">
+        <h4>Notification Settings</h4>
+        <div class="switch-row">
+            <div>
+                <div class="switch-label">Email notifications</div>
+                <div class="switch-desc">Receive important account updates by email.</div>
+            </div>
+            <Switch Checked="@Settings!.EmailNotifications" CheckedChanged="v => Settings!.EmailNotifications = v" Label="Email notifications" />
+        </div>
+        <div class="switch-row">
+            <div>
+                <div class="switch-label">Push notifications</div>
+                <div class="switch-desc">Get real-time alerts on your devices.</div>
+            </div>
+            <Switch Checked="@Settings!.PushNotifications" CheckedChanged="v => Settings!.PushNotifications = v" Label="Push notifications" />
+        </div>
+        <div class="switch-row">
+            <div>
+                <div class="switch-label">SMS alerts</div>
+                <div class="switch-desc">Critical security events via text message.</div>
+            </div>
+            <Switch Checked="@Settings!.SmsAlerts" CheckedChanged="v => Settings!.SmsAlerts = v" Label="SMS alerts" />
+        </div>
+        <div class="switch-row">
+            <div>
+                <div class="switch-label">Marketing emails</div>
+                <div class="switch-desc">Product news and promotional offers.</div>
+            </div>
+            <Switch Checked="@Settings!.MarketingEmails" CheckedChanged="v => Settings!.MarketingEmails = v" Label="Marketing emails" />
+        </div>
+    </div>
+
+    <div class="account-actions">
+        <Button Variant="Button.ButtonVariant.Primary" OnClick="SaveAsync">Save settings</Button>
+        <Button Variant="Button.ButtonVariant.Secondary" Outline="true" OnClick="ResetAsync">Reset</Button>
+    </div>
+</div>
+
+<Toaster Position="ToastPosition.TopRight" />
