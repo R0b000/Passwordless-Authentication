@@ -31,7 +31,7 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.AspNetCore.Components.Rendering;
 
-namespace Auth.UI.Components.Pages;
+namespace Auth.UI.Components.Pages.Shared.Showcase;
 
 public partial class Showcase : ComponentBase
 {

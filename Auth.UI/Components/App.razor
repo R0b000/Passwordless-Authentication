@@ -12,10 +12,18 @@
     <link rel="stylesheet" href="ui/components.css" />
     <link rel="stylesheet" href="login.css" />
     <link rel="stylesheet" href="profile.css" />
+    <link rel="stylesheet" href="account.css" />
 </head>
 <body>
     <Routes />
     <script src="_framework/blazor.web.js"></script>
     <script src="webauthn.js"></script>
+    <script>
+        window.getElementRect = function (el) {
+            if (!el) return { left: 0, width: 1 };
+            var r = el.getBoundingClientRect();
+            return { left: r.left, width: r.width };
+        };
+    </script>
 </body>
 </html>

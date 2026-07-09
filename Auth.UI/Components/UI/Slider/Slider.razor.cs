@@ -1,11 +1,14 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
+using Microsoft.JSInterop;
 using System.Collections.Generic;
 
 namespace Auth.UI.Components.UI.Slider
 {
     public partial class Slider : ComponentBase
     {
+        [Inject] private IJSRuntime JsRuntime { get; set; } = default!;
+
         [Parameter] public double Min { get; set; } = 0;
         [Parameter] public double Max { get; set; } = 100;
         [Parameter] public double Value { get; set; }
@@ -31,13 +34,13 @@ namespace Auth.UI.Components.UI.Slider
         {
             if (Disabled) return;
 
-            var bounds = await _trackElement.GetBoundingClientRectAsync();
+            var bounds = await JsRuntime.InvokeAsync<ElementRect>("getElementRect", _trackElement);
             var ratio = (clientX - bounds.Left) / bounds.Width;
             ratio = Math.Clamp(ratio, 0, 1);
             var rawValue = Min + ratio * (Max - Min);
             var newValue = SnapValue(rawValue);
 
-            if (!Math.Abs(newValue - Value) > 0.0001) return;
+            if (!(Math.Abs(newValue - Value) > 0.0001)) return;
 
             Value = newValue;
             await ValueChanged.InvokeAsync(Value);
@@ -70,7 +73,7 @@ namespace Auth.UI.Components.UI.Slider
             if (Disabled) return;
             _isDragging = true;
 
-            if (e.Touches.Count > 0)
+            if (e.Touches.Length > 0)
             {
                 await UpdateValueFromPosition(e.Touches[0].ClientX);
             }
@@ -84,7 +87,7 @@ namespace Auth.UI.Components.UI.Slider
                     {
                         if (_isDragging)
                         {
-                            if (e.Touches.Count > 0)
+                            if (e.Touches.Length > 0)
                             {
                                 await UpdateValueFromPosition(e.Touches[0].ClientX);
                             }
@@ -108,7 +111,7 @@ namespace Auth.UI.Components.UI.Slider
             else if (e.Key == "PageDown") newValue = SnapValue(Value - step * 10);
             else return;
 
-            if (!Math.Abs(newValue - Value) > 0.0001) return;
+            if (!(Math.Abs(newValue - Value) > 0.0001)) return;
 
             Value = newValue;
             await ValueChanged.InvokeAsync(Value);
@@ -120,6 +123,11 @@ namespace Auth.UI.Components.UI.Slider
             if (Step <= 0) return list;
             for (double v = Min; v <= Max; v += Step) list.Add(Math.Round(v, 6));
             return list;
+        }
+        private class ElementRect
+        {
+            public double Left { get; set; }
+            public double Width { get; set; }
         }
     }
 }

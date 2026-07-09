@@ -1,4 +1,3 @@
-using Auth.UI.Components.Pages;
 using Auth.UI.Components.UI.Modal;
 using Auth.UI.Components.UI.Toaster;
 using Auth.UI.src.Manager.Controller;
@@ -7,7 +6,7 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
 using System.Text.Json.Serialization;
 
-namespace Auth.UI.Components.Pages
+namespace Auth.UI.Components.Pages.Shared.Login
 {
     public partial class Login : ComponentBase
     {

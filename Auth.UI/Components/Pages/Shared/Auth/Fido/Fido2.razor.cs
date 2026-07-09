@@ -2,10 +2,11 @@ using Auth.UI.src.Manager.Controller;
 using Auth.UI.src.Model.Auth;
 using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
+using System.Text.Json.Serialization;
 
-namespace Auth.UI.Components.Pages
+namespace Auth.UI.Components.Pages.Shared.Fido
 {
-    public partial class PasskeyLogin : ComponentBase
+    public partial class Fido2 : ComponentBase
     {
         public enum PasskeyState { Idle, Requesting, Awaiting, Verifying, Success, Error }
 
@@ -13,12 +14,10 @@ namespace Auth.UI.Components.Pages
         [Inject] private NavigationManager NavigationManager { get; set; } = default!;
         [Inject] private IJSRuntime JsRuntime { get; set; } = default!;
 
-        [Parameter] public int? UserId { get; set; }
-        [Parameter] public EventCallback OnCompleted { get; set; }
-        [Parameter] public bool AutoStart { get; set; }
+        [Parameter] public int? UserIdParam { get; set; }
 
         protected PasskeyState State { get; set; } = PasskeyState.Idle;
-        protected int ResolvedUserId { get; set; }
+        protected int UserId { get; set; }
         protected Fido2VerifyRequest VerifyModel { get; set; } = new();
         protected string AssertionOptions { get; set; } = string.Empty;
         protected string StatusDetail { get; set; } = string.Empty;
@@ -30,17 +29,13 @@ namespace Auth.UI.Components.Pages
         protected string StatusMessage { get; set; } = string.Empty;
         protected bool Succeeded { get; set; }
 
-        protected bool IsStepUp => UserId.HasValue;
-        protected bool OtpRequested { get; set; }
-        protected string OtpCode { get; set; } = string.Empty;
-
         private IJSObjectReference? _webAuthnModule;
 
         protected override void OnParametersSet()
         {
-            if (UserId.HasValue)
+            if (UserIdParam.HasValue)
             {
-                ResolvedUserId = UserId.Value;
+                UserId = UserIdParam.Value;
                 IsEmailResolved = true;
             }
         }
@@ -51,7 +46,7 @@ namespace Auth.UI.Components.Pages
             {
                 _webAuthnModule = await JsRuntime.InvokeAsync<IJSObjectReference>("import", "./webauthn.js");
 
-                if (AutoStart && UserId.HasValue)
+                if (UserIdParam.HasValue)
                 {
                     await StartAssertionAsync();
                 }
@@ -84,7 +79,7 @@ namespace Auth.UI.Components.Pages
                 var result = await AuthController.GetUserByEmailAsync(Email);
                 if (result.Succeeded && result.Data is not null)
                 {
-                    ResolvedUserId = result.Data.UserId;
+                    UserId = result.Data.UserId;
                     ResolvedUsername = result.Data.Username;
                     IsEmailResolved = true;
                     State = PasskeyState.Idle;
@@ -114,48 +109,16 @@ namespace Auth.UI.Components.Pages
         {
             Email = string.Empty;
             IsEmailResolved = false;
-            ResolvedUserId = 0;
+            UserId = 0;
             ResolvedUsername = null;
             StatusMessage = string.Empty;
             State = PasskeyState.Idle;
             StatusDetail = string.Empty;
         }
 
-        protected async Task RequestOtpAsync()
-        {
-            StatusMessage = string.Empty;
-            var response = await AuthController.RequestOtpAsync(new OtpRequest { UserId = ResolvedUserId });
-            if (response.Succeeded)
-            {
-                OtpRequested = true;
-            }
-            else
-            {
-                Succeeded = false;
-                StatusMessage = response.Message ?? "Failed to request OTP";
-            }
-        }
-
-        protected async Task VerifyOtpAsync()
-        {
-            StatusMessage = string.Empty;
-            var response = await AuthController.VerifyOtpAsync(new OtpVerifyRequest { UserId = ResolvedUserId, Otp = OtpCode });
-            if (response.Succeeded)
-            {
-                await OnCompleted.InvokeAsync();
-                NavigationManager.NavigateTo("/profile");
-                return;
-            }
-
-            Succeeded = false;
-            StatusMessage = response.Message ?? "Failed to verify OTP";
-        }
-
-        protected void HideOtp() => OtpRequested = false;
-
         protected async Task StartAssertionAsync(string? authenticatorAttachment = null)
         {
-            if (ResolvedUserId <= 0)
+            if (UserId <= 0)
             {
                 State = PasskeyState.Error;
                 StatusDetail = "Account resolution required to continue. Please go back and enter your email.";
@@ -165,7 +128,7 @@ namespace Auth.UI.Components.Pages
             State = PasskeyState.Requesting;
             StatusDetail = "Contacting the server to prepare your passkey challenge…";
 
-            var result = await AuthController.CreateFido2ChallengeAsync(ResolvedUserId);
+            var result = await AuthController.CreateFido2ChallengeAsync(UserId);
             if (!result.Succeeded || result.Data is null)
             {
                 State = PasskeyState.Error;
@@ -174,7 +137,7 @@ namespace Auth.UI.Components.Pages
             }
 
             AssertionOptions = result.Data.PublicKeyCredentialCreationOptions;
-            VerifyModel = new Fido2VerifyRequest { UserId = ResolvedUserId };
+            VerifyModel = new Fido2VerifyRequest { UserId = UserId };
 
             State = PasskeyState.Awaiting;
             StatusDetail = authenticatorAttachment == "cross-platform"
@@ -194,7 +157,7 @@ namespace Auth.UI.Components.Pages
                 VerifyModel.ClientDataJson = cred.response.clientDataJSON;
                 VerifyModel.AuthenticatorData = cred.response.authenticatorData;
                 VerifyModel.Signature = cred.response.signature;
-                VerifyModel.UserId = ResolvedUserId;
+                VerifyModel.UserId = UserId;
 
                 await VerifyAsync();
             }
@@ -215,7 +178,6 @@ namespace Auth.UI.Components.Pages
             {
                 State = PasskeyState.Success;
                 StatusDetail = result.Data?.Message ?? "You're signed in.";
-                await OnCompleted.InvokeAsync();
                 NavigationManager.NavigateTo("/profile");
                 return;
             }
