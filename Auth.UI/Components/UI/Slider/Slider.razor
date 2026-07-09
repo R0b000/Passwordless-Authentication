@@ -1,9 +1,28 @@
 @namespace Auth.UI.Components.UI.Slider
 
 <div class="ui-slider">
-    <div class="ui-slider-track">
-        <div class="ui-slider-fill" style="width:@FillPercent%"></div>
-        <div class="ui-slider-thumb" style="left:@FillPercent%" tabindex="0" @onkeydown="OnKeyDown"></div>
+    <div class="ui-slider-header">
+        @if (!string.IsNullOrWhiteSpace(Label))
+        {
+            <label class="ui-slider-label">@Label</label>
+        }
+        <span class="ui-slider-value">@Value</span>
+    </div>
+
+    <div class="ui-slider-track" @ref="_trackElement">
+        <div class="ui-slider-fill" style="width: @FillPercent%"></div>
+        <div class="ui-slider-thumb" 
+             style="left: @FillPercent%" 
+             tabindex="0" 
+             @onkeydown="OnKeyDown"
+             @onmousedown="OnMouseDown"
+             @ontouchstart="OnTouchStart"
+             role="slider" 
+             aria-valuemin="@Min" 
+             aria-valuemax="@Max" 
+             aria-valuenow="@Value"
+             aria-label="@Label">
+        </div>
     </div>
     <div class="ui-slider-labels">
         <span>@Min</span>
@@ -17,34 +36,3 @@
         <span>@Max</span>
     </div>
 </div>
-
-@code {
-    [Parameter] public double Min { get; set; } = 0;
-    [Parameter] public double Max { get; set; } = 100;
-    [Parameter] public double Value { get; set; }
-    [Parameter] public EventCallback<double> ValueChanged { get; set; }
-    [Parameter] public double Step { get; set; } = 1;
-    [Parameter] public bool Disabled { get; set; }
-    [Parameter] public bool ShowSteps { get; set; } = false;
-    [Parameter] public string? Label { get; set; }
-
-    private double FillPercent => (Value - Min) / (Max - Min) * 100;
-
-    private async Task OnKeyDown(KeyboardEventArgs e)
-    {
-        if (Disabled) return;
-        var step = Step;
-        if (e.Key == "ArrowRight" || e.Key == "ArrowUp") { Value = Math.Min(Max, Value + step); await ValueChanged.InvokeAsync(Value); }
-        if (e.Key == "ArrowLeft" || e.Key == "ArrowDown") { Value = Math.Max(Min, Value - step); await ValueChanged.InvokeAsync(Value); }
-        if (e.Key == "Home") { Value = Min; await ValueChanged.InvokeAsync(Value); }
-        if (e.Key == "End") { Value = Max; await ValueChanged.InvokeAsync(Value); }
-    }
-
-    private List<double> GetSteps()
-    {
-        var list = new List<double>();
-        if (Step <= 0) return list;
-        for (double v = Min; v <= Max; v += Step) list.Add(Math.Round(v, 6));
-        return list;
-    }
-}

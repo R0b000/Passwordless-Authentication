@@ -182,9 +182,17 @@ mirrors the backend repository pattern: `HttpService` plays the role of `DapperR
 
 | Route | Page | Purpose |
 |---|---|---|
-| `/` | `Login.razor` | Username/password register & login (tabbed), with a "Continue with passkey" path when `RequiresFido2` |
-| `/fido2` | `Fido2.razor` | Requests a FIDO2 assertion challenge and submits the assertion for verification |
-| `/profile` | `Profile.razor` | Protected page that calls `/api/auth/me` using the stored JWT |
+| `/` | `Login.razor` | Passkey-first sign-in/registration. A prominent "Sign in with a passkey" action is the primary path; password entry is offered as a fallback, and a passkey second factor is requested when `RequiresFido2`. |
+| `/fido2` | `Fido2.razor` | Dedicated FIDO2/WebAuthn sign-in experience. Surfaces biometric and security-key prompts, an `awaiting authenticator` status state, clear error/retry guidance, and a separate "Use a security key" path. |
+| `/profile` | `Profile.razor` | Protected page that calls `/api/auth/me` using the stored JWT; also the entry point for registering a passkey. |
+
+The FIDO2 UI follows WebAuthn UX best practices:
+
+- **Passkey-first, passwordless option** — the passkey button is the primary CTA; passwords are a secondary fallback.
+- **Multi-factor path** — when `RequiresFido2` is returned, the user is shown a "Verify it's you" step that completes sign-in with a passkey or security key.
+- **Biometric & security-key affordances** — the authenticator prompt distinguishes platform biometrics (Face ID / fingerprint) from cross-platform security keys, using `authenticatorAttachment` hints in `webauthn.js`.
+- **Clear ceremony states** — the UI communicates `requesting → awaiting authenticator → verifying → success/error`, with a spinner and plain-language instructions ("Touch your security key", "Use your fingerprint").
+- **Graceful errors** — `NotAllowedError`, `SecurityError`, and unsupported-browser cases are mapped to user-friendly guidance with a retry action.
 
 ### Component architecture (code-behind pattern)
 

@@ -9,7 +9,12 @@ namespace PasswordlessApi.Api.Service.Interface.Repository
     {
         Task<Response<int>> ExecuteAsync(string procedureName, object dataType);
         Task<Response<T>> QuerySingleAsync(string procedureName, object dataType);
-        Task<Response<List<T>>> QueryAsync(string procedureName, object dataType);  
+        Task<Response<TResult>> QuerySingleAsync<TResult>(string procedureName, object dataType);
+        Task<Response<List<T>>> QueryAsync(string procedureName, object dataType);
+        Task<Response<List<TResult>>> QueryAsync<TResult>(string procedureName, object dataType);
+        Task<T?> QueryFirstAsync(string procedureName, object dataType);
+        Task<TResult?> QueryFirstAsync<TResult>(string procedureName, object dataType);
+        Task<SqlMapper.GridReader> QueryMultipleAsync(string procedureName, object dataType);
         Task<List<TResult>> GetAllAsync<TResult>(string spName, object obj, CommandType queryType = CommandType.StoredProcedure);
         Task<TResult> GetAsync<TResult>(string spName, object obj, CommandType queryType = CommandType.StoredProcedure);
         Task<SqlMapper.GridReader> GetMultipleListAsync(string spName, object obj, CommandType queryType = CommandType.StoredProcedure);
