@@ -10,27 +10,22 @@ using System.Security.Claims;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 
-
 namespace PasswordlessApi.Api.Service.Implementation.Auth
 {
     public class AuthService : IAuthService
     {
-        private readonly IGenericRepository<UserIdResult> _userIdRepository;
-        private readonly IGenericRepository<User> _userRepository;
+        private readonly IAuthRepository _authRepository;
         private readonly IPasswordHash _passwordHash;
         private readonly IJwtHelper _jwtHelper;
         private readonly IFido2Service _fido2Service;
-        private readonly IDapperRepository _dapperRepository;
-        private static string ProcedureName = "sp_Users";
+        private const string ProcedureName = "sp_Users";
 
-        public AuthService(IGenericRepository<UserIdResult> userIdRepository, IGenericRepository<User> userRepository, IPasswordHash passwordHash, IJwtHelper jwtHelper, IFido2Service fido2Service, IDapperRepository dapperRepository)
+        public AuthService(IAuthRepository authRepository, IPasswordHash passwordHash, IJwtHelper jwtHelper, IFido2Service fido2Service)
         {
-            _userIdRepository = userIdRepository;
-            _userRepository = userRepository;
+            _authRepository = authRepository;
             _passwordHash = passwordHash;
             _jwtHelper = jwtHelper;
             _fido2Service = fido2Service;
-            _dapperRepository = dapperRepository;
         }
 
         public async Task<AuthResponse> RegisterAsync(RegisterRequest request)
@@ -45,7 +40,7 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
                 PasswordHash = passwordHash
             };
 
-            var userIdResult = await _userIdRepository.QuerySingleAsync(ProcedureName, param);
+            var userIdResult = await _authRepository.QuerySingleAsync<UserIdResult>(ProcedureName, param);
 
             if (userIdResult == null || !userIdResult.Succeeded || userIdResult.Data == null)
             {
@@ -56,7 +51,7 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
             }
 
             var token = _jwtHelper.GenerateToken(userIdResult.Data.UserId, request.Username);
-            var refreshToken = await CreateRefreshTokenAsync(userIdResult.Data.UserId);
+            await CreateRefreshTokenAsync(userIdResult.Data.UserId);
 
             return new AuthResponse
             {
@@ -64,7 +59,6 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
                 Username = request.Username,
                 Email = request.Email,
                 Token = token,
-                RefreshToken = refreshToken,
                 Message = "Registered successfully"
             };
         }
@@ -77,7 +71,7 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
                 Username = request.Username
             };
 
-            var userIdResult = await _userIdRepository.QuerySingleAsync(
+            var userIdResult = await _authRepository.QuerySingleAsync<UserIdResult>(
                 ProcedureName,
                 param
             );
@@ -95,8 +89,8 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
                 AuthType = "Login",
                 UserId = userIdResult.Data.UserId
             };
-            
-            var user = await _userRepository.QuerySingleAsync(ProcedureName, param_1);
+
+            var user = await _authRepository.QuerySingleAsync<User>(ProcedureName, param_1);
 
             if (user == null || !user.Succeeded || user.Data == null || string.IsNullOrEmpty(user.Data.PasswordHash))
             {
@@ -131,7 +125,7 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
             }
 
             var token = _jwtHelper.GenerateToken(user.Data.Id, user.Data.Username);
-            var refreshToken = await CreateRefreshTokenAsync(user.Data.Id);
+            await CreateRefreshTokenAsync(user.Data.Id);
 
             return new AuthResponse
             {
@@ -139,7 +133,6 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
                 Username = user.Data.Username,
                 Email = user.Data.Email,
                 Token = token,
-                RefreshToken = refreshToken,
                 Message = "Login successful",
                 RequiresFido2 = false
             };
@@ -147,7 +140,7 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
 
         public async Task<User?> GetUserByIdAsync(int userId)
         {
-            var userResult = await _userRepository.QuerySingleAsync(
+            var userResult = await _authRepository.QuerySingleAsync<User>(
                 ProcedureName,
                 new { AuthType = "Login", UserId = userId });
             return userResult.Succeeded ? userResult.Data : null;
@@ -155,7 +148,7 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
 
         public async Task<User?> GetUserByEmailAsync(string email)
         {
-            var userResult = await _userRepository.QuerySingleAsync(
+            var userResult = await _authRepository.QuerySingleAsync<User>(
                 ProcedureName,
                 new { AuthType = "Login", Email = email });
             return userResult.Succeeded ? userResult.Data : null;
@@ -163,7 +156,7 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
 
         public async Task<OtpResponse> RequestOtpAsync(OtpRequest request)
         {
-            var userResult = await _userRepository.QuerySingleAsync(
+            var userResult = await _authRepository.QuerySingleAsync<User>(
                 ProcedureName,
                 new { AuthType = "Login", UserId = request.UserId });
 
@@ -182,7 +175,7 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
             var otp = random.Next(100000, 999999).ToString();
             var expiresAt = DateTime.UtcNow.AddMinutes(5);
 
-            var dapperResult = await _dapperRepository.QuerySingleAsync<dynamic>(
+            await _authRepository.ExecuteAsync(
                 ProcedureName,
                 new
                 {
@@ -210,7 +203,7 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
                 UserId = request.UserId
             };
 
-            var userResult = await _userRepository.QuerySingleAsync(
+            var userResult = await _authRepository.QuerySingleAsync<User>(
                 ProcedureName,
                 param);
 
@@ -229,17 +222,17 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
                 Now = now
             };
 
-            var isConsumed = await _dapperRepository.QuerySingleAsync<bool>(
+            var isConsumed = await _authRepository.QueryFirstAsync<bool>(
                 ProcedureName,
                 param_1);
 
-            if (!isConsumed)
+            if (isConsumed != true)
             {
                 return new AuthResponse { Message = "Invalid or expired OTP" };
             }
 
             var token = _jwtHelper.GenerateToken(user.Id, user.Username);
-            var refreshToken = await CreateRefreshTokenAsync(user.Id);
+            await CreateRefreshTokenAsync(user.Id);
 
             return new AuthResponse
             {
@@ -247,7 +240,6 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
                 Username = user.Username,
                 Email = user.Email,
                 Token = token,
-                RefreshToken = refreshToken,
                 Message = "Login successful",
                 RequiresFido2 = false
             };
@@ -262,7 +254,7 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
                 UserId = userId
             };
 
-            var credentials = await _dapperRepository.QueryAsync<UserCredential>(
+            var credentials = await _authRepository.QueryAsync<UserCredential>(
                 ProcedureName,
                 param);
 
@@ -298,32 +290,31 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
                 UserId = userId
             };
 
-            var credentials = await _dapperRepository.QueryAsync<UserCredential>(
+            var credentials = await _authRepository.QueryAsync<UserCredential>(
                 ProcedureName,
                 param);
 
             return credentials != null && credentials.Any();
         }
 
-        private async Task<string> CreateRefreshTokenAsync(int userId)
+        private async Task CreateRefreshTokenAsync(int userId)
         {
             var now = DateTime.UtcNow;
-            var refreshToken = _jwtHelper.GenerateRefreshToken();
+            var rawToken = _jwtHelper.GenerateRefreshToken();
+            var tokenHash = _passwordHash.HashPassword(rawToken);
             var refreshExpiryDays = _jwtHelper.GetRefreshTokenExpiryDays();
 
-            await _dapperRepository.ExecuteAsync(
+            await _authRepository.ExecuteAsync(
                 ProcedureName,
                 new
                 {
                     AuthType = "RefreshToken",
                     FIDOOperation = "CreateRefreshToken",
                     UserId = userId,
-                    Token = refreshToken,
+                    TokenHash = tokenHash,
                     ExpiresAt = now.AddDays(refreshExpiryDays),
                     Now = now
                 });
-
-            return refreshToken;
         }
 
         public async Task<AuthResponse> RefreshTokenAsync(RefreshTokenRequest request)
@@ -362,21 +353,23 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
                 return new AuthResponse { Message = "Invalid access token claims" };
             }
 
-            var storedRefreshToken = await _dapperRepository.QuerySingleAsync<RefreshToken>(
+            var incomingTokenHash = _passwordHash.HashPassword(request.RefreshToken);
+
+            var storedRefreshToken = await _authRepository.QuerySingleAsync<RefreshToken>(
                 ProcedureName,
                 new
                 {
                     AuthType = "RefreshToken",
                     FIDOOperation = "GetRefreshToken",
-                    Token = request.RefreshToken
+                    TokenHash = incomingTokenHash
                 });
 
-            if (storedRefreshToken == null)
+            if (storedRefreshToken == null || !storedRefreshToken.Succeeded || storedRefreshToken.Data == null)
             {
                 return new AuthResponse { Message = "Invalid refresh token" };
             }
 
-            var refreshToken = storedRefreshToken;
+            var refreshToken = storedRefreshToken.Data;
 
             if (refreshToken.UserId != userId)
             {
@@ -390,41 +383,37 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
 
             if (refreshToken.ExpiresAt < now)
             {
-                await _dapperRepository.ExecuteAsync(
+                await _authRepository.ExecuteAsync(
                     ProcedureName,
                     new
                     {
                         AuthType = "RefreshToken",
                         FIDOOperation = "RevokeRefreshToken",
-                        Token = request.RefreshToken,
+                        TokenHash = incomingTokenHash,
                         Now = now
                     });
 
                 return new AuthResponse { Message = "Refresh token expired" };
             }
 
-            var newAccessToken = _jwtHelper.GenerateToken(userId, usernameClaim ?? string.Empty);
-            var newRefreshToken = _jwtHelper.GenerateRefreshToken();
-            var refreshExpiryDays = _jwtHelper.GetRefreshTokenExpiryDays();
-
-            await _dapperRepository.ExecuteAsync(
+            await _authRepository.ExecuteAsync(
                 ProcedureName,
                 new
                 {
                     AuthType = "RefreshToken",
-                    FIDOOperation = "CreateRefreshToken",
-                    UserId = userId,
-                    Token = newRefreshToken,
-                    ExpiresAt = now.AddDays(refreshExpiryDays),
+                    FIDOOperation = "RevokeRefreshToken",
+                    TokenHash = incomingTokenHash,
                     Now = now
                 });
+
+            var newAccessToken = _jwtHelper.GenerateToken(userId, usernameClaim ?? string.Empty);
+            await CreateRefreshTokenAsync(userId);
 
             return new AuthResponse
             {
                 UserId = userId,
                 Username = usernameClaim ?? string.Empty,
                 Token = newAccessToken,
-                RefreshToken = newRefreshToken,
                 Message = "Token refreshed successfully"
             };
         }

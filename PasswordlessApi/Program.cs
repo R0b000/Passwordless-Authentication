@@ -1,6 +1,7 @@
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.Extensions.Options;
 using PasswordlessApi.Api.Configuration;
 using PasswordlessApi.Api.Service.Implementation.Auth;
 using PasswordlessApi.Api.Service.Implementation.Repository;
@@ -11,8 +12,6 @@ using PasswordlessApi.Api.Utility.PasswordHash;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Pin the API to a fixed HTTP address so the Blazor UI (BaseUrl http://localhost:5000)
-// can always reach it, independent of which launch profile is selected.
 builder.WebHost.UseUrls("http://localhost:5000");
 
 var jwtSecret = builder.Configuration["JwtSettings:SecretKey"] ?? Environment.GetEnvironmentVariable("JWT_SECRET_KEY");
@@ -52,6 +51,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 builder.Services.AddScoped<DapperContext>();
 builder.Services.AddScoped<IDapperRepository, DapperRepository>();
+builder.Services.AddScoped<IAuthRepository, AuthRepository>();
 builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
 builder.Services.AddScoped<IPasswordHash, PasswordHash>();
 builder.Services.AddScoped<IJwtHelper, JwtHelper>();
@@ -59,6 +59,7 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IFido2Service, Fido2Service>();
 builder.Services.AddScoped<IOtpService, OtpService>();
 builder.Services.AddScoped<IUserCredentialService, UserCredentialService>();
+builder.Services.Configure<Fido2Settings>(builder.Configuration.GetSection("Fido2Settings"));
 
 var app = builder.Build();
 

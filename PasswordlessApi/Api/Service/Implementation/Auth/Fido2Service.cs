@@ -4,9 +4,10 @@ using PasswordlessApi.Api.Models.ResponseModel.Auth;
 using PasswordlessApi.Api.Service.Interface.Repository;
 using PasswordlessApi.Api.Service.Interface.Auth;
 using PasswordlessApi.Api.Utility.Jwt;
+using PasswordlessApi.Api.Configuration;
 using Fido2NetLib;
 using Fido2NetLib.Objects;
-using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 
 namespace PasswordlessApi.Api.Service.Implementation.Auth
 {
@@ -17,13 +18,14 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
         private readonly Fido2 _fido2;
         private readonly Fido2Configuration _fido2Config;
 
-        public Fido2Service(IDapperRepository dapperRepository, IJwtHelper jwtHelper, IConfiguration configuration)
+        public Fido2Service(IDapperRepository dapperRepository, IJwtHelper jwtHelper, IOptions<Fido2Settings> fido2Settings)
         {
             _dapperRepository = dapperRepository;
             _jwtHelper = jwtHelper;
 
-            var serverDomain = configuration["Fido2Settings:ServerDomain"] ?? "localhost";
-            var serverName = configuration["Fido2Settings:ServerName"] ?? "PasswordlessApi";
+            var settings = fido2Settings.Value;
+            var serverDomain = settings.ServerDomain;
+            var serverName = settings.ServerName;
 
             _fido2Config = new Fido2Configuration
             {
@@ -35,10 +37,9 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
                 {
                     $"https://{serverDomain}",
                     $"http://{serverDomain}",
-                    configuration["Fido2Settings:Origin"] ?? string.Empty,
-                    configuration["ApiSettings:BaseUrl"] ?? string.Empty
+                    settings.Origin ?? string.Empty
                 }
-                .Concat(configuration.GetSection("Fido2Settings:AllowedOrigins").Get<string[]>() ?? Array.Empty<string>())
+                .Concat(settings.AllowedOrigins)
                 .Where(o => !string.IsNullOrEmpty(o))
                 .ToHashSet(StringComparer.OrdinalIgnoreCase)
             };

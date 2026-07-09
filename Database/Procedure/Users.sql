@@ -227,25 +227,25 @@ BEGIN
     BEGIN
         IF @FIDOOperation = 'CreateRefreshToken'
         BEGIN
-            INSERT INTO dbo.RefreshTokens (UserId, Token, ExpiresAt)
-            VALUES (@UserId, @Token, @ExpiresAt);
+            INSERT INTO dbo.RefreshTokens (UserId, TokenHash, ExpiresAt)
+            VALUES (@UserId, @TokenHash, @ExpiresAt);
 
-            SELECT TOP 1 Id, UserId, Token, ExpiresAt, IsRevoked, CreatedAt, RevokedAt
+            SELECT TOP 1 Id, UserId, TokenHash, ExpiresAt, IsRevoked, CreatedAt, RevokedAt
             FROM dbo.RefreshTokens
-            WHERE Token = @Token;
+            WHERE TokenHash = @TokenHash;
         END
         ELSE IF @FIDOOperation = 'GetRefreshToken'
         BEGIN
-            SELECT TOP 1 Id, UserId, Token, ExpiresAt, IsRevoked, CreatedAt, RevokedAt
+            SELECT TOP 1 Id, UserId, TokenHash, ExpiresAt, IsRevoked, CreatedAt, RevokedAt
             FROM dbo.RefreshTokens
-            WHERE Token = @Token;
+            WHERE TokenHash = @TokenHash;
         END
         ELSE IF @FIDOOperation = 'RevokeRefreshToken'
         BEGIN
             UPDATE dbo.RefreshTokens
             SET IsRevoked = 1,
                 RevokedAt = @Now
-            WHERE Token = @Token;
+            WHERE TokenHash = @TokenHash;
 
             SELECT @@ROWCOUNT AS RowsAffected;
         END
