@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using PasswordlessApi.Api.Configuration;
 
 namespace PasswordlessApi.Api.Middleware
 {
@@ -7,11 +9,13 @@ namespace PasswordlessApi.Api.Middleware
     {
         private readonly RequestDelegate _next;
         private readonly ILogger<SecurityHeadersMiddleware> _logger;
+        private readonly ApiSettings _apiSettings;
 
-        public SecurityHeadersMiddleware(RequestDelegate next, ILogger<SecurityHeadersMiddleware> logger)
+        public SecurityHeadersMiddleware(RequestDelegate next, ILogger<SecurityHeadersMiddleware> logger, IOptions<ApiSettings> apiSettings)
         {
             _next = next;
             _logger = logger;
+            _apiSettings = apiSettings.Value;
         }
 
         public async Task InvokeAsync(HttpContext context)
@@ -21,7 +25,7 @@ namespace PasswordlessApi.Api.Middleware
             context.Response.Headers["X-XSS-Protection"] = "1; mode=block";
             context.Response.Headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
             context.Response.Headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()";
-            context.Response.Headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://bijayatestui.runasp.net https://bijayatestapi.runasp.net https://ray-champion-crow.ngrok-free.app https://silk-shaky-hedging.ngrok-free.dev; frame-ancestors 'none';";
+            context.Response.Headers["Content-Security-Policy"] = BuildContentSecurityPolicy();
             context.Response.Headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains; preload";
             context.Response.Headers.Remove("Server");
 
@@ -32,6 +36,20 @@ namespace PasswordlessApi.Api.Middleware
             }
 
             await _next(context);
+        }
+
+        private string BuildContentSecurityPolicy()
+        {
+            var origins = _apiSettings.GetAllowedOrigins();
+            var cspSources = origins.Concat(_apiSettings.CspExtraSources ?? [])
+                                    .Where(s => !string.IsNullOrWhiteSpace(s))
+                                    .Select(s => s.Trim())
+                                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                                    .ToArray();
+
+            var originDirectives = cspSources.Length > 0 ? string.Join(" ", cspSources) : "'self'";
+
+            return $"default-src 'self'; script-src {originDirectives}; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' {originDirectives}; frame-ancestors 'none';";
         }
     }
 }

@@ -39,6 +39,13 @@ namespace PasswordlessApi.Api.Configuration
         public List<string> AllowedOrigins { get; set; } = new();
 
         /// <summary>
+        /// Additional sources for Content-Security-Policy directives (connect-src,
+        /// script-src) that are not included in AllowedOrigins. Useful for wildcard
+        /// or environment-specific patterns that CORS does not support.
+        /// </summary>
+        public List<string> CspExtraSources { get; set; } = new();
+
+        /// <summary>
         /// Returns the configured origins as a clean array (trimmed, de-duplicated,
         /// non-empty). Safe to hand directly to <c>policy.WithOrigins(...)</c>.
         /// </summary>
