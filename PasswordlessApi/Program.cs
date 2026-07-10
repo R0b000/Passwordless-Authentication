@@ -102,7 +102,8 @@ builder.Services.AddCors(options =>
         else
         {
             policy.WithOrigins(
-                "http://localhost:5115"
+                "http://localhost:5115",
+                "https://probable-space-sniffle-4x56q57w7jwhqq7g-5115.app.github.dev"
             )
                   .AllowAnyHeader()
                   .AllowAnyMethod()
