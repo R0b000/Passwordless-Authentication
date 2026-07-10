@@ -14,6 +14,16 @@ using PasswordlessApi.Api.Utility.PasswordHash;
 
 var builder = WebApplication.CreateBuilder(args);
 
+var configuredUrls = builder.Configuration["ASPNETCORE_URLS"] ?? builder.Configuration["Urls"];
+if (string.IsNullOrWhiteSpace(configuredUrls))
+{
+    builder.WebHost.UseUrls("http://localhost:5000");
+}
+else
+{
+    builder.WebHost.UseUrls(configuredUrls);
+}
+
 var jwtSecret = builder.Configuration["JwtSettings:SecretKey"] ?? Environment.GetEnvironmentVariable("JWT_SECRET_KEY");
 if (string.IsNullOrWhiteSpace(jwtSecret) || jwtSecret is "fake_jwt_token" or "fake_local_key")
 {
@@ -30,6 +40,7 @@ var key = Encoding.UTF8.GetBytes(jwtSecret);
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddControllers();
+builder.Services.AddMemoryCache();
 builder.Services.AddAuthorization();
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -90,7 +101,9 @@ builder.Services.AddCors(options =>
         }
         else
         {
-            policy.WithOrigins("https://localhost:5001", "http://localhost:5000")
+            policy.WithOrigins(
+                "http://localhost:5115"
+            )
                   .AllowAnyHeader()
                   .AllowAnyMethod()
                   .AllowCredentials();
@@ -117,7 +130,7 @@ if (!app.Environment.IsDevelopment())
 app.UseCors("DefaultCorsPolicy");
 app.UseAuthentication();
 app.UseAuthorization();
-app.UseMiddleware<PasswordlessApi.Api.Middleware.SecurityHeadersMiddleware>();
+app.UseMiddleware<SecurityHeadersMiddleware>();
 app.UseRateLimiter();
 app.MapControllers();
 
