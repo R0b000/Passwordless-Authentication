@@ -105,11 +105,5 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
                 RequiresFido2 = false
             };
         }
-
-        private static string GenerateOtp()
-        {
-            var random = new Random();
-            return random.Next(100000, 999999).ToString();
-        }
     }
 }

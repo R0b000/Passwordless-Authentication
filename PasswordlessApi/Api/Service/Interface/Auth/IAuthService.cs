@@ -16,6 +16,6 @@ namespace PasswordlessApi.Api.Service.Interface.Auth
         Task<Fido2VerifyResponse> RegisterCredentialAsync(Fido2RegisterRequest request);
         Task<Fido2ChallengeResponse> CreateFido2ChallengeAsync(Fido2ChallengeRequest request);
         Task<Fido2VerifyResponse> VerifyFido2AssertionAsync(Fido2VerifyRequest request);
-        Task<AuthResponse> RefreshTokenAsync(RefreshTokenRequest request);
+        Task<AuthResponse>  (RefreshTokenRequest request);
     }
 }

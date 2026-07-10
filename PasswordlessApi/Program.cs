@@ -4,10 +4,14 @@ using Microsoft.IdentityModel.Tokens;
 using PasswordlessApi.Api.Configuration;
 using PasswordlessApi.Api.Service.Implementation.Auth;
 using PasswordlessApi.Api.Service.Implementation.Repository;
+using PasswordlessApi.Api.Service.Implementation.Rbac;
 using PasswordlessApi.Api.Service.Interface.Auth;
 using PasswordlessApi.Api.Service.Interface.Repository;
+using PasswordlessApi.Api.Service.Interface.Rbac;
 using PasswordlessApi.Api.Utility.Jwt;
 using PasswordlessApi.Api.Utility.PasswordHash;
+using PasswordlessApi.Api.Authorization;
+using Microsoft.AspNetCore.Authorization;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -59,6 +63,18 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IFido2Service, Fido2Service>();
 builder.Services.AddScoped<IOtpService, OtpService>();
 builder.Services.AddScoped<IUserCredentialService, UserCredentialService>();
+builder.Services.AddScoped<IRoleService, RoleService>();
+builder.Services.AddScoped<IPermissionService, PermissionService>();
+builder.Services.AddScoped<IUserRoleService, UserRoleService>();
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddSingleton<IAuthorizationHandler, PermissionAuthorizationHandler>();
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("ManageRoles", policy => policy.Requirements.Add(new PermissionRequirement("roles.write")));
+    options.AddPolicy("ReadRoles", policy => policy.Requirements.Add(new PermissionRequirement("roles.read")));
+    options.AddPolicy("ManageUsers", policy => policy.Requirements.Add(new PermissionRequirement("users.write")));
+    options.AddPolicy("ReadUsers", policy => policy.Requirements.Add(new PermissionRequirement("users.read")));
+});
 
 var app = builder.Build();
 
@@ -74,6 +90,13 @@ if (!app.Environment.IsDevelopment())
 }
 app.UseAuthentication();
 app.UseAuthorization();
+
+using (var scope = app.Services.CreateScope())
+{
+    var permissionService = scope.ServiceProvider.GetRequiredService<IPermissionService>();
+    await permissionService.SeedDefaultPermissionsAsync();
+}
+
 app.MapControllers();
 
 app.Run();

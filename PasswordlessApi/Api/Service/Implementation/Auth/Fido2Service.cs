@@ -121,7 +121,8 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
             }
             catch (Exception ex)
             {
-                return new Fido2VerifyResponse { Success = false, Message = $"Invalid attestation response: {ex.Message}" };
+                _logger.LogError(ex, "FIDO2 registration parsing failed for user {UserId}", request.UserId);
+                return new Fido2VerifyResponse { Success = false, Message = "Invalid registration data." };
             }
 
             var makeCredentialParams = new MakeNewCredentialParams
@@ -160,7 +161,8 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
             }
             catch (Fido2VerificationException ex)
             {
-                return new Fido2VerifyResponse { Success = false, Message = $"Passkey registration failed: {ex.Message}" };
+                _logger.LogError(ex, "FIDO2 registration parsing failed for user {UserId}", request.UserId);
+                return new Fido2VerifyResponse { Success = false, Message = "Invalid registration data." };
             }
         }
 
@@ -293,7 +295,20 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
                 OriginalOptions = originalOptions,
                 StoredPublicKey = storedPublicKey,
                 StoredSignatureCounter = storedCount,
-                IsUserHandleOwnerOfCredentialIdCallback = async (p, ct) => true
+                IsUserHandleOwnerOfCredentialIdCallback = async (args, ct) =>
+                {
+                    // Extract the userId from the UserHandle provided by the authenticator
+                    var claimedUserId = BitConverter.ToInt32(args.UserHandle);
+                    var credentialIdBase64 = Convert.ToBase64String(args.CredentialId);
+                    
+                    // Fetch the credential from the DB
+                    var credential = await _dapperRepository.QueryFirstAsync<UserCredential>(
+                        "sp_Users",
+                        new { AuthType = "FIDO", FIDOOperation = "GetCredential", CredentialId = credentialIdBase64 });
+                        
+                    // Ensure the credential exists AND belongs to the claimed user
+                    return credential != null && credential.UserId == claimedUserId;
+                }
             };
 
             try
@@ -338,7 +353,8 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
             }
             catch (Fido2VerificationException ex)
             {
-                return new Fido2VerifyResponse { Success = false, Message = $"FIDO2 verification error: {ex.Message}" };
+                _logger.LogError(ex, "FIDO2 verification failed for user {UserId}", request.UserId);
+                return new Fido2VerifyResponse { Success = false, Message = "Authentication failed. Please try again." };
             }
         }
 

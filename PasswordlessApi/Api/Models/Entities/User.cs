@@ -8,5 +8,7 @@ namespace PasswordlessApi.Api.Models.Entities
         public string? PasswordHash { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }
+        public string? Role { get; set; }
+        public List<string> Permissions { get; set; } = new();
     }
 }

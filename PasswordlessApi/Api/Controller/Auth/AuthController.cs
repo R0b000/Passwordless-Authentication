@@ -74,12 +74,19 @@ namespace PasswordlessApi.Api.Controller.Auth
                 return NotFound();
             }
 
+            var userRoleService = HttpContext.RequestServices.GetService<PasswordlessApi.Api.Service.Interface.Rbac.IUserRoleService>();
+            var userWithRoles = userRoleService != null
+                ? await userRoleService.GetUserWithRolesAndPermissionsAsync(userId)
+                : null;
+
             return Ok(new AuthResponse
             {
                 UserId = user.Id,
                 Username = user.Username,
                 Email = user.Email,
-                Message = "Authenticated"
+                Message = "Authenticated",
+                Role = userWithRoles?.Role,
+                Permissions = userWithRoles?.Permissions ?? new List<string>()
             });
         }
 
