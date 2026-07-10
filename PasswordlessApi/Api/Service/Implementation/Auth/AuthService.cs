@@ -24,10 +24,10 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
         private readonly IDapperRepository _dapperRepository;
         private readonly IUserRoleService _userRoleService;
         private readonly IRoleService _roleService;
-        private readonly GenerateSecureOtp _otpGenerator = new GenerateSecureOtp();
+        private readonly IOtpService _otpService;
         private static string ProcedureName = "sp_Users";
 
-        public AuthService(IGenericRepository<UserIdResult> userIdRepository, IGenericRepository<User> userRepository, IPasswordHash passwordHash, IJwtHelper jwtHelper, IFido2Service fido2Service, IDapperRepository dapperRepository, IUserRoleService userRoleService, IRoleService roleService)
+        public AuthService(IGenericRepository<UserIdResult> userIdRepository, IGenericRepository<User> userRepository, IPasswordHash passwordHash, IJwtHelper jwtHelper, IFido2Service fido2Service, IDapperRepository dapperRepository, IUserRoleService userRoleService, IRoleService roleService, IOtpService otpService)
         {
             _userIdRepository = userIdRepository;
             _userRepository = userRepository;
@@ -37,6 +37,7 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
             _dapperRepository = dapperRepository;
             _userRoleService = userRoleService;
             _roleService = roleService;
+            _otpService = otpService;
         }
 
         public async Task<AuthResponse> RegisterAsync(RegisterRequest request)
@@ -178,95 +179,14 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
             return userResult.Succeeded ? userResult.Data : null;
         }
 
-        public async Task<OtpResponse> RequestOtpAsync(OtpRequest request)
+        public Task<OtpResponse> RequestOtpAsync(OtpRequest request)
         {
-            var userResult = await _userRepository.QuerySingleAsync(
-                ProcedureName,
-                new { AuthType = "Login", UserId = request.UserId });
-
-            if (userResult == null || !userResult.Succeeded || userResult.Data == null)
-            {
-                return new OtpResponse { Success = false, Message = "User not found" };
-            }
-
-            var user = userResult.Data;
-            if (string.IsNullOrEmpty(user.Email))
-            {
-                return new OtpResponse { Success = false, Message = "User does not have an email configured" };
-            }
-
-            var otp = _otpGenerator.GenerateSecureOtpCode();
-            var expiresAt = DateTime.UtcNow.AddMinutes(5);
-
-            var dapperResult = await _dapperRepository.QuerySingleAsync<dynamic>(
-                ProcedureName,
-                new
-                {
-                    AuthType = "EmailOtp",
-                    FIDOOperation = "CreateOtp",
-                    UserId = user.Id,
-                    Otp = otp,
-                    ExpiresAt = expiresAt
-                });
-
-            return new OtpResponse
-            {
-                Success = true,
-                Message = $"OTP sent to {user.Email} (Demo OTP: {otp})",
-                Otp = otp
-            };
+            return _otpService.RequestOtpAsync(request);
         }
 
-        public async Task<AuthResponse> VerifyOtpAsync(OtpVerifyRequest request)
+        public Task<AuthResponse> VerifyOtpAsync(OtpVerifyRequest request)
         {
-            var now = DateTime.UtcNow;
-            var param = new
-            {
-                AuthType = "Login",
-                UserId = request.UserId
-            };
-
-            var userResult = await _userRepository.QuerySingleAsync(
-                ProcedureName,
-                param);
-
-            if (userResult == null || !userResult.Succeeded || userResult.Data == null)
-            {
-                return new AuthResponse { Message = "User not found" };
-            }
-
-            var user = userResult.Data;
-            var param_1 = new
-            {
-                AuthType = "EmailOtp",
-                FIDOOperation = "ConsumeOtp",
-                UserId = request.UserId,
-                Otp = request.Otp,
-                Now = now
-            };
-
-            var isConsumed = await _dapperRepository.QuerySingleAsync<bool>(
-                ProcedureName,
-                param_1);
-
-            if (!isConsumed)
-            {
-                return new AuthResponse { Message = "Invalid or expired OTP" };
-            }
-
-            var token = _jwtHelper.GenerateToken(user.Id, user.Username);
-            var refreshToken = await CreateRefreshTokenAsync(user.Id);
-
-            return new AuthResponse
-            {
-                UserId = user.Id,
-                Username = user.Username,
-                Email = user.Email,
-                Token = token,
-                RefreshToken = refreshToken,
-                Message = "Login successful",
-                RequiresFido2 = false
-            };
+            return _otpService.VerifyOtpAsync(request);
         }
 
         public async Task<List<UserCredential>> GetUserCredentialsAsync(int userId)
@@ -443,6 +363,16 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
 
                 return new AuthResponse { Message = "Refresh token expired" };
             }
+
+            await _dapperRepository.ExecuteAsync(
+                ProcedureName,
+                new
+                {
+                    AuthType = "RefreshToken",
+                    FIDOOperation = "RevokeRefreshToken",
+                    Token = request.RefreshToken,
+                    Now = now
+                });
 
             var newAccessToken = _jwtHelper.GenerateToken(userId, usernameClaim ?? string.Empty);
             var newRefreshToken = _jwtHelper.GenerateRefreshToken();

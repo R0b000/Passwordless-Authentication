@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using PasswordlessApi.Api.Models.RequestModel.Auth;
 using PasswordlessApi.Api.Models.ResponseModel.Auth;
 using PasswordlessApi.Api.Service.Interface.Auth;
+using PasswordlessApi.Api.Service.Interface.Rbac;
 
 namespace PasswordlessApi.Api.Controller.Auth
 {
@@ -11,9 +12,11 @@ namespace PasswordlessApi.Api.Controller.Auth
     public class AuthController : ControllerBase
     {
         private readonly IAuthService _authService;
-        public AuthController(IAuthService authService)
+        private readonly IUserRoleService _userRoleService;
+        public AuthController(IAuthService authService, IUserRoleService userRoleService)
         {
             _authService = authService;
+            _userRoleService = userRoleService;
         }
 
         [HttpPost("register")]
@@ -68,28 +71,24 @@ namespace PasswordlessApi.Api.Controller.Auth
                 return Unauthorized();
             }
 
-            var user = await _authService.GetUserByIdAsync(userId);
-            if (user == null)
+            var userWithRoles = await _userRoleService.GetUserWithRolesAndPermissionsAsync(userId);
+            if (userWithRoles == null)
             {
                 return NotFound();
             }
 
-            var userRoleService = HttpContext.RequestServices.GetService<PasswordlessApi.Api.Service.Interface.Rbac.IUserRoleService>();
-            var userWithRoles = userRoleService != null
-                ? await userRoleService.GetUserWithRolesAndPermissionsAsync(userId)
-                : null;
-
             return Ok(new AuthResponse
             {
-                UserId = user.Id,
-                Username = user.Username,
-                Email = user.Email,
+                UserId = userWithRoles.Id,
+                Username = userWithRoles.Username,
+                Email = userWithRoles.Email,
                 Message = "Authenticated",
-                Role = userWithRoles?.Role,
-                Permissions = userWithRoles?.Permissions ?? new List<string>()
+                Role = userWithRoles.Role,
+                Permissions = userWithRoles.Permissions ?? new List<string>()
             });
         }
 
+        [Authorize]
         [HttpGet("lookup")]
         public async Task<ActionResult<AuthResponse>> Lookup([FromQuery] string email)
         {

@@ -7,6 +7,7 @@ using PasswordlessApi.Api.Utility.Jwt;
 using Fido2NetLib;
 using Fido2NetLib.Objects;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
 namespace PasswordlessApi.Api.Service.Implementation.Auth
 {
@@ -16,11 +17,13 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
         private readonly IJwtHelper _jwtHelper;
         private readonly Fido2 _fido2;
         private readonly Fido2Configuration _fido2Config;
+        private readonly ILogger<Fido2Service> _logger;
 
-        public Fido2Service(IDapperRepository dapperRepository, IJwtHelper jwtHelper, IConfiguration configuration)
+        public Fido2Service(IDapperRepository dapperRepository, IJwtHelper jwtHelper, IConfiguration configuration, ILogger<Fido2Service> logger)
         {
             _dapperRepository = dapperRepository;
             _jwtHelper = jwtHelper;
+            _logger = logger;
 
             var serverDomain = configuration["Fido2Settings:ServerDomain"] ?? "localhost";
             var serverName = configuration["Fido2Settings:ServerName"] ?? "PasswordlessApi";
