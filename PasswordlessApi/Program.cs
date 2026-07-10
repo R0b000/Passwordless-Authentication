@@ -75,39 +75,36 @@ builder.Services.AddScoped<PasswordlessApi.Api.Service.Interface.Security.ILocat
 builder.Services.AddScoped<PasswordlessApi.Api.Service.Interface.Security.IAuditLogService, PasswordlessApi.Api.Service.Implementation.Security.AuditLogService>();
 builder.Services.AddScoped<PasswordlessApi.Api.Service.Interface.Security.IRateLimiter, PasswordlessApi.Api.Service.Implementation.Security.InMemoryRateLimiter>();
 builder.Services.AddHttpContextAccessor();
-builder.Services.Configure<Fido2Settings>(builder.Configuration.GetSection("Fido2Settings"));
-builder.Services.Configure<SecuritySettings>(builder.Configuration.GetSection("SecuritySettings"));
-builder.Services.Configure<CorsSettings>(builder.Configuration.GetSection("CorsSettings"));
 
-var corsSettings = builder.Configuration.GetSection("CorsSettings").Get<CorsSettings>() ?? new CorsSettings();
-var allowedOrigins = corsSettings.AllowedOrigins.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+// Centralized, strongly typed API configuration (base URL + authorized origins).
+// This single section drives BOTH the CORS policy and the FIDO2 relying-party setup.
+builder.Services.Configure<ApiSettings>(builder.Configuration.GetSection(ApiSettings.SectionName));
+builder.Services.Configure<SecuritySettings>(builder.Configuration.GetSection("SecuritySettings"));
+
+var apiSettings = builder.Configuration.GetSection(ApiSettings.SectionName).Get<ApiSettings>() ?? new ApiSettings();
+var allowedOrigins = apiSettings.GetAllowedOrigins();
 
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("DefaultCorsPolicy", policy =>
     {
-        if (allowedOrigins.Length > 0 && !(allowedOrigins.Length == 1 && allowedOrigins[0] == "*"))
+        if (apiSettings.IsWildcardOrigin())
         {
-            policy.WithOrigins(allowedOrigins)
-                  .AllowAnyHeader()
-                  .AllowAnyMethod()
-                  .AllowCredentials();
-        }
-        else if (allowedOrigins.Length == 1 && allowedOrigins[0] == "*")
-        {
+            // Wildcard cannot be combined with AllowCredentials per the CORS spec.
             policy.AllowAnyOrigin()
                   .AllowAnyHeader()
                   .AllowAnyMethod();
         }
-        else
+        else if (allowedOrigins.Length > 0)
         {
-            policy.WithOrigins(
-                "http://localhost:5115",
-                "https://probable-space-sniffle-4x56q57w7jwhqq7g-5115.app.github.dev"
-            )
-                  .AllowAnyHeader()
-                  .AllowAnyMethod()
-                  .AllowCredentials();
+            var builderPolicy = policy.WithOrigins(allowedOrigins)
+                                      .AllowAnyHeader()
+                                      .AllowAnyMethod();
+
+            if (apiSettings.AllowCredentials)
+            {
+                builderPolicy.AllowCredentials();
+            }
         }
     });
 });

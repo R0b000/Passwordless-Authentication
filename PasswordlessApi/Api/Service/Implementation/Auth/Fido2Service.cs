@@ -16,24 +16,16 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
     {
         private readonly IDapperRepository _dapperRepository;
         private readonly IJwtHelper _jwtHelper;
-        private readonly Fido2Settings _settings;
+        private readonly ApiSettings _settings;
         private readonly HashSet<string> _allowedOrigins;
 
-        public Fido2Service(IDapperRepository dapperRepository, IJwtHelper jwtHelper, IOptions<Fido2Settings> fido2Settings)
+        public Fido2Service(IDapperRepository dapperRepository, IJwtHelper jwtHelper, IOptions<ApiSettings> apiSettings)
         {
             _dapperRepository = dapperRepository;
             _jwtHelper = jwtHelper;
-            _settings = fido2Settings.Value;
+            _settings = apiSettings.Value;
 
-            _allowedOrigins = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            if (_settings.AllowedOrigins != null)
-            {
-                foreach (var origin in _settings.AllowedOrigins)
-                {
-                    if (!string.IsNullOrEmpty(origin))
-                        _allowedOrigins.Add(origin);
-                }
-            }
+            _allowedOrigins = new HashSet<string>(_settings.GetAllowedOrigins(), StringComparer.OrdinalIgnoreCase);
         }
 
         private string ExtractRpIdFromOrigin(string origin)
@@ -53,7 +45,7 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
         private Fido2Configuration BuildConfig(string origin)
         {
             var rpId = string.IsNullOrEmpty(origin)
-                ? (!string.IsNullOrEmpty(_settings.ServerDomain) ? _settings.ServerDomain : "localhost")
+                ? _settings.ResolveServerDomain()
                 : ExtractRpIdFromOrigin(origin);
 
             var origins = new HashSet<string>(_allowedOrigins, StringComparer.OrdinalIgnoreCase);
