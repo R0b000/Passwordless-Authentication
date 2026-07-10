@@ -269,7 +269,6 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
         {
             var now = DateTime.UtcNow;
             var refreshToken = _jwtHelper.GenerateRefreshToken();
-            var refreshTokenHash = _passwordHash.HashPassword(refreshToken);
             var refreshExpiryDays = _jwtHelper.GetRefreshTokenExpiryDays();
 
             await _dapperRepository.ExecuteAsync(
@@ -279,7 +278,7 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
                     AuthType = "RefreshToken",
                     FIDOOperation = "CreateRefreshToken",
                     UserId = userId,
-                    Token = refreshTokenHash,
+                    Token = refreshToken,
                     ExpiresAt = now.AddDays(refreshExpiryDays),
                     Now = now
                 });
@@ -376,7 +375,6 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
 
             var newAccessToken = _jwtHelper.GenerateToken(userId, usernameClaim ?? string.Empty);
             var newRefreshToken = _jwtHelper.GenerateRefreshToken();
-            var newRefreshTokenHash = _passwordHash.HashPassword(newRefreshToken);
             var refreshExpiryDays = _jwtHelper.GetRefreshTokenExpiryDays();
 
             await _dapperRepository.ExecuteAsync(
@@ -386,7 +384,7 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
                     AuthType = "RefreshToken",
                     FIDOOperation = "CreateRefreshToken",
                     UserId = userId,
-                    Token = newRefreshTokenHash,
+                    Token = newRefreshToken,
                     ExpiresAt = now.AddDays(refreshExpiryDays),
                     Now = now
                 });

@@ -6,7 +6,6 @@ using PasswordlessApi.Api.Service.Interface.Repository;
 using PasswordlessApi.Api.Service.Interface.Rbac;
 using PasswordlessApi.Api.Utility.Jwt;
 using PasswordlessApi.Api.Utility.OtpGenerator;
-using PasswordlessApi.Api.Utility.PasswordHash;
 
 namespace PasswordlessApi.Api.Service.Implementation.Auth
 {
@@ -15,7 +14,6 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
         private readonly IGenericRepository<User> _userRepository;
         private readonly IDapperRepository _dapperRepository;
         private readonly IJwtHelper _jwtHelper;
-        private readonly IPasswordHash _passwordHash;
         private readonly IUserRoleService _userRoleService;
         private readonly IRoleService _roleService;
         private const string ProcedureName = "sp_Users";
@@ -24,14 +22,12 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
             IGenericRepository<User> userRepository,
             IDapperRepository dapperRepository,
             IJwtHelper jwtHelper,
-            IPasswordHash passwordHash,
             IUserRoleService userRoleService,
             IRoleService roleService)
         {
             _userRepository = userRepository;
             _dapperRepository = dapperRepository;
             _jwtHelper = jwtHelper;
-            _passwordHash = passwordHash;
             _userRoleService = userRoleService;
             _roleService = roleService;
         }
@@ -130,7 +126,6 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
         {
             var now = DateTime.UtcNow;
             var refreshToken = _jwtHelper.GenerateRefreshToken();
-            var refreshTokenHash = _passwordHash.HashPassword(refreshToken);
             var refreshExpiryDays = _jwtHelper.GetRefreshTokenExpiryDays();
 
             await _dapperRepository.ExecuteAsync(
@@ -140,7 +135,7 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
                     AuthType = "RefreshToken",
                     FIDOOperation = "CreateRefreshToken",
                     UserId = userId,
-                    Token = refreshTokenHash,
+                    Token = refreshToken,
                     ExpiresAt = now.AddDays(refreshExpiryDays),
                     Now = now
                 });
