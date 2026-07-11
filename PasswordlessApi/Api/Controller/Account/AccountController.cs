@@ -1,8 +1,11 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using PasswordlessApi.Api.Models.RequestModel.Account;
 using PasswordlessApi.Api.Models.ResponseModel.Account;
 using PasswordlessApi.Api.Service.Interface.Auth;
+using PasswordlessApi.Api.Common;
+using PasswordlessApi.Api.Middleware;
 
 namespace PasswordlessApi.Api.Controller.Account
 {
@@ -21,10 +24,10 @@ namespace PasswordlessApi.Api.Controller.Account
         [HttpGet("profile")]
         public async Task<ActionResult<UserProfileResponse>> GetProfile()
         {
-            var userId = int.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "0");
-            if (userId <= 0) return Unauthorized();
+            var userId = User.GetUserId();
+            if (userId == null) return Unauthorized();
 
-            var user = await _authService.GetUserByIdAsync(userId);
+            var user = await _authService.GetUserByIdAsync(userId.Value);
             if (user == null) return NotFound();
 
             var result = new UserProfileResponse
@@ -42,10 +45,10 @@ namespace PasswordlessApi.Api.Controller.Account
         [HttpPut("profile")]
         public async Task<ActionResult<UserProfileResponse>> UpdateProfile([FromBody] UpdateProfileRequest request)
         {
-            var userId = int.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "0");
-            if (userId <= 0) return Unauthorized();
+            var userId = User.GetUserId();
+            if (userId == null) return Unauthorized();
 
-            var result = await _authService.UpdateProfileAsync(userId, request);
+            var result = await _authService.UpdateProfileAsync(userId.Value, request);
             if (result == null) return NotFound();
 
             return Ok(result);
@@ -54,51 +57,55 @@ namespace PasswordlessApi.Api.Controller.Account
         [HttpGet("settings")]
         public async Task<ActionResult<AccountSettingsResponse>> GetSettings()
         {
-            var userId = int.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "0");
-            if (userId <= 0) return Unauthorized();
+            var userId = User.GetUserId();
+            if (userId == null) return Unauthorized();
 
-            var result = await _authService.GetAccountSettingsAsync(userId);
+            var result = await _authService.GetAccountSettingsAsync(userId.Value);
             return Ok(result);
         }
 
         [HttpPut("settings")]
         public async Task<ActionResult<AccountSettingsResponse>> UpdateSettings([FromBody] UpdateSettingsRequest request)
         {
-            var userId = int.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "0");
-            if (userId <= 0) return Unauthorized();
+            var userId = User.GetUserId();
+            if (userId == null) return Unauthorized();
 
-            var result = await _authService.UpdateAccountSettingsAsync(userId, request);
+            var result = await _authService.UpdateAccountSettingsAsync(userId.Value, request);
             return Ok(result);
         }
 
         [HttpGet("privacy")]
         public async Task<ActionResult<PrivacySettingsResponse>> GetPrivacy()
         {
-            var userId = int.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "0");
-            if (userId <= 0) return Unauthorized();
+            var userId = User.GetUserId();
+            if (userId == null) return Unauthorized();
 
-            var result = await _authService.GetPrivacySettingsAsync(userId);
+            var result = await _authService.GetPrivacySettingsAsync(userId.Value);
             return Ok(result);
         }
 
         [HttpPut("privacy")]
         public async Task<ActionResult<PrivacySettingsResponse>> UpdatePrivacy([FromBody] UpdatePrivacyRequest request)
         {
-            var userId = int.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "0");
-            if (userId <= 0) return Unauthorized();
+            var userId = User.GetUserId();
+            if (userId == null) return Unauthorized();
 
-            var result = await _authService.UpdatePrivacySettingsAsync(userId, request);
+            var result = await _authService.UpdatePrivacySettingsAsync(userId.Value, request);
             return Ok(result);
         }
 
+        [AllowAnonymous]
         [HttpPost("password-reset")]
+        [EnableRateLimiting(SecurityRateLimiting.GeneralPolicy)]
         public async Task<ActionResult> RequestPasswordReset([FromBody] PasswordResetRequest request)
         {
             await _authService.RequestPasswordResetAsync(request.Email);
             return Ok(new { succeeded = true, message = "If an account with that email exists, a reset link was sent." });
         }
 
+        [AllowAnonymous]
         [HttpPost("password-reset/confirm")]
+        [EnableRateLimiting(SecurityRateLimiting.GeneralPolicy)]
         public async Task<ActionResult> ConfirmPasswordReset([FromBody] ConfirmPasswordResetRequest request)
         {
             var result = await _authService.ResetPasswordAsync(request.Token, request.NewPassword);
@@ -110,20 +117,20 @@ namespace PasswordlessApi.Api.Controller.Account
         [HttpGet("data-export")]
         public async Task<ActionResult> DownloadData()
         {
-            var userId = int.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "0");
-            if (userId <= 0) return Unauthorized();
+            var userId = User.GetUserId();
+            if (userId == null) return Unauthorized();
 
-            var result = await _authService.GetUserDataExportAsync(userId);
+            var result = await _authService.GetUserDataExportAsync(userId.Value);
             return Ok(result);
         }
 
         [HttpDelete]
         public async Task<ActionResult> DeleteAccount()
         {
-            var userId = int.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "0");
-            if (userId <= 0) return Unauthorized();
+            var userId = User.GetUserId();
+            if (userId == null) return Unauthorized();
 
-            var result = await _authService.DeleteAccountAsync(userId);
+            var result = await _authService.DeleteAccountAsync(userId.Value);
             if (!result.Succeeded) return BadRequest(result);
 
             return Ok(result);

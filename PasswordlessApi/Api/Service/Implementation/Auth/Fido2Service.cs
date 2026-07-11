@@ -1,6 +1,8 @@
+using System.Security;
 using Fido2NetLib;
 using Fido2NetLib.Objects;
 using Microsoft.Extensions.Options;
+using PasswordlessApi.Api.Common;
 using PasswordlessApi.Api.Configuration;
 using PasswordlessApi.Api.Models.Entities;
 using PasswordlessApi.Api.Models.RequestModel.Auth;
@@ -8,10 +10,11 @@ using PasswordlessApi.Api.Models.ResponseModel.Auth;
 using PasswordlessApi.Api.Service.Interface.Auth;
 using PasswordlessApi.Api.Service.Interface.Repository;
 using PasswordlessApi.Api.Utility.Jwt;
-using Fido2NetLib;
-using Fido2NetLib.Objects;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.AspNetCore.Http;
+using PasswordlessApi.Api.Service.Interface.Security;
+using PasswordlessApi.Api.Utility.TokenHash;
 
 namespace PasswordlessApi.Api.Service.Implementation.Auth
 {
@@ -19,17 +22,24 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
     {
         private readonly IDapperRepository _dapperRepository;
         private readonly IJwtHelper _jwtHelper;
-        private readonly Fido2 _fido2;
-        private readonly Fido2Configuration _fido2Config;
         private readonly ILogger<Fido2Service> _logger;
+        private readonly ApiSettings _apiSettings;
+        private readonly IHttpContextAccessor _httpContextAccessor;
+        private readonly ILocationResolver _locationResolver;
 
-        public Fido2Service(IDapperRepository dapperRepository, IJwtHelper jwtHelper, IConfiguration configuration, ILogger<Fido2Service> logger)
+        public Fido2Service(IDapperRepository dapperRepository, IJwtHelper jwtHelper, IOptions<ApiSettings> apiSettings, ILogger<Fido2Service> logger, IHttpContextAccessor httpContextAccessor, ILocationResolver locationResolver)
         {
             _dapperRepository = dapperRepository;
             _jwtHelper = jwtHelper;
             _logger = logger;
+            _apiSettings = apiSettings.Value;
+            _httpContextAccessor = httpContextAccessor;
+            _locationResolver = locationResolver;
+        }
 
-            _allowedOrigins = new HashSet<string>(_settings.GetAllowedOrigins(), StringComparer.OrdinalIgnoreCase);
+        private HashSet<string> GetAllowedOrigins()
+        {
+            return new HashSet<string>(_apiSettings.GetAllowedOrigins(), StringComparer.OrdinalIgnoreCase);
         }
 
         private string ExtractRpIdFromOrigin(string origin)
@@ -40,8 +50,19 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
             var uri = new Uri(origin);
             var domain = uri.Host;
 
-            if (!_allowedOrigins.Any(o => o.Contains(domain, StringComparison.OrdinalIgnoreCase)))
-                throw new SecurityException($"Origin {domain} is not allowed");
+            var allowedOrigins = GetAllowedOrigins();
+            if (allowedOrigins.Contains("*"))
+                return domain;
+
+            var allowedHosts = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var o in allowedOrigins)
+            {
+                if (Uri.TryCreate(o, UriKind.Absolute, out var parsed))
+                    allowedHosts.Add(parsed.Host);
+            }
+
+            if (!allowedHosts.Contains(domain))
+                throw new SecurityException("Origin is not allowed for FIDO2 ceremonies");
 
             return domain;
         }
@@ -49,17 +70,17 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
         private Fido2Configuration BuildConfig(string origin)
         {
             var rpId = string.IsNullOrEmpty(origin)
-                ? _settings.ResolveServerDomain()
+                ? _apiSettings.ResolveServerDomain()
                 : ExtractRpIdFromOrigin(origin);
 
-            var origins = new HashSet<string>(_allowedOrigins, StringComparer.OrdinalIgnoreCase);
+            var origins = GetAllowedOrigins();
             if (!string.IsNullOrEmpty(origin))
                 origins.Add(origin);
 
             return new Fido2Configuration
             {
                 ServerDomain = rpId,
-                ServerName = _settings.ServerName,
+                ServerName = _apiSettings.ServerName,
                 TimestampDriftTolerance = 300,
                 ChallengeSize = 32,
                 Origins = origins
@@ -90,10 +111,10 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
             var challenge = Convert.ToBase64String(options.Challenge);
             var expiresAt = DateTime.UtcNow.AddMinutes(10);
 
-            await _dapperRepository.ExecuteAsync("sp_Users", new
+            await _dapperRepository.ExecuteAsync(DbConstants.Procedures.Users, new
             {
-                AuthType = "FIDO",
-                FIDOOperation = "CreateChallenge",
+                AuthType = DbConstants.AuthTypes.Fido,
+                FIDOOperation = DbConstants.FidoOperations.CreateChallenge,
                 UserId = userId,
                 Challenge = challenge,
                 ExpiresAt = expiresAt
@@ -107,11 +128,11 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
             };
         }
 
-        public async Task<Fido2VerifyResponse> RegisterCredentialAsync(Fido2RegisterRequest request)
+        public async Task<Fido2VerifyResponse> RegisterCredentialAsync(Fido2RegisterRequest request, string origin)
         {
             var stored = await _dapperRepository.QueryFirstAsync<AuthChallenge>(
-                "sp_Users",
-                new { AuthType = "FIDO", FIDOOperation = "GetUserChallenge", UserId = request.UserId, Challenge = request.AttestationChallenge });
+                DbConstants.Procedures.Users,
+                new { AuthType = DbConstants.AuthTypes.Fido, FIDOOperation = DbConstants.FidoOperations.GetUserChallenge, UserId = request.UserId, Challenge = request.AttestationChallenge });
 
             if (stored == null)
             {
@@ -119,9 +140,10 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
             }
 
             var originalChallenge = Convert.FromBase64String(stored.Challenge);
+            var config = BuildConfig(origin);
 
             var originalOptions = CredentialCreateOptions.Create(
-                _fido2Config,
+                config,
                 originalChallenge,
                 new Fido2User
                 {
@@ -154,21 +176,24 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
                 IsCredentialIdUniqueToUserCallback = async (args, ct) =>
                 {
                     var existing = await _dapperRepository.QueryAsync<UserCredential>(
-                        "sp_Users",
-                        new { AuthType = "FIDO", FIDOOperation = "GetCredential", CredentialId = Convert.ToBase64String(args.CredentialId) });
+                        DbConstants.Procedures.Users,
+                        new { AuthType = DbConstants.AuthTypes.Fido, FIDOOperation = DbConstants.FidoOperations.GetCredential, CredentialId = Convert.ToBase64String(args.CredentialId) });
                     return !existing.Any();
                 }
             };
 
-        public async Task<Fido2ChallengeResponse> CreateChallengeAsync(int userId, string origin)
-        {
-            var config = BuildConfig(origin);
-            var fido2 = new Fido2(config);
+            try
+            {
+                var result = await new Fido2(config).MakeNewCredentialAsync(makeCredentialParams);
 
-                await _dapperRepository.ExecuteAsync("sp_Users", new
+                var credentialId = Convert.ToBase64String(result.Id);
+                var publicKey = Convert.ToBase64String(result.PublicKey);
+                var signCount = (long)result.SignCount;
+
+                await _dapperRepository.ExecuteAsync(DbConstants.Procedures.Users, new
                 {
-                    AuthType = "FIDO",
-                    FIDOOperation = "UpsertCredential",
+                    AuthType = DbConstants.AuthTypes.Fido,
+                    FIDOOperation = DbConstants.FidoOperations.UpsertCredential,
                     UserId = request.UserId,
                     CredentialId = credentialId,
                     PublicKey = publicKey,
@@ -180,16 +205,18 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
             }
             catch (Fido2VerificationException ex)
             {
-                _logger.LogError(ex, "FIDO2 registration parsing failed for user {UserId}", request.UserId);
-                return new Fido2VerifyResponse { Success = false, Message = "Invalid registration data." };
+                return new Fido2VerifyResponse { Success = false, Message = $"Passkey registration failed: {ex.Message}" };
             }
         }
 
-        public async Task<Fido2ChallengeResponse> CreateChallengeAsync(int userId)
+        public async Task<Fido2ChallengeResponse> CreateChallengeAsync(int userId, string origin)
         {
+            var config = BuildConfig(origin);
+            var fido2 = new Fido2(config);
+
             var credentials = (await _dapperRepository.QueryAsync<UserCredential>(
-                "sp_Users",
-                new { AuthType = "FIDO", FIDOOperation = "GetCredentialsByUserId", UserId = userId })).ToList();
+                DbConstants.Procedures.Users,
+                new { AuthType = DbConstants.AuthTypes.Fido, FIDOOperation = DbConstants.FidoOperations.GetCredentialsByUserId, UserId = userId })).ToList();
 
             if (!credentials.Any())
                 throw new InvalidOperationException("No FIDO2 credentials found for user");
@@ -213,10 +240,10 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
             var challenge = Convert.ToBase64String(options.Challenge);
             var expiresAt = DateTime.UtcNow.AddMinutes(10);
 
-            await _dapperRepository.ExecuteAsync("sp_Users", new
+            await _dapperRepository.ExecuteAsync(DbConstants.Procedures.Users, new
             {
-                AuthType = "FIDO",
-                FIDOOperation = "CreateChallenge",
+                AuthType = DbConstants.AuthTypes.Fido,
+                FIDOOperation = DbConstants.FidoOperations.CreateChallenge,
                 UserId = userId,
                 Challenge = challenge,
                 ExpiresAt = expiresAt
@@ -239,8 +266,8 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
 
             var credentialIdBase64 = Convert.ToBase64String(Base64UrlDecode(request.CredentialId));
             var credential = await _dapperRepository.QueryFirstAsync<UserCredential>(
-                "sp_Users",
-                new { AuthType = "FIDO", FIDOOperation = "GetCredential", CredentialId = credentialIdBase64 });
+                DbConstants.Procedures.Users,
+                new { AuthType = DbConstants.AuthTypes.Fido, FIDOOperation = DbConstants.FidoOperations.GetCredential, CredentialId = credentialIdBase64 });
 
             if (credential == null)
             {
@@ -248,8 +275,8 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
             }
 
             var storedChallenge = await _dapperRepository.QueryFirstAsync<AuthChallenge>(
-                "sp_Users",
-                new { AuthType = "FIDO", FIDOOperation = "GetUserChallenge", UserId = request.UserId, Challenge = request.Challenge });
+                DbConstants.Procedures.Users,
+                new { AuthType = DbConstants.AuthTypes.Fido, FIDOOperation = DbConstants.FidoOperations.GetUserChallenge, UserId = request.UserId, Challenge = request.Challenge });
 
             if (storedChallenge == null)
             {
@@ -268,8 +295,8 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
             var storedCount = (uint)credential.SignCount;
 
             var userCredentials = (await _dapperRepository.QueryAsync<UserCredential>(
-                "sp_Users",
-                new { AuthType = "FIDO", FIDOOperation = "GetCredentialsByUserId", UserId = credential.UserId })).ToList();
+                DbConstants.Procedures.Users,
+                new { AuthType = DbConstants.AuthTypes.Fido, FIDOOperation = DbConstants.FidoOperations.GetCredentialsByUserId, UserId = credential.UserId })).ToList();
 
             var allowedCredentials = userCredentials.Select(c =>
             {
@@ -315,17 +342,14 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
                 StoredSignatureCounter = storedCount,
                 IsUserHandleOwnerOfCredentialIdCallback = async (args, ct) =>
                 {
-                    // Extract the userId from the UserHandle provided by the authenticator
                     var claimedUserId = BitConverter.ToInt32(args.UserHandle);
                     var credentialIdBase64 = Convert.ToBase64String(args.CredentialId);
-                    
-                    // Fetch the credential from the DB
-                    var credential = await _dapperRepository.QueryFirstAsync<UserCredential>(
-                        "sp_Users",
-                        new { AuthType = "FIDO", FIDOOperation = "GetCredential", CredentialId = credentialIdBase64 });
-                        
-                    // Ensure the credential exists AND belongs to the claimed user
-                    return credential != null && credential.UserId == claimedUserId;
+
+                    var dbCredential = await _dapperRepository.QueryFirstAsync<UserCredential>(
+                        DbConstants.Procedures.Users,
+                        new { AuthType = DbConstants.AuthTypes.Fido, FIDOOperation = DbConstants.FidoOperations.GetCredential, CredentialId = credentialIdBase64 });
+
+                    return dbCredential != null && dbCredential.UserId == claimedUserId;
                 }
             };
 
@@ -339,10 +363,10 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
                     return new Fido2VerifyResponse { Success = false, Message = "Counter regression detected" };
                 }
 
-                await _dapperRepository.ExecuteAsync("sp_Users", new
+                await _dapperRepository.ExecuteAsync(DbConstants.Procedures.Users, new
                 {
-                    AuthType = "FIDO",
-                    FIDOOperation = "UpsertCredential",
+                    AuthType = DbConstants.AuthTypes.Fido,
+                    FIDOOperation = DbConstants.FidoOperations.UpsertCredential,
                     UserId = credential.UserId,
                     CredentialId = credential.CredentialId,
                     PublicKey = credential.PublicKey,
@@ -350,107 +374,48 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
                     Transports = credential.Transports
                 });
 
-                await _dapperRepository.ExecuteAsync("sp_Users", new
+                await _dapperRepository.ExecuteAsync(DbConstants.Procedures.Users, new
                 {
-                    AuthType = "FIDO",
-                    FIDOOperation = "ConsumeChallenge",
+                    AuthType = DbConstants.AuthTypes.Fido,
+                    FIDOOperation = DbConstants.FidoOperations.ConsumeChallenge,
                     UserId = request.UserId,
                     Challenge = request.Challenge
                 });
 
                 var user = await _dapperRepository.QueryFirstAsync<User>(
-                    "sp_Users",
-                    new { AuthType = "Login", UserId = credential.UserId });
+                    DbConstants.Procedures.Users,
+                    new { AuthType = DbConstants.AuthTypes.Login, UserId = credential.UserId });
 
                 var username = user?.Username ?? credential.UserId.ToString();
                 var token = _jwtHelper.GenerateToken(credential.UserId, username);
 
-                return new Fido2VerifyResponse { Success = true, Token = token, Message = "FIDO2 verification successful" };
+                var ipAddress = GetClientIpAddress();
+                var userAgent = GetUserAgent();
+                var location = await _locationResolver.ResolveLocationAsync(ipAddress);
+
+                var rawRefreshToken = _jwtHelper.GenerateRefreshToken();
+                var refreshTokenHash = TokenHasher.HashToken(rawRefreshToken);
+                var refreshExpiryDays = _jwtHelper.GetRefreshTokenExpiryDays();
+
+                await _dapperRepository.ExecuteAsync(DbConstants.Procedures.Users, new
+                {
+                    AuthType = DbConstants.AuthTypes.RefreshToken,
+                    FIDOOperation = DbConstants.FidoOperations.CreateRefreshToken,
+                    UserId = credential.UserId,
+                    TokenHash = refreshTokenHash,
+                    ExpiresAt = DateTime.UtcNow.AddDays(refreshExpiryDays),
+                    Now = DateTime.UtcNow,
+                    IpAddress = ipAddress,
+                    UserAgent = userAgent,
+                    Location = location
+                });
+
+                return new Fido2VerifyResponse { Success = true, Token = token, RefreshToken = rawRefreshToken, Message = "FIDO2 verification successful" };
             }
             catch (Fido2VerificationException ex)
             {
                 _logger.LogError(ex, "FIDO2 verification failed for user {UserId}", request.UserId);
                 return new Fido2VerifyResponse { Success = false, Message = "Authentication failed. Please try again." };
-            }
-        }
-
-        public async Task<Fido2VerifyResponse> RegisterCredentialAsync(Fido2RegisterRequest request, string origin)
-        {
-            var stored = await _dapperRepository.QueryFirstAsync<AuthChallenge>(
-                "sp_Users",
-                new { AuthType = "FIDO", FIDOOperation = "GetUserChallenge", UserId = request.UserId, Challenge = request.AttestationChallenge });
-
-            if (stored == null)
-            {
-                return new Fido2VerifyResponse { Success = false, Message = "No valid challenge found for registration" };
-            }
-
-            var originalChallenge = Convert.FromBase64String(stored.Challenge);
-            var config = BuildConfig(origin);
-
-            var originalOptions = CredentialCreateOptions.Create(
-                config,
-                originalChallenge,
-                new Fido2User
-                {
-                    Id = GetUserHandle(request.UserId),
-                    Name = request.Username,
-                    DisplayName = request.Username
-                },
-                AuthenticatorSelection.Default,
-                AttestationConveyancePreference.None,
-                new List<PublicKeyCredentialDescriptor>(),
-                new AuthenticationExtensionsClientInputs(),
-                new List<PubKeyCredParam> { PubKeyCredParam.ES256 });
-
-            AuthenticatorAttestationRawResponse attestationResponse;
-            try
-            {
-                attestationResponse = System.Text.Json.JsonSerializer.Deserialize<AuthenticatorAttestationRawResponse>(request.AttestationResponse)
-                    ?? throw new FormatException("Could not parse attestation response");
-            }
-            catch (Exception ex)
-            {
-                return new Fido2VerifyResponse { Success = false, Message = $"Invalid attestation response: {ex.Message}" };
-            }
-
-            var makeCredentialParams = new MakeNewCredentialParams
-            {
-                AttestationResponse = attestationResponse,
-                OriginalOptions = originalOptions,
-                IsCredentialIdUniqueToUserCallback = async (args, ct) =>
-                {
-                    var existing = await _dapperRepository.QueryAsync<UserCredential>(
-                        "sp_Users",
-                        new { AuthType = "FIDO", FIDOOperation = "GetCredential", CredentialId = Convert.ToBase64String(args.CredentialId) });
-                    return !existing.Any();
-                }
-            };
-
-            try
-            {
-                var result = await new Fido2(config).MakeNewCredentialAsync(makeCredentialParams);
-
-                var credentialId = Convert.ToBase64String(result.Id);
-                var publicKey = Convert.ToBase64String(result.PublicKey);
-                var signCount = (long)result.SignCount;
-
-                await _dapperRepository.ExecuteAsync("sp_Users", new
-                {
-                    AuthType = "FIDO",
-                    FIDOOperation = "UpsertCredential",
-                    UserId = request.UserId,
-                    CredentialId = credentialId,
-                    PublicKey = publicKey,
-                    SignCount = signCount,
-                    Transports = request.Transports
-                });
-
-                return new Fido2VerifyResponse { Success = true, Message = "Passkey registered successfully" };
-            }
-            catch (Fido2VerificationException ex)
-            {
-                return new Fido2VerifyResponse { Success = false, Message = $"Passkey registration failed: {ex.Message}" };
             }
         }
 
@@ -491,6 +456,29 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
                 .Where(t => t.HasValue)
                 .Select(t => t!.Value)
                 .ToArray();
+        }
+
+        private string? GetClientIpAddress()
+        {
+            var context = _httpContextAccessor.HttpContext;
+            if (context == null) return null;
+
+            if (context.Request.Headers.TryGetValue("X-Forwarded-For", out var forwardedFor))
+            {
+                var first = forwardedFor.ToString().Split(',')[0].Trim();
+                if (!string.IsNullOrEmpty(first))
+                {
+                    return first;
+                }
+            }
+
+            return context.Connection.RemoteIpAddress?.ToString();
+        }
+
+        private string? GetUserAgent()
+        {
+            var context = _httpContextAccessor.HttpContext;
+            return context?.Request.Headers["User-Agent"].ToString();
         }
     }
 }

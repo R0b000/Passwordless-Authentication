@@ -1,9 +1,13 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
+using PasswordlessApi.Api.Middleware;
 using PasswordlessApi.Api.Models.RequestModel.Auth;
+using PasswordlessApi.Api.Models.RequestModel.Security;
 using PasswordlessApi.Api.Models.ResponseModel.Auth;
 using PasswordlessApi.Api.Service.Interface.Auth;
 using PasswordlessApi.Api.Service.Interface.Rbac;
+using PasswordlessApi.Api.Common;
 
 namespace PasswordlessApi.Api.Controller.Auth
 {
@@ -13,6 +17,7 @@ namespace PasswordlessApi.Api.Controller.Auth
     {
         private readonly IAuthService _authService;
         private readonly IUserRoleService _userRoleService;
+
         public AuthController(IAuthService authService, IUserRoleService userRoleService)
         {
             _authService = authService;
@@ -20,6 +25,7 @@ namespace PasswordlessApi.Api.Controller.Auth
         }
 
         [HttpPost("register")]
+        [EnableRateLimiting(SecurityRateLimiting.RegistrationPolicy)]
         public async Task<ActionResult<AuthResponse>> Register([FromBody] RegisterRequest request)
         {
             var result = await _authService.RegisterAsync(request);
@@ -33,16 +39,12 @@ namespace PasswordlessApi.Api.Controller.Auth
             var ipAddress = GetClientIpAddress();
             var userAgent = GetUserAgent();
 
-            if (!string.IsNullOrEmpty(ipAddress) && await _rateLimiter.IsLimitedAsync($"login:{ipAddress}", 5, TimeSpan.FromMinutes(15)))
-            {
-                return StatusCode(429, new AuthResponse { Message = "Too many login attempts. Please try again later." });
-            }
-
             var result = await _authService.LoginAsync(request, ipAddress, userAgent);
             return Ok(result);
         }
 
         [HttpPost("fido2/options/register")]
+        [EnableRateLimiting(SecurityRateLimiting.GeneralPolicy)]
         public async Task<ActionResult<Fido2ChallengeResponse>> RequestAttestationOptions([FromBody] Fido2AttestationOptionsRequest request)
         {
             request.Origin ??= Request.Headers["Origin"].ToString();
@@ -78,13 +80,10 @@ namespace PasswordlessApi.Api.Controller.Auth
         [HttpGet("me")]
         public async Task<ActionResult<AuthResponse>> Me()
         {
-            var userIdStr = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-            if (string.IsNullOrEmpty(userIdStr) || !int.TryParse(userIdStr, out var userId))
-            {
-                return Unauthorized();
-            }
+            var userId = User.GetUserId();
+            if (userId == null) return Unauthorized();
 
-            var userWithRoles = await _userRoleService.GetUserWithRolesAndPermissionsAsync(userId);
+            var userWithRoles = await _userRoleService.GetUserWithRolesAndPermissionsAsync(userId.Value);
             if (userWithRoles == null)
             {
                 return NotFound();
@@ -126,6 +125,7 @@ namespace PasswordlessApi.Api.Controller.Auth
         }
 
         [HttpPost("otp/request")]
+        [EnableRateLimiting(SecurityRateLimiting.GeneralPolicy)]
         public async Task<ActionResult<OtpResponse>> RequestOtp([FromBody] OtpRequest request)
         {
             var result = await _authService.RequestOtpAsync(request);
@@ -141,12 +141,12 @@ namespace PasswordlessApi.Api.Controller.Auth
 
         [HttpPost("auth/refresh")]
         [EnableRateLimiting(SecurityRateLimiting.RefreshTokenPolicy)]
-        public async Task<ActionResult<AuthResponse>> RefreshToken([FromBody] PasswordlessApi.Api.Models.RequestModel.Security.RefreshTokenRequest request)
+        public async Task<ActionResult<AuthResponse>> RefreshToken([FromBody] RefreshTokenRequest request)
         {
             var ipAddress = GetClientIpAddress();
             var userAgent = GetUserAgent();
 
-            var enrichedRequest = new PasswordlessApi.Api.Models.RequestModel.Security.RefreshTokenRequest
+            var enrichedRequest = new RefreshTokenRequest
             {
                 AccessToken = request.AccessToken,
                 RefreshToken = request.RefreshToken,

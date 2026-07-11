@@ -6,14 +6,15 @@ namespace PasswordlessApi.Api.Configuration
     public class DapperContext
     {
         private readonly IConfiguration _configuration;
-        public readonly string _connectionString;
+        private readonly string _connectionString;
 
         public DapperContext(IConfiguration configuration)
         {
             _configuration = configuration;
             _connectionString = _configuration.GetConnectionString("DefaultConnection")
                 ?? _configuration["DefaultConnection"]
-                ?? throw new InvalidCastException("Connection string 'DefaultConnection' not found in appsettings.json");
+                ?? Environment.GetEnvironmentVariable("DB_CONNECTION_STRING")
+                ?? throw new InvalidCastException("Connection string 'DefaultConnection' not found in configuration or environment variables.");
         }
 
         public IDbConnection CreateConnection()

@@ -16,6 +16,13 @@ namespace PasswordlessApi.Api.Configuration
         public string BaseUrl { get; set; } = "http://localhost:5000";
 
         /// <summary>
+        /// The base URL of the front-end application. Used to build absolute links
+        /// (e.g. password reset) that are safe to click from an email client.
+        /// Falls back to <see cref="BaseUrl"/> when not configured.
+        /// </summary>
+        public string FrontendBaseUrl { get; set; } = string.Empty;
+
+        /// <summary>
         /// Friendly relying-party name shown to authenticators during FIDO2 ceremonies.
         /// </summary>
         public string ServerName { get; set; } = "PasswordlessApi";

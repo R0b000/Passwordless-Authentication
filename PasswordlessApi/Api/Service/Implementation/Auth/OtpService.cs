@@ -1,4 +1,7 @@
-﻿using PasswordlessApi.Api.Models.Entities;
+﻿using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using PasswordlessApi.Api.Common;
+using PasswordlessApi.Api.Models.Entities;
 using PasswordlessApi.Api.Models.RequestModel.Auth;
 using PasswordlessApi.Api.Models.ResponseModel.Auth;
 using PasswordlessApi.Api.Service.Interface.Auth;
@@ -16,27 +19,33 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
         private readonly IJwtHelper _jwtHelper;
         private readonly IUserRoleService _userRoleService;
         private readonly IRoleService _roleService;
-        private const string ProcedureName = "sp_Users";
+        private readonly IHostEnvironment _env;
+        private readonly ILogger<OtpService> _logger;
+        private const string ProcedureName = DbConstants.Procedures.Users;
 
         public OtpService(
             IGenericRepository<User> userRepository,
             IDapperRepository dapperRepository,
             IJwtHelper jwtHelper,
             IUserRoleService userRoleService,
-            IRoleService roleService)
+            IRoleService roleService,
+            IHostEnvironment env,
+            ILogger<OtpService> logger)
         {
             _userRepository = userRepository;
             _dapperRepository = dapperRepository;
             _jwtHelper = jwtHelper;
             _userRoleService = userRoleService;
             _roleService = roleService;
+            _env = env;
+            _logger = logger;
         }
 
         public async Task<OtpResponse> RequestOtpAsync(OtpRequest request)
         {
             var userResult = await _userRepository.QuerySingleAsync(
                 ProcedureName,
-                new { AuthType = "Login", UserId = request.UserId });
+                new { AuthType = DbConstants.AuthTypes.Login, Email = request.Email });
 
             if (userResult == null || !userResult.Succeeded || userResult.Data == null)
             {
@@ -57,26 +66,34 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
                 ProcedureName,
                 new
                 {
-                    AuthType = "EmailOtp",
+                    AuthType = DbConstants.AuthTypes.EmailOtp,
                     FIDOOperation = "CreateOtp",
                     UserId = user.Id,
                     Otp = otp,
                     ExpiresAt = expiresAt
                 });
 
-            return new OtpResponse
+            var response = new OtpResponse
             {
                 Success = true,
-                Message = $"OTP sent to {user.Email} (Demo OTP: {otp})",
-                Otp = otp
+                Message = $"OTP sent to {user.Email}"
             };
+
+            // Never return the OTP to the client. Log it locally for development
+            // convenience only; in production it is delivered out-of-band via email.
+            if (_env.IsDevelopment())
+            {
+                _logger.LogInformation("DEV OTP for {Email}: {Otp}", user.Email, otp);
+            }
+
+            return response;
         }
 
         public async Task<AuthResponse> VerifyOtpAsync(OtpVerifyRequest request)
         {
             var userResult = await _userRepository.QuerySingleAsync(
                 ProcedureName,
-                new { AuthType = "Login", UserId = request.UserId });
+                new { AuthType = DbConstants.AuthTypes.Login, Email = request.Email });
 
             if (userResult == null || !userResult.Succeeded || userResult.Data == null)
             {
@@ -89,9 +106,9 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
                 ProcedureName,
                 new
                 {
-                    AuthType = "EmailOtp",
+                    AuthType = DbConstants.AuthTypes.EmailOtp,
                     FIDOOperation = "ConsumeOtp",
-                    UserId = request.UserId,
+                    UserId = user.Id,
                     Otp = request.Otp,
                     Now = DateTime.UtcNow
                 });
@@ -132,8 +149,8 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
                 ProcedureName,
                 new
                 {
-                    AuthType = "RefreshToken",
-                    FIDOOperation = "CreateRefreshToken",
+                    AuthType = DbConstants.AuthTypes.RefreshToken,
+                    FIDOOperation = DbConstants.FidoOperations.CreateRefreshToken,
                     UserId = userId,
                     Token = refreshToken,
                     ExpiresAt = now.AddDays(refreshExpiryDays),
@@ -150,7 +167,7 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
             {
                 var user = await _userRepository.QuerySingleAsync(
                     ProcedureName,
-                    new { AuthType = "Login", UserId = userId });
+                    new { AuthType = DbConstants.AuthTypes.Login, UserId = userId });
 
                 if (user.Succeeded && user.Data != null && !string.IsNullOrEmpty(user.Data.Username))
                 {

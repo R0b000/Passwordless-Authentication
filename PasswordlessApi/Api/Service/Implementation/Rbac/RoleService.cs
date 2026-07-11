@@ -1,3 +1,4 @@
+using PasswordlessApi.Api.Common;
 using PasswordlessApi.Api.Models.Entities;
 using PasswordlessApi.Api.Models.DTOs.Rbac;
 using PasswordlessApi.Api.Service.Interface.Repository;
@@ -8,7 +9,6 @@ namespace PasswordlessApi.Api.Service.Implementation.Rbac
     public class RoleService : IRoleService
     {
         private readonly IDapperRepository _dapperRepository;
-        private const string ProcedureName = "sp_RBAC";
 
         public RoleService(IDapperRepository dapperRepository)
         {
@@ -18,8 +18,8 @@ namespace PasswordlessApi.Api.Service.Implementation.Rbac
         public async Task<Role?> CreateRoleAsync(string name, string? description)
         {
             var id = await _dapperRepository.ExecuteAsync(
-                ProcedureName,
-                new { RoleAction = "CreateRole", Name = name, Description = description });
+                DbConstants.Procedures.Rbac,
+                new { RoleAction = DbConstants.RbacActions.CreateRole, Name = name, Description = description });
 
             if (id <= 0) return null;
 
@@ -29,29 +29,29 @@ namespace PasswordlessApi.Api.Service.Implementation.Rbac
         public async Task<IEnumerable<Role>> GetAllRolesAsync()
         {
             return await _dapperRepository.QueryAsync<Role>(
-                ProcedureName,
-                new { RoleAction = "GetAllRoles" });
+                DbConstants.Procedures.Rbac,
+                new { RoleAction = DbConstants.RbacActions.GetAllRoles });
         }
 
         public async Task<Role?> GetRoleByNameAsync(string name)
         {
             return await _dapperRepository.QueryFirstAsync<Role>(
-                ProcedureName,
-                new { RoleAction = "GetRoleByName", Name = name });
+                DbConstants.Procedures.Rbac,
+                new { RoleAction = DbConstants.RbacActions.GetRoleByName, Name = name });
         }
 
         public async Task<Role?> GetRoleByIdAsync(int roleId)
         {
             return await _dapperRepository.QueryFirstAsync<Role>(
-                ProcedureName,
-                new { RoleAction = "GetRoleById", RoleId = roleId });
+                DbConstants.Procedures.Rbac,
+                new { RoleAction = DbConstants.RbacActions.GetRoleById, RoleId = roleId });
         }
 
         public async Task<RoleDto?> GetRoleWithPermissionsAsync(int roleId)
         {
-            var result = await _dapperRepository.QueryMultipleAsync(
-                ProcedureName,
-                new { RoleAction = "GetRoleWithPermissions", RoleId = roleId });
+            using var result = await _dapperRepository.QueryMultipleAsync(
+                DbConstants.Procedures.Rbac,
+                new { RoleAction = DbConstants.RbacActions.GetRoleWithPermissions, RoleId = roleId });
 
             try
             {
@@ -79,8 +79,8 @@ namespace PasswordlessApi.Api.Service.Implementation.Rbac
         public async Task<bool> AssignPermissionToRoleAsync(int roleId, int permissionId)
         {
             var result = await _dapperRepository.QuerySingleAsync<bool>(
-                ProcedureName,
-                new { RoleAction = "AssignPermissionToRole", RoleId = roleId, PermissionId = permissionId });
+                DbConstants.Procedures.Rbac,
+                new { RoleAction = DbConstants.RbacActions.AssignPermissionToRole, RoleId = roleId, PermissionId = permissionId });
 
             return result;
         }
@@ -88,8 +88,8 @@ namespace PasswordlessApi.Api.Service.Implementation.Rbac
         public async Task<bool> RemovePermissionFromRoleAsync(int roleId, int permissionId)
         {
             var result = await _dapperRepository.QuerySingleAsync<bool>(
-                ProcedureName,
-                new { RoleAction = "RemovePermissionFromRole", RoleId = roleId, PermissionId = permissionId });
+                DbConstants.Procedures.Rbac,
+                new { RoleAction = DbConstants.RbacActions.RemovePermissionFromRole, RoleId = roleId, PermissionId = permissionId });
 
             return result;
         }
@@ -97,8 +97,8 @@ namespace PasswordlessApi.Api.Service.Implementation.Rbac
         public async Task<bool> DeleteRoleAsync(int roleId)
         {
             var result = await _dapperRepository.QuerySingleAsync<bool>(
-                ProcedureName,
-                new { RoleAction = "DeleteRole", RoleId = roleId });
+                DbConstants.Procedures.Rbac,
+                new { RoleAction = DbConstants.RbacActions.DeleteRole, RoleId = roleId });
 
             return result;
         }

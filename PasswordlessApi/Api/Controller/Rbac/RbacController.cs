@@ -1,36 +1,36 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using PasswordlessApi.Api.Models.DTOs.Rbac;
-using PasswordlessApi.Api.Service.Interface.Auth;
-using PasswordlessApi.Api.Models.ResponseModel.Auth;
+using PasswordlessApi.Api.Models.Common;
 using PasswordlessApi.Api.Service.Interface.Rbac;
 
 namespace PasswordlessApi.Api.Controller.Rbac
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class RbacController : ControllerBase
     {
         private readonly IRoleService _roleService;
         private readonly IPermissionService _permissionService;
         private readonly IUserRoleService _userRoleService;
-        private readonly IAuthService _authService;
 
         public RbacController(IRoleService roleService, IPermissionService permissionService,
-            IUserRoleService userRoleService, IAuthService authService)
+            IUserRoleService userRoleService)
         {
             _roleService = roleService;
             _permissionService = permissionService;
             _userRoleService = userRoleService;
-            _authService = authService;
         }
 
         [HttpPost("roles")]
-        public async Task<ActionResult<AuthResponse>> CreateRole([FromBody] CreateRoleRequest request)
+        [Authorize(Policy = "ManageRoles")]
+        public async Task<ActionResult<RoleResponse>> CreateRole([FromBody] CreateRoleRequest request)
         {
             var role = await _roleService.CreateRoleAsync(request.Name, request.Description);
             if (role == null)
             {
-                return BadRequest(new AuthResponse { Message = "Role already exists or creation failed" });
+                return BadRequest(new MessageResponse { Message = "Role already exists or creation failed" });
             }
 
             if (request.PermissionNames != null && request.PermissionNames.Any())
@@ -43,21 +43,27 @@ namespace PasswordlessApi.Api.Controller.Rbac
             }
 
             var roleDto = await _roleService.GetRoleWithPermissionsAsync(role.Id);
-            return Ok(new AuthResponse
+            return Ok(new RoleResponse
             {
-                UserId = role.Id,
-                Username = role.Name,
+                Id = roleDto!.Id,
+                Name = roleDto.Name,
+                Description = roleDto.Description,
+                Permissions = roleDto.Permissions,
                 Message = "Role created successfully"
             });
         }
 
         [HttpGet("roles")]
-        public async Task<ActionResult<IEnumerable<object>>> GetAllRoles()
+        public async Task<ActionResult<PaginatedResponse<RoleDto>>> GetAllRoles([FromQuery] int page = 1, [FromQuery] int pageSize = 20)
         {
-            var roles = await _roleService.GetAllRolesAsync();
-            var result = new List<object>();
+            var allRoles = await _roleService.GetAllRolesAsync();
+            var totalCount = allRoles.Count();
+            var totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
+            var skip = (page - 1) * pageSize;
+            var pagedRoles = allRoles.Skip(skip).Take(pageSize);
 
-            foreach (var role in roles)
+            var result = new List<RoleDto>();
+            foreach (var role in pagedRoles)
             {
                 var roleDto = await _roleService.GetRoleWithPermissionsAsync(role.Id);
                 if (roleDto != null)
@@ -66,7 +72,13 @@ namespace PasswordlessApi.Api.Controller.Rbac
                 }
             }
 
-            return Ok(result);
+            return Ok(new PaginatedResponse<RoleDto>
+            {
+                TotalCount = totalCount,
+                Page = page,
+                PageSize = pageSize,
+                Data = result
+            });
         }
 
         [HttpGet("roles/{roleId}")]
@@ -75,58 +87,62 @@ namespace PasswordlessApi.Api.Controller.Rbac
             var roleDto = await _roleService.GetRoleWithPermissionsAsync(roleId);
             if (roleDto == null)
             {
-                return NotFound(new AuthResponse { Message = "Role not found" });
+                return NotFound(new MessageResponse { Message = "Role not found" });
             }
 
             return Ok(roleDto);
         }
 
         [HttpPost("roles/permissions")]
-        public async Task<ActionResult<AuthResponse>> AssignPermission([FromBody] AssignRoleRequest request)
+        [Authorize(Policy = "ManageRoles")]
+        public async Task<ActionResult<MessageResponse>> AssignPermission([FromBody] AssignPermissionRequest request)
         {
             var assigned = await _roleService.AssignPermissionToRoleAsync(request.RoleId, request.PermissionId);
             if (!assigned)
             {
-                return BadRequest(new AuthResponse { Message = "Failed to assign permission" });
+                return BadRequest(new MessageResponse { Message = "Failed to assign permission" });
             }
 
-            return Ok(new AuthResponse { Message = "Permission assigned successfully" });
+            return Ok(new MessageResponse { Message = "Permission assigned successfully" });
         }
 
         [HttpDelete("roles/permissions")]
-        public async Task<ActionResult<AuthResponse>> RemovePermission([FromBody] AssignRoleRequest request)
+        [Authorize(Policy = "ManageRoles")]
+        public async Task<ActionResult<MessageResponse>> RemovePermission([FromBody] AssignPermissionRequest request)
         {
             var removed = await _roleService.RemovePermissionFromRoleAsync(request.RoleId, request.PermissionId);
             if (!removed)
             {
-                return BadRequest(new AuthResponse { Message = "Failed to remove permission" });
+                return BadRequest(new MessageResponse { Message = "Failed to remove permission" });
             }
 
-            return Ok(new AuthResponse { Message = "Permission removed successfully" });
+            return Ok(new MessageResponse { Message = "Permission removed successfully" });
         }
 
         [HttpPost("users/roles")]
-        public async Task<ActionResult<AuthResponse>> AssignRoleToUser([FromBody] AssignRoleRequest request)
+        [Authorize(Policy = "ManageUsers")]
+        public async Task<ActionResult<MessageResponse>> AssignRoleToUser([FromBody] AssignRoleRequest request)
         {
             var assigned = await _userRoleService.AssignRoleToUserAsync(request.UserId, request.RoleId);
             if (!assigned)
             {
-                return BadRequest(new AuthResponse { Message = "Failed to assign role to user" });
+                return BadRequest(new MessageResponse { Message = "Failed to assign role to user" });
             }
 
-            return Ok(new AuthResponse { Message = "Role assigned to user successfully" });
+            return Ok(new MessageResponse { Message = "Role assigned to user successfully" });
         }
 
         [HttpDelete("users/roles")]
-        public async Task<ActionResult<AuthResponse>> RemoveRoleFromUser([FromBody] AssignRoleRequest request)
+        [Authorize(Policy = "ManageUsers")]
+        public async Task<ActionResult<MessageResponse>> RemoveRoleFromUser([FromBody] AssignRoleRequest request)
         {
             var removed = await _userRoleService.RemoveRoleFromUserAsync(request.UserId, request.RoleId);
             if (!removed)
             {
-                return BadRequest(new AuthResponse { Message = "Failed to remove role from user" });
+                return BadRequest(new MessageResponse { Message = "Failed to remove role from user" });
             }
 
-            return Ok(new AuthResponse { Message = "Role removed from user successfully" });
+            return Ok(new MessageResponse { Message = "Role removed from user successfully" });
         }
 
         [HttpGet("users/{userId}/roles")]
@@ -144,35 +160,48 @@ namespace PasswordlessApi.Api.Controller.Rbac
         }
 
         [HttpGet("users")]
-        public async Task<ActionResult<IEnumerable<object>>> GetAllUsersWithRoles()
+        public async Task<ActionResult<PaginatedResponse<UserRoleResponse>>> GetAllUsersWithRoles([FromQuery] int page = 1, [FromQuery] int pageSize = 20)
         {
-            var users = await _userRoleService.GetAllUsersWithRolesAsync();
-            var result = new List<object>();
+            var allUsers = await _userRoleService.GetAllUsersWithRolesAsync();
+            var totalCount = allUsers.Count();
+            var skip = (page - 1) * pageSize;
+            var pagedUsers = allUsers.Skip(skip).Take(pageSize);
 
-            foreach (var user in users)
+            var result = new List<UserRoleResponse>();
+            foreach (var user in pagedUsers)
             {
                 var userWithData = await _userRoleService.GetUserWithRolesAndPermissionsAsync(user.Id);
                 if (userWithData != null)
                 {
-                    result.Add(new
+                    result.Add(new UserRoleResponse
                     {
                         UserId = userWithData.Id,
-                        Username = userWithData.Username,
-                        Email = userWithData.Email,
+                        Username = userWithData.Username ?? string.Empty,
+                        Email = userWithData.Email ?? string.Empty,
                         Role = userWithData.Role,
                         Permissions = userWithData.Permissions
                     });
                 }
             }
 
-            return Ok(result);
+            return Ok(new PaginatedResponse<UserRoleResponse>
+            {
+                TotalCount = totalCount,
+                Page = page,
+                PageSize = pageSize,
+                Data = result
+            });
         }
 
         [HttpGet("permissions")]
-        public async Task<ActionResult<IEnumerable<PermissionDto>>> GetAllPermissions()
+        public async Task<ActionResult<PaginatedResponse<PermissionDto>>> GetAllPermissions([FromQuery] int page = 1, [FromQuery] int pageSize = 20)
         {
-            var permissions = await _permissionService.GetAllPermissionsAsync();
-            var result = permissions.Select(p => new PermissionDto
+            var allPermissions = await _permissionService.GetAllPermissionsAsync();
+            var totalCount = allPermissions.Count();
+            var skip = (page - 1) * pageSize;
+            var pagedPermissions = allPermissions.Skip(skip).Take(pageSize);
+
+            var result = pagedPermissions.Select(p => new PermissionDto
             {
                 Id = p.Id,
                 Name = p.Name,
@@ -180,7 +209,37 @@ namespace PasswordlessApi.Api.Controller.Rbac
                 Module = p.Module
             }).ToList();
 
-            return Ok(result);
+            return Ok(new PaginatedResponse<PermissionDto>
+            {
+                TotalCount = totalCount,
+                Page = page,
+                PageSize = pageSize,
+                Data = result
+            });
         }
+    }
+
+    public class RoleResponse
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string? Description { get; set; }
+        public List<string> Permissions { get; set; } = new();
+        public string? Message { get; set; }
+    }
+
+    public class UserRoleResponse
+    {
+        public int UserId { get; set; }
+        public string Username { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public string? Role { get; set; }
+        public List<string>? Permissions { get; set; }
+    }
+
+    public class AssignPermissionRequest
+    {
+        public int RoleId { get; set; }
+        public int PermissionId { get; set; }
     }
 }

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using PasswordlessApi.Api.Service.Interface.Rbac;
+using PasswordlessApi.Api.Common;
 
 namespace PasswordlessApi.Api.Authorization
 {
@@ -16,14 +17,14 @@ namespace PasswordlessApi.Api.Authorization
 
         protected override async Task HandleRequirementAsync(AuthorizationHandlerContext context, PermissionRequirement requirement)
         {
-            var userIdClaim = context.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-            if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
+            var userId = context.User.GetUserId();
+            if (userId == null)
             {
                 context.Fail();
                 return;
             }
 
-            var hasPermission = await _userRoleService.HasPermissionAsync(userId, requirement.Permission);
+            var hasPermission = await _userRoleService.HasPermissionAsync(userId.Value, requirement.Permission);
             if (hasPermission)
             {
                 context.Succeed(requirement);

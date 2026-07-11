@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PasswordlessApi.Api.Service.Interface.Auth;
+using PasswordlessApi.Api.Common;
 
 namespace PasswordlessApi.Api.Controller.Security
 {
@@ -19,30 +20,30 @@ namespace PasswordlessApi.Api.Controller.Security
         [HttpGet]
         public async Task<IActionResult> GetActiveSessions()
         {
-            var userId = int.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "0");
-            if (userId <= 0) return Unauthorized();
+            var userId = User.GetUserId();
+            if (userId == null) return Unauthorized();
 
-            var sessions = await _authService.GetActiveSessionsAsync(userId);
+            var sessions = await _authService.GetActiveSessionsAsync(userId.Value);
             return Ok(sessions.Sessions);
         }
 
         [HttpPost("logout-all")]
         public async Task<IActionResult> RevokeAllSessions()
         {
-            var userId = int.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "0");
-            if (userId <= 0) return Unauthorized();
+            var userId = User.GetUserId();
+            if (userId == null) return Unauthorized();
 
-            await _authService.RevokeAllSessionsAsync(userId);
+            await _authService.RevokeAllSessionsAsync(userId.Value);
             return Ok(new { succeeded = true, message = "All sessions have been revoked" });
         }
 
         [HttpDelete("{sessionId:int}")]
         public async Task<IActionResult> RevokeSession(int sessionId)
         {
-            var userId = int.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "0");
-            if (userId <= 0) return Unauthorized();
+            var userId = User.GetUserId();
+            if (userId == null) return Unauthorized();
 
-            await _authService.RevokeSessionAsync(sessionId, userId);
+            await _authService.RevokeSessionAsync(sessionId, userId.Value);
             return Ok(new { succeeded = true, message = "Session has been revoked" });
         }
     }

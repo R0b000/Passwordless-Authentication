@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
+using PasswordlessApi.Api.Common;
 using PasswordlessApi.Api.Models.Entities;
 using PasswordlessApi.Api.Service.Interface.Repository;
 using PasswordlessApi.Api.Service.Interface.Rbac;
@@ -10,7 +11,6 @@ namespace PasswordlessApi.Api.Service.Implementation.Rbac
     {
         private readonly IDapperRepository _dapperRepository;
         private readonly IHttpContextAccessor _httpContextAccessor;
-        private const string ProcedureName = "sp_RBAC";
 
         public UserRoleService(IDapperRepository dapperRepository, IHttpContextAccessor httpContextAccessor)
         {
@@ -21,8 +21,8 @@ namespace PasswordlessApi.Api.Service.Implementation.Rbac
         public async Task<bool> AssignRoleToUserAsync(int userId, int roleId)
         {
             var result = await _dapperRepository.QuerySingleAsync<bool>(
-                ProcedureName,
-                new { UserRoleAction = "AssignRoleToUser", UserId = userId, RoleId = roleId });
+                DbConstants.Procedures.Rbac,
+                new { UserRoleAction = DbConstants.RbacActions.AssignRoleToUser, UserId = userId, RoleId = roleId });
 
             return result;
         }
@@ -30,8 +30,8 @@ namespace PasswordlessApi.Api.Service.Implementation.Rbac
         public async Task<bool> RemoveRoleFromUserAsync(int userId, int roleId)
         {
             var result = await _dapperRepository.QuerySingleAsync<bool>(
-                ProcedureName,
-                new { UserRoleAction = "RemoveRoleFromUser", UserId = userId, RoleId = roleId });
+                DbConstants.Procedures.Rbac,
+                new { UserRoleAction = DbConstants.RbacActions.RemoveRoleFromUser, UserId = userId, RoleId = roleId });
 
             return result;
         }
@@ -39,29 +39,29 @@ namespace PasswordlessApi.Api.Service.Implementation.Rbac
         public async Task<IEnumerable<UserRole>> GetUserRolesAsync(int userId)
         {
             return await _dapperRepository.QueryAsync<UserRole>(
-                ProcedureName,
-                new { UserRoleAction = "GetUserRoles", UserId = userId });
+                DbConstants.Procedures.Rbac,
+                new { UserRoleAction = DbConstants.RbacActions.GetUserRoles, UserId = userId });
         }
 
         public async Task<IEnumerable<string>> GetUserRoleNamesAsync(int userId)
         {
             return await _dapperRepository.QueryAsync<string>(
-                ProcedureName,
-                new { UserRoleAction = "GetUserRoleNames", UserId = userId });
+                DbConstants.Procedures.Rbac,
+                new { UserRoleAction = DbConstants.RbacActions.GetUserRoleNames, UserId = userId });
         }
 
         public async Task<IEnumerable<string>> GetUserPermissionNamesAsync(int userId)
         {
             return await _dapperRepository.QueryAsync<string>(
-                ProcedureName,
-                new { UserRoleAction = "GetUserPermissionNames", UserId = userId });
+                DbConstants.Procedures.Rbac,
+                new { UserRoleAction = DbConstants.RbacActions.GetUserPermissionNames, UserId = userId });
         }
 
         public async Task<User?> GetUserWithRolesAndPermissionsAsync(int userId)
         {
-            var result = await _dapperRepository.QueryMultipleAsync(
-                ProcedureName,
-                new { UserRoleAction = "GetUserWithRolesAndPermissions", UserId = userId });
+            using var result = await _dapperRepository.QueryMultipleAsync(
+                DbConstants.Procedures.Rbac,
+                new { UserRoleAction = DbConstants.RbacActions.GetUserWithRolesAndPermissions, UserId = userId });
 
             try
             {
@@ -85,8 +85,8 @@ namespace PasswordlessApi.Api.Service.Implementation.Rbac
         public async Task<bool> HasPermissionAsync(int userId, string permissionName)
         {
             var result = await _dapperRepository.QuerySingleAsync<bool>(
-                ProcedureName,
-                new { UserRoleAction = "HasPermission", UserId = userId, PermissionName = permissionName });
+                DbConstants.Procedures.Rbac,
+                new { UserRoleAction = DbConstants.RbacActions.HasPermission, UserId = userId, PermissionName = permissionName });
 
             return result;
         }
@@ -94,8 +94,8 @@ namespace PasswordlessApi.Api.Service.Implementation.Rbac
         public async Task<bool> IsInRoleAsync(int userId, string roleName)
         {
             var result = await _dapperRepository.QuerySingleAsync<bool>(
-                ProcedureName,
-                new { UserRoleAction = "IsInRole", UserId = userId, RoleName = roleName });
+                DbConstants.Procedures.Rbac,
+                new { UserRoleAction = DbConstants.RbacActions.IsInRole, UserId = userId, RoleName = roleName });
 
             return result;
         }
@@ -103,23 +103,20 @@ namespace PasswordlessApi.Api.Service.Implementation.Rbac
         public async Task<IEnumerable<User>> GetUsersInRoleAsync(string roleName)
         {
             return await _dapperRepository.QueryAsync<User>(
-                ProcedureName,
-                new { UserRoleAction = "GetUsersInRole", RoleName = roleName });
+                DbConstants.Procedures.Rbac,
+                new { UserRoleAction = DbConstants.RbacActions.GetUsersInRole, RoleName = roleName });
         }
 
         public async Task<IEnumerable<User>> GetAllUsersWithRolesAsync()
         {
             return await _dapperRepository.QueryAsync<User>(
-                ProcedureName,
-                new { UserRoleAction = "GetAllUsersWithRoles" });
+                DbConstants.Procedures.Rbac,
+                new { UserRoleAction = DbConstants.RbacActions.GetAllUsersWithRoles });
         }
 
         public int? GetCurrentUserId()
         {
-            var userIdClaim = _httpContextAccessor.HttpContext?.User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-            if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
-                return null;
-            return userId;
+            return _httpContextAccessor.HttpContext?.User.GetUserId();
         }
     }
 }
