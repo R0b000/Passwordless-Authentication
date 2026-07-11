@@ -1,17 +1,16 @@
 using Microsoft.AspNetCore.Authorization;
-using PasswordlessApi.Api.Service.Interface.Rbac;
+using Microsoft.AspNetCore.Http;
 using PasswordlessApi.Api.Common;
+using PasswordlessApi.Api.Service.Interface.Rbac;
 
 namespace PasswordlessApi.Api.Authorization
 {
     public class PermissionAuthorizationHandler : AuthorizationHandler<PermissionRequirement>
     {
-        private readonly IUserRoleService _userRoleService;
         private readonly IHttpContextAccessor _httpContextAccessor;
 
-        public PermissionAuthorizationHandler(IUserRoleService userRoleService, IHttpContextAccessor httpContextAccessor)
+        public PermissionAuthorizationHandler(IHttpContextAccessor httpContextAccessor)
         {
-            _userRoleService = userRoleService;
             _httpContextAccessor = httpContextAccessor;
         }
 
@@ -24,7 +23,17 @@ namespace PasswordlessApi.Api.Authorization
                 return;
             }
 
-            var hasPermission = await _userRoleService.HasPermissionAsync(userId.Value, requirement.Permission);
+            // Authorization handlers are singletons, so scoped services (e.g. IUserRoleService
+            // and its DapperContext) must be resolved from the request scope, not injected.
+            var httpContext = _httpContextAccessor.HttpContext ?? context.Resource as HttpContext;
+            if (httpContext == null)
+            {
+                context.Fail();
+                return;
+            }
+
+            var userRoleService = httpContext.RequestServices.GetRequiredService<IUserRoleService>();
+            var hasPermission = await userRoleService.HasPermissionAsync(userId.Value, requirement.Permission);
             if (hasPermission)
             {
                 context.Succeed(requirement);

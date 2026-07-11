@@ -19,7 +19,8 @@ CREATE OR ALTER PROCEDURE dbo.sp_RBAC
     @UserId INT = NULL,
     @Names NVARCHAR(MAX) = NULL,
 
-    @Now DATETIME2 = NULL
+    @Now DATETIME2 = NULL,
+    @RoleName NVARCHAR(100) = NULL
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -252,7 +253,7 @@ BEGIN
         BEGIN
             SELECT CASE WHEN EXISTS (
                 SELECT 1 FROM dbo.UserRoles
-                WHERE UserId = @UserId AND RoleName = @RoleName AND RevokedAt IS NULL
+                WHERE UserId = @UserId AND RevokedAt IS NULL
             ) THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT) END AS Result;
         END
         ELSE IF @UserRoleAction = 'GetUsersInRole'
