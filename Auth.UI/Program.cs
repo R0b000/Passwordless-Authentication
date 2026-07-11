@@ -21,6 +21,10 @@ builder.Services.AddScoped(typeof(GenericHttpRepository<>));
 builder.Services.AddScoped<ITokenStore, TokenStore>();
 builder.Services.AddScoped<IAuthManager, AuthManager>();
 builder.Services.AddScoped<AuthController>();
+builder.Services.AddScoped<IAccountManager, AccountManager>();
+builder.Services.AddScoped<AccountController>();
+builder.Services.AddScoped<ISecurityManager, SecurityManager>();
+builder.Services.AddScoped<SecurityController>();
 builder.Services.AddScoped<Auth.UI.Components.UI.Toaster.ToasterService>();
 
 var app = builder.Build();

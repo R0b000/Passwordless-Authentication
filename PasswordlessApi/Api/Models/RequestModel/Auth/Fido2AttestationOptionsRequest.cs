@@ -4,5 +4,6 @@ namespace PasswordlessApi.Api.Models.RequestModel.Auth
     {
         public int UserId { get; set; }
         public string Username { get; set; } = string.Empty;
+        public string? Origin { get; set; }
     }
 }

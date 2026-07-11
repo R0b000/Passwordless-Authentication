@@ -9,5 +9,6 @@ namespace PasswordlessApi.Api.Models.RequestModel.Auth
         public string Signature { get; set; } = string.Empty;
         public long? Counter { get; set; }
         public string Challenge { get; set; } = string.Empty;
+        public string? Origin { get; set; }
     }
 }

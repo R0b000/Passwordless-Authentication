@@ -32,6 +32,33 @@ namespace PasswordlessApi.Api.Service.Implementation.Repository
             return Response<List<T>>.Success(result);
         }
 
+        public async Task<Response<TResult>> QuerySingleAsync<TResult>(string procedureName, object dataType)
+        {
+            var result = await _dapperRepository.QuerySingleAsync<TResult>(procedureName, dataType);
+            return Response<TResult>.Success(result!);
+        }
+
+        public async Task<Response<List<TResult>>> QueryAsync<TResult>(string procedureName, object dataType)
+        {
+            var result = (await _dapperRepository.QueryAsync<TResult>(procedureName, dataType)).ToList();
+            return Response<List<TResult>>.Success(result);
+        }
+
+        public async Task<T?> QueryFirstAsync(string procedureName, object dataType)
+        {
+            return await _dapperRepository.QueryFirstAsync<T>(procedureName, dataType);
+        }
+
+        public async Task<TResult?> QueryFirstAsync<TResult>(string procedureName, object dataType)
+        {
+            return await _dapperRepository.QueryFirstAsync<TResult>(procedureName, dataType);
+        }
+
+        public async Task<SqlMapper.GridReader> QueryMultipleAsync(string procedureName, object dataType)
+        {
+            return await _dapperRepository.QueryMultipleAsync(procedureName, dataType);
+        }
+
         public async Task<List<TResult>> GetAllAsync<TResult>(string spName, object obj, CommandType queryType = CommandType.StoredProcedure)
         {
             return await _dapperRepository.GetAllAsync<TResult>(spName, obj, queryType);

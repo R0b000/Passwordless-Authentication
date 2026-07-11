@@ -1,0 +1,43 @@
+@namespace Auth.UI.Components.Layout
+@inherits LayoutComponentBase
+@using Auth.UI.Components.UI.Menu
+@using Auth.UI.Components.UI.Icons
+
+<div class="app-shell">
+    <aside class="app-sidebar">
+        <div class="app-brand">
+            <Icon Name="shield" Size="Icon.IconSize.Small" />
+            <span>Passwordless Auth</span>
+        </div>
+
+        <Menu Items="@MenuItems" OnAction="OnMenuAction" />
+    </aside>
+
+    <div class="app-main">
+        <header class="app-header">
+            <h1 class="app-header-title">@Title</h1>
+
+            <div class="app-account">
+                <button type="button" class="app-account-badge" @onclick="ToggleAccountMenu" aria-haspopup="true" aria-expanded="@AccountMenuOpen">
+                    <span class="app-account-avatar">@AccountInitial</span>
+                    <span>@(Profile?.DisplayName ?? Profile?.Username ?? "Account")</span>
+                </button>
+
+                @if (AccountMenuOpen)
+                {
+                    <div class="app-dropdown-backdrop" @onclick="CloseAccountMenu"></div>
+                    <div class="app-account-dropdown" role="menu">
+                        <button type="button" class="app-dropdown-item" role="menuitem" @onclick="Logout">
+                            <Icon Name="x" Size="Icon.IconSize.Small" />
+                            <span>Sign out</span>
+                        </button>
+                    </div>
+                }
+            </div>
+        </header>
+
+        <main class="app-content">
+            @Body
+        </main>
+    </div>
+</div>

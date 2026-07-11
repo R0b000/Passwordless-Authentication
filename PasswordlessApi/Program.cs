@@ -1,7 +1,10 @@
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.Extensions.Options;
 using PasswordlessApi.Api.Configuration;
+using PasswordlessApi.Api.Middleware;
 using PasswordlessApi.Api.Service.Implementation.Auth;
 using PasswordlessApi.Api.Service.Implementation.Repository;
 using PasswordlessApi.Api.Service.Implementation.Rbac;
@@ -15,9 +18,15 @@ using Microsoft.AspNetCore.Authorization;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Pin the API to a fixed HTTP address so the Blazor UI (BaseUrl http://localhost:5000)
-// can always reach it, independent of which launch profile is selected.
-builder.WebHost.UseUrls("http://localhost:5000");
+var configuredUrls = builder.Configuration["ASPNETCORE_URLS"] ?? builder.Configuration["Urls"];
+if (string.IsNullOrWhiteSpace(configuredUrls))
+{
+    builder.WebHost.UseUrls("http://localhost:5000");
+}
+else
+{
+    builder.WebHost.UseUrls(configuredUrls);
+}
 
 var jwtSecret = builder.Configuration["JwtSettings:SecretKey"] ?? Environment.GetEnvironmentVariable("JWT_SECRET_KEY");
 if (string.IsNullOrWhiteSpace(jwtSecret) || jwtSecret is "fake_jwt_token" or "fake_local_key")
@@ -35,6 +44,7 @@ var key = Encoding.UTF8.GetBytes(jwtSecret);
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddControllers();
+builder.Services.AddMemoryCache();
 builder.Services.AddAuthorization();
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -53,6 +63,8 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ClockSkew = TimeSpan.Zero
         };
     });
+
+builder.Services.AddHttpClient<PasswordlessApi.Api.Service.Implementation.Security.IpApiLocationResolver>();
 
 builder.Services.AddScoped<DapperContext>();
 builder.Services.AddScoped<IDapperRepository, DapperRepository>();
@@ -76,6 +88,16 @@ builder.Services.AddAuthorization(options =>
     options.AddPolicy("ReadUsers", policy => policy.Requirements.Add(new PermissionRequirement("users.read")));
 });
 
+            if (apiSettings.AllowCredentials)
+            {
+                builderPolicy.AllowCredentials();
+            }
+        }
+    });
+});
+
+builder.Services.AddSecurityRateLimiting();
+
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
@@ -87,7 +109,10 @@ if (app.Environment.IsDevelopment())
 if (!app.Environment.IsDevelopment())
 {
     app.UseHttpsRedirection();
+    app.UseHsts();
 }
+
+app.UseCors("DefaultCorsPolicy");
 app.UseAuthentication();
 app.UseAuthorization();
 
