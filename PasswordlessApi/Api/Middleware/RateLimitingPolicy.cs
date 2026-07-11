@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.RateLimiting;
+using PasswordlessApi.Api.Configuration;
 using System.Threading.RateLimiting;
 
 namespace PasswordlessApi.Api.Middleware
@@ -11,7 +12,7 @@ namespace PasswordlessApi.Api.Middleware
         public const string GeneralPolicy = "general";
         public const string RegistrationPolicy = "registration";
 
-        public static void AddSecurityRateLimiting(this IServiceCollection services)
+        public static void AddSecurityRateLimiting(this IServiceCollection services, RateLimitSettings settings)
         {
             services.AddRateLimiter(options =>
             {
@@ -19,8 +20,8 @@ namespace PasswordlessApi.Api.Middleware
                     context,
                     _ => new FixedWindowRateLimiterOptions
                     {
-                        PermitLimit = 5,
-                        Window = TimeSpan.FromMinutes(5),
+                        PermitLimit = settings.Login.PermitLimit,
+                        Window = TimeSpan.FromMinutes(settings.Login.WindowMinutes),
                         QueueLimit = 0,
                         AutoReplenishment = true
                     }));
@@ -29,8 +30,8 @@ namespace PasswordlessApi.Api.Middleware
                     context,
                     _ => new FixedWindowRateLimiterOptions
                     {
-                        PermitLimit = 30,
-                        Window = TimeSpan.FromMinutes(1),
+                        PermitLimit = settings.RefreshToken.PermitLimit,
+                        Window = TimeSpan.FromMinutes(settings.RefreshToken.WindowMinutes),
                         QueueLimit = 0,
                         AutoReplenishment = true
                     }));
@@ -39,8 +40,8 @@ namespace PasswordlessApi.Api.Middleware
                     context,
                     _ => new FixedWindowRateLimiterOptions
                     {
-                        PermitLimit = 100,
-                        Window = TimeSpan.FromMinutes(1),
+                        PermitLimit = settings.General.PermitLimit,
+                        Window = TimeSpan.FromMinutes(settings.General.WindowMinutes),
                         QueueLimit = 0,
                         AutoReplenishment = true
                     }));
@@ -49,8 +50,8 @@ namespace PasswordlessApi.Api.Middleware
                     context,
                     _ => new FixedWindowRateLimiterOptions
                     {
-                        PermitLimit = 5,
-                        Window = TimeSpan.FromMinutes(15),
+                        PermitLimit = settings.Registration.PermitLimit,
+                        Window = TimeSpan.FromMinutes(settings.Registration.WindowMinutes),
                         QueueLimit = 0,
                         AutoReplenishment = true
                     }));

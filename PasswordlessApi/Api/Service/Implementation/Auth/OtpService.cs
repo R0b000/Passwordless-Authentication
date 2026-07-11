@@ -79,8 +79,6 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
                 Message = $"OTP sent to {user.Email}"
             };
 
-            // Never return the OTP to the client. Log it locally for development
-            // convenience only; in production it is delivered out-of-band via email.
             if (_env.IsDevelopment())
             {
                 _logger.LogInformation("DEV OTP for {Email}: {Otp}", user.Email, otp);

@@ -660,7 +660,6 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
             if (user == null) return;
 
             var token = Guid.NewGuid().ToString("N") + Guid.NewGuid().ToString("N");
-            var tokenHash = TokenHasher.HashToken(token);
             var expiresAt = DateTime.UtcNow.AddHours(1);
 
             await _authRepository.ExecuteAsync(
@@ -670,7 +669,7 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
                     AuthType = DbConstants.AuthTypes.ResetPassword,
                     FIDOOperation = "CreateResetToken",
                     Email = email,
-                    TokenHash = tokenHash,
+                    TokenHash = token,
                     ExpiresAt = expiresAt,
                     Now = DateTime.UtcNow
                 });
@@ -698,7 +697,7 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
                 new
                 {
                     AuthType = DbConstants.AuthTypes.ResetPassword,
-                    TokenHash = TokenHasher.HashToken(token),
+                    TokenHash = token,
                     PasswordHash = passwordHash,
                     Now = DateTime.UtcNow
                 });
