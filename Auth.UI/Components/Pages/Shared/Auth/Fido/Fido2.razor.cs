@@ -128,7 +128,8 @@ namespace Auth.UI.Components.Pages.Shared.Fido
             State = PasskeyState.Requesting;
             StatusDetail = "Contacting the server to prepare your passkey challenge…";
 
-            var result = await AuthController.CreateFido2ChallengeAsync(UserId);
+            var origin = new Uri(NavigationManager.BaseUri).GetLeftPart(UriPartial.Authority);
+            var result = await AuthController.CreateFido2ChallengeAsync(UserId, origin);
             if (!result.Succeeded || result.Data is null)
             {
                 State = PasskeyState.Error;
@@ -158,6 +159,7 @@ namespace Auth.UI.Components.Pages.Shared.Fido
                 VerifyModel.AuthenticatorData = cred.response.authenticatorData;
                 VerifyModel.Signature = cred.response.signature;
                 VerifyModel.UserId = UserId;
+                VerifyModel.Origin = new Uri(NavigationManager.BaseUri).GetLeftPart(UriPartial.Authority);
 
                 await VerifyAsync();
             }

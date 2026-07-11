@@ -80,10 +80,10 @@ namespace Auth.UI.src.Manager.Service.Implementation
             return result;
         }
 
-        public async Task<Response<Fido2ChallengeResponse>> CreateFido2ChallengeAsync(int userId)
+        public async Task<Response<Fido2ChallengeResponse>> CreateFido2ChallengeAsync(int userId, string origin)
         {
             var token = _tokenStore.GetToken();
-            var result = await _challengeRepository.QuerySingleAsync("api/auth/fido2/challenge", new Fido2ChallengeRequest { UserId = userId }, token);
+            var result = await _challengeRepository.QuerySingleAsync("api/auth/fido2/challenge", new Fido2ChallengeRequest { UserId = userId, Origin = origin }, token);
             return result;
         }
 

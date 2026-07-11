@@ -23,7 +23,7 @@ namespace PasswordlessApi.Api.Controller.Security
             if (userId <= 0) return Unauthorized();
 
             var sessions = await _authService.GetActiveSessionsAsync(userId);
-            return Ok(sessions);
+            return Ok(sessions.Sessions);
         }
 
         [HttpPost("logout-all")]
@@ -33,7 +33,7 @@ namespace PasswordlessApi.Api.Controller.Security
             if (userId <= 0) return Unauthorized();
 
             await _authService.RevokeAllSessionsAsync(userId);
-            return Ok(new { message = "All sessions have been revoked" });
+            return Ok(new { succeeded = true, message = "All sessions have been revoked" });
         }
 
         [HttpDelete("{sessionId:int}")]
@@ -43,7 +43,7 @@ namespace PasswordlessApi.Api.Controller.Security
             if (userId <= 0) return Unauthorized();
 
             await _authService.RevokeSessionAsync(sessionId, userId);
-            return Ok(new { message = "Session has been revoked" });
+            return Ok(new { succeeded = true, message = "Session has been revoked" });
         }
     }
 }
