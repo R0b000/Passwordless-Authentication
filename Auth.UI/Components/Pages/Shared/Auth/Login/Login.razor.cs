@@ -2,6 +2,7 @@ using Auth.UI.Components.UI.Modal;
 using Auth.UI.Components.UI.Toaster;
 using Auth.UI.src.Manager.Controller;
 using Auth.UI.src.Model.Auth;
+using Auth.UI.src.Utility;
 using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
 using System.Text.Json.Serialization;
@@ -14,6 +15,7 @@ namespace Auth.UI.Components.Pages.Shared.Login
         [Inject] private NavigationManager NavigationManager { get; set; } = default!;
         [Inject] private IJSRuntime JsRuntime { get; set; } = default!;
         [Inject] private ToasterService Toaster { get; set; } = default!;
+        [Inject] private ITokenStore TokenStore { get; set; } = default!;
 
         protected string Mode { get; set; } = "login";
         protected RegisterRequest RegisterModel { get; set; } = new();
@@ -23,9 +25,25 @@ namespace Auth.UI.Components.Pages.Shared.Login
         protected int LoggedInUserId { get; set; }
         protected bool ShowPassword { get; set; }
 
-        // NEW: Tracks whether we are verifying an existing passkey or registering a new one
         protected bool IsVerificationMode { get; set; }
         protected string LoggedInUsername { get; set; } = string.Empty;
+        protected bool _redirectToProfile;
+
+        protected override void OnInitialized()
+        {
+            if (TokenStore.GetToken() is not null)
+            {
+                _redirectToProfile = true;
+            }
+        }
+
+        protected override async Task OnAfterRenderAsync(bool firstRender)
+        {
+            if (_redirectToProfile)
+            {
+                NavigationManager.NavigateTo("/profile", replace: true);
+            }
+        }
 
         protected void TogglePassword() => ShowPassword = !ShowPassword;
 
@@ -111,27 +129,31 @@ namespace Auth.UI.Components.Pages.Shared.Login
             NavigationManager.NavigateTo("/profile");
         }
 
-        // NEW/UPDATED: Handle the "Skip for now" button from PasskeySetup
         protected void HandlePasskeySkipped()
         {
             PasskeyVisible = false;
-            StatusMessage = string.Empty; // Clear any errors
-                                          // User skipped passkey setup, but they are already logged in via password.
-                                          // Gracefully redirect without showing any errors.
+            StatusMessage = string.Empty;
+            LoggedInUserId = 0;
+            IsVerificationMode = false;
             NavigationManager.NavigateTo("/profile");
         }
 
-        // UPDATED: Handle the Modal "Close" (X) button
         protected void OnPasskeyCancel()
         {
+            var wasVerification = IsVerificationMode;
             PasskeyVisible = false;
             LoggedInUserId = 0;
             IsVerificationMode = false;
-            StatusMessage = string.Empty; // Clear any errors
+            StatusMessage = string.Empty;
 
-            // If they close the modal, they are still logged in via password. 
-            // Let them into the app without errors.
-            NavigationManager.NavigateTo("/profile");
+            if (wasVerification)
+            {
+                TokenStore.Clear();
+            }
+            else
+            {
+                NavigationManager.NavigateTo("/profile");
+            }
         }
     }
 }

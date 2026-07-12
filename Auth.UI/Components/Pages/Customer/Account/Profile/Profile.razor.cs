@@ -1,6 +1,7 @@
 using Auth.UI.Components.UI.Toaster;
 using Auth.UI.src.Manager.Controller;
 using Auth.UI.src.Model.Account;
+using Auth.UI.src.Utility;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Forms;
 
@@ -10,6 +11,8 @@ namespace Auth.UI.Components.Pages.Customer.Account.Profile
     {
         [Inject] private AccountController AccountController { get; set; } = default!;
         [Inject] private ToasterService Toaster { get; set; } = default!;
+        [Inject] private ITokenStore TokenStore { get; set; } = default!;
+        [Inject] private NavigationManager Navigation { get; set; } = default!;
 
         protected UserProfile? Model { get; set; }
         protected bool EditMode { get; set; }
@@ -63,6 +66,12 @@ namespace Auth.UI.Components.Pages.Customer.Account.Profile
         protected void OnAvatarSelected(IBrowserFile file)
         {
             Toaster.ShowInfo("Profile picture updated (demo)");
+        }
+
+        protected void Logout()
+        {
+            TokenStore.Clear();
+            Navigation.NavigateTo("/login", replace: true);
         }
     }
 }

@@ -111,19 +111,18 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
 
         public async Task<AuthResponse> LoginAsync(LoginRequest request, string? ipAddress = null, string? userAgent = null)
         {
-            var userIdResult = await _authRepository.QuerySingleAsync<UserIdResult>(
+            var result = await _authRepository.QuerySingleAsync<UserIdResult>(
                 ProcedureName,
                 new { AuthType = DbConstants.AuthTypes.Login, Username = request.Username });
 
-            if (userIdResult == null || !userIdResult.Succeeded || userIdResult.Data == null || userIdResult.Data.UserId <= 0)
+            if (result == null || !result.Succeeded || result.Data == null || result.Data.UserId <= 0)
             {
-                _passwordHash.VerifyPassword(request.Password, "$2a$12$dummyhashdummyhashdummyhashdummyhashdu");
                 return new AuthResponse { Message = "Invalid username or password" };
             }
 
             var user = await _authRepository.QuerySingleAsync<User>(
                 ProcedureName,
-                new { AuthType = DbConstants.AuthTypes.Login, UserId = userIdResult.Data.UserId });
+                new { AuthType = DbConstants.AuthTypes.Login, UserId = result.Data.UserId });
 
             if (user == null || !user.Succeeded || user.Data == null || string.IsNullOrEmpty(user.Data.PasswordHash))
             {
@@ -135,7 +134,9 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
                 return new AuthResponse { Message = "Invalid username or password" };
             }
 
-            if (await HasFido2CredentialsAsync(user.Data.Id))
+            bool hasFido2 = await HasFido2CredentialsAsync(user.Data.Id);
+
+            if (hasFido2)
             {
                 return new AuthResponse
                 {
@@ -153,6 +154,7 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
                 IpAddress = ipAddress ?? GetClientIpAddress(),
                 UserAgent = userAgent ?? GetUserAgent()
             };
+
             deviceInfo.Location = await _locationResolver.ResolveLocationAsync(deviceInfo.IpAddress);
 
             await AssignDefaultRoleIfMissingAsync(user.Data.Id);
@@ -170,24 +172,6 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
                 deviceInfo.UserAgent);
 
             var userWithRoles = await _userRoleService.GetUserWithRolesAndPermissionsAsync(user.Data.Id);
-
-            bool hasFido2 = await HasFido2CredentialsAsync(user.Data.Id);
-
-            if (hasFido2)
-            {
-                return new AuthResponse
-                {
-                    UserId = user.Data.Id,
-                    Username = user.Data.Username,
-                    Email = user.Data.Email,
-                    Token = token,
-                    RefreshToken = refreshToken,
-                    Message = "Login successful",
-                    RequiresFido2 = true,
-                    Role = userWithRoles?.Role,
-                    Permissions = userWithRoles?.Permissions ?? new List<string>()
-                };
-            }
 
             return new AuthResponse
             {

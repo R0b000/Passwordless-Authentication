@@ -486,6 +486,7 @@ namespace Auth.UI.Components.Layout
 
         protected UserProfile? Profile { get; set; }
         protected bool AccountMenuOpen { get; set; }
+        protected bool _redirectToLogin;
 
         protected string AccountInitial =>
             string.IsNullOrEmpty(Profile?.DisplayName) ? "?" : Profile!.DisplayName[0].ToString().ToUpperInvariant();
@@ -523,8 +524,22 @@ namespace Auth.UI.Components.Layout
 
         protected override async Task OnInitializedAsync()
         {
+            if (TokenStore.GetToken() is null)
+            {
+                _redirectToLogin = true;
+                return;
+            }
+
             var result = await AccountController.GetProfileAsync();
             Profile = result.Succeeded ? result.Data : null;
+        }
+
+        protected override async Task OnAfterRenderAsync(bool firstRender)
+        {
+            if (_redirectToLogin)
+            {
+                Navigation.NavigateTo("/login", replace: true);
+            }
         }
 
         protected void ToggleAccountMenu() => AccountMenuOpen = !AccountMenuOpen;
@@ -867,7 +882,10 @@ FILE: Components\Pages\Customer\Account\Profile\Profile.razor
         </div>
         @if (!EditMode)
         {
-            <Button Variant="Button.ButtonVariant.Primary" IconName="edit" OnClick="EnterEdit">Edit profile</Button>
+            <div class="d-flex gap-2 flex-wrap">
+                <Button Variant="Button.ButtonVariant.Primary" IconName="edit" OnClick="EnterEdit">Edit profile</Button>
+                <Button Variant="Button.ButtonVariant.Danger" Outline="true" IconName="x" OnClick="Logout">Log out</Button>
+            </div>
         }
     </div>
 
@@ -945,6 +963,7 @@ FILE: Components\Pages\Customer\Account\Profile\Profile.razor.cs
 using Auth.UI.Components.UI.Toaster;
 using Auth.UI.src.Manager.Controller;
 using Auth.UI.src.Model.Account;
+using Auth.UI.src.Utility;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Forms;
 
@@ -954,6 +973,8 @@ namespace Auth.UI.Components.Pages.Customer.Account.Profile
     {
         [Inject] private AccountController AccountController { get; set; } = default!;
         [Inject] private ToasterService Toaster { get; set; } = default!;
+        [Inject] private ITokenStore TokenStore { get; set; } = default!;
+        [Inject] private NavigationManager Navigation { get; set; } = default!;
 
         protected UserProfile? Model { get; set; }
         protected bool EditMode { get; set; }
@@ -1007,6 +1028,12 @@ namespace Auth.UI.Components.Pages.Customer.Account.Profile
         protected void OnAvatarSelected(IBrowserFile file)
         {
             Toaster.ShowInfo("Profile picture updated (demo)");
+        }
+
+        protected void Logout()
+        {
+            TokenStore.Clear();
+            Navigation.NavigateTo("/login", replace: true);
         }
     }
 }
@@ -2201,15 +2228,18 @@ FILE: Components\Pages\Shared\Auth\Login\Login.razor
         {
             @if (IsVerificationMode)
             {
+                <!-- User HAS a passkey, needs to VERIFY it -->
                 <PasskeyLogin UserId="@(LoggedInUserId > 0 ? LoggedInUserId : null)"
                               AutoStart="false"
                               OnCompleted="HandlePasskeyCompleted" />
             }
             else
             {
-                <PasskeyLogin UserId="@(LoggedInUserId > 0 ? LoggedInUserId : null)"
-                              AutoStart="false"
-                              OnCompleted="HandlePasskeyCompleted" />
+                <!-- User DOES NOT have a passkey, needs to SETUP/REGISTER it -->
+                <PasskeySetup UserId="@LoggedInUserId"
+                              Username="@LoggedInUsername"
+                              OnCompleted="HandlePasskeyCompleted"
+                              OnSkipped="HandlePasskeySkipped" />
             }
         }
     </Modal>
@@ -2223,6 +2253,7 @@ using Auth.UI.Components.UI.Modal;
 using Auth.UI.Components.UI.Toaster;
 using Auth.UI.src.Manager.Controller;
 using Auth.UI.src.Model.Auth;
+using Auth.UI.src.Utility;
 using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
 using System.Text.Json.Serialization;
@@ -2235,6 +2266,7 @@ namespace Auth.UI.Components.Pages.Shared.Login
         [Inject] private NavigationManager NavigationManager { get; set; } = default!;
         [Inject] private IJSRuntime JsRuntime { get; set; } = default!;
         [Inject] private ToasterService Toaster { get; set; } = default!;
+        [Inject] private ITokenStore TokenStore { get; set; } = default!;
 
         protected string Mode { get; set; } = "login";
         protected RegisterRequest RegisterModel { get; set; } = new();
@@ -2244,9 +2276,25 @@ namespace Auth.UI.Components.Pages.Shared.Login
         protected int LoggedInUserId { get; set; }
         protected bool ShowPassword { get; set; }
 
-        // NEW: Tracks whether we are verifying an existing passkey or registering a new one
         protected bool IsVerificationMode { get; set; }
         protected string LoggedInUsername { get; set; } = string.Empty;
+        protected bool _redirectToProfile;
+
+        protected override void OnInitialized()
+        {
+            if (TokenStore.GetToken() is not null)
+            {
+                _redirectToProfile = true;
+            }
+        }
+
+        protected override async Task OnAfterRenderAsync(bool firstRender)
+        {
+            if (_redirectToProfile)
+            {
+                NavigationManager.NavigateTo("/profile", replace: true);
+            }
+        }
 
         protected void TogglePassword() => ShowPassword = !ShowPassword;
 
@@ -2327,6 +2375,7 @@ namespace Auth.UI.Components.Pages.Shared.Login
         protected void HandlePasskeyCompleted()
         {
             PasskeyVisible = false;
+            StatusMessage = string.Empty;
             // Redirect to profile after successful setup or verification
             NavigationManager.NavigateTo("/profile");
         }
@@ -2334,14 +2383,28 @@ namespace Auth.UI.Components.Pages.Shared.Login
         protected void HandlePasskeySkipped()
         {
             PasskeyVisible = false;
+            StatusMessage = string.Empty;
+            LoggedInUserId = 0;
+            IsVerificationMode = false;
             NavigationManager.NavigateTo("/profile");
         }
 
         protected void OnPasskeyCancel()
         {
+            var wasVerification = IsVerificationMode;
             PasskeyVisible = false;
             LoggedInUserId = 0;
             IsVerificationMode = false;
+            StatusMessage = string.Empty;
+
+            if (wasVerification)
+            {
+                TokenStore.Clear();
+            }
+            else
+            {
+                NavigationManager.NavigateTo("/profile");
+            }
         }
     }
 }
