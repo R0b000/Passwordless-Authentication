@@ -15,17 +15,33 @@ namespace Auth.UI.src.Shared.Http
         public async Task<Response<T>> QuerySingleAsync(string endpoint, object request, string? bearerToken = null)
         {
             var result = await _httpService.PostAsync<object, T>(endpoint, request, bearerToken);
-            return result is null
-                ? Response<T>.Failure("Request failed or returned no data")
-                : Response<T>.Success(result);
+            if (!result.Succeeded)
+            {
+                return Response<T>.Failure(result.Error ?? "Request failed or returned no data");
+            }
+
+            if (result.Data is null)
+            {
+                return Response<T>.Failure(result.Error ?? "Request failed or returned no data");
+            }
+
+            return Response<T>.Success(result.Data);
         }
 
         public async Task<Response<T>> GetSingleAsync(string endpoint, string? bearerToken = null)
         {
             var result = await _httpService.GetAsync<T>(endpoint, bearerToken);
-            return result is null
-                ? Response<T>.Failure("Request failed or returned no data")
-                : Response<T>.Success(result);
+            if (!result.Succeeded)
+            {
+                return Response<T>.Failure(result.Error ?? "Request failed or returned no data");
+            }
+
+            if (result.Data is null)
+            {
+                return Response<T>.Failure(result.Error ?? "Request failed or returned no data");
+            }
+
+            return Response<T>.Success(result.Data);
         }
     }
 }

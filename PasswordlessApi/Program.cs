@@ -53,9 +53,6 @@ builder.Services.AddControllers();
 builder.Services.AddMemoryCache();
 builder.Services.AddAuthorization(options =>
 {
-    // Map the string policies referenced by controllers to the existing
-    // permission-based authorization handler. These were previously unregistered,
-    // which caused every admin/RBAC endpoint to fail authorization.
     options.AddPolicy("ManageUsers", policy => policy.Requirements.Add(new PermissionRequirement("users.write")));
     options.AddPolicy("ManageRoles", policy => policy.Requirements.Add(new PermissionRequirement("roles.write")));
 });
@@ -132,8 +129,6 @@ builder.Services.AddSecurityRateLimiting(rateLimitSettings);
 
 var app = builder.Build();
 
-// Global exception handler first so it catches failures from any later middleware
-// (CORS, authentication, authorization, etc.) and returns a safe JSON payload.
 app.UseExceptionHandler(appError =>
 {
     appError.Run(async context =>
@@ -151,7 +146,6 @@ app.UseForwardedHeaders(new ForwardedHeadersOptions
     ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
 });
 
-app.UseMiddleware<SecurityHeadersMiddleware>();
 
 if (app.Environment.IsDevelopment())
 {
@@ -161,6 +155,7 @@ if (app.Environment.IsDevelopment())
 
 if (!app.Environment.IsDevelopment())
 {
+    app.UseMiddleware<SecurityHeadersMiddleware>();
     app.UseHttpsRedirection();
     app.UseHsts();
 }

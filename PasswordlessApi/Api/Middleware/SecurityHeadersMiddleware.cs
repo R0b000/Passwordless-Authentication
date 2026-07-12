@@ -41,14 +41,23 @@ namespace PasswordlessApi.Api.Middleware
         {
             var origins = _apiSettings.GetAllowedOrigins();
             var cspSources = origins.Concat(_apiSettings.CspExtraSources ?? [])
-                                    .Where(s => !string.IsNullOrWhiteSpace(s))
-                                    .Select(s => s.Trim())
-                                    .Distinct(StringComparer.OrdinalIgnoreCase)
-                                    .ToArray();
+                .Where(s => !string.IsNullOrWhiteSpace(s))
+                .Select(s => s.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray();
 
             var originDirectives = cspSources.Length > 0 ? string.Join(" ", cspSources) : "'self'";
 
-            return $"default-src 'self'; script-src {originDirectives}; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' {originDirectives}; frame-ancestors 'none';";
+            // IMPORTANT: Swagger UI requires 'unsafe-inline' and 'unsafe-eval' to function!
+            return $@"
+                default-src 'self';
+                script-src 'self' 'unsafe-inline' 'unsafe-eval' {originDirectives};
+                style-src 'self' 'unsafe-inline';
+                img-src 'self' data: https:;
+                font-src 'self' data:;
+                connect-src 'self' {originDirectives};
+                frame-ancestors 'none';
+            ";
         }
     }
 }

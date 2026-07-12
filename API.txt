@@ -20,6 +20,7 @@ FOLDER STRUCTURE:
   📁 Configuration/
     📄 ApiSettings.cs
     📄 DapperContext.cs
+    📄 RateLimitSettings.cs
     📄 SecuritySettings.cs
   📁 Controller/
     📁 Account/
@@ -124,6 +125,8 @@ FOLDER STRUCTURE:
     📁 PasswordHash/
       📄 IPasswordHash.cs
       📄 PasswordHash.cs
+    📁 TokenHash/
+      📄 TokenHasher.cs
 📁 Properties/
   📄 launchSettings.json
   📁 PublishProfiles/
@@ -180,6 +183,7 @@ using PasswordlessApi.Api.Utility.Jwt;
 using PasswordlessApi.Api.Utility.PasswordHash;
 using PasswordlessApi.Api.Authorization;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.HttpOverrides;
 using System.Text.Json;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -213,7 +217,11 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddControllers();
 builder.Services.AddMemoryCache();
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("ManageUsers", policy => policy.Requirements.Add(new PermissionRequirement("users.write")));
+    options.AddPolicy("ManageRoles", policy => policy.Requirements.Add(new PermissionRequirement("roles.write")));
+});
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
@@ -264,7 +272,7 @@ builder.Services.AddCors(options =>
     });
 });
 
-builder.Services.AddHttpClient<PasswordlessApi.Api.Service.Implementation.Security.IpApiLocationResolver>();
+builder.Services.AddHttpClient<ILocationResolver, PasswordlessApi.Api.Service.Implementation.Security.IpApiLocationResolver>();
 builder.Services.AddScoped<DapperContext>();
 builder.Services.AddScoped<IDapperRepository, DapperRepository>();
 builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
@@ -277,38 +285,15 @@ builder.Services.AddScoped<IUserCredentialService, UserCredentialService>();
 builder.Services.AddScoped<IRoleService, RoleService>();
 builder.Services.AddScoped<IPermissionService, PermissionService>();
 builder.Services.AddScoped<IUserRoleService, UserRoleService>();
-builder.Services.AddScoped<ILocationResolver, IpApiLocationResolver>();
+builder.Services.AddScoped<IAuditLogService, AuditLogService>();
 builder.Services.AddScoped<IEmailService, LoggingEmailService>();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddSingleton<IAuthorizationHandler, PermissionAuthorizationHandler>();
-builder.Services.AddSecurityRateLimiting();
+builder.Services.Configure<RateLimitSettings>(builder.Configuration.GetSection(RateLimitSettings.SectionName));
+var rateLimitSettings = builder.Configuration.GetSection(RateLimitSettings.SectionName).Get<RateLimitSettings>() ?? new RateLimitSettings();
+builder.Services.AddSecurityRateLimiting(rateLimitSettings);
 
 var app = builder.Build();
-
-app.UseMiddleware<SecurityHeadersMiddleware>();
-
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
-
-if (!app.Environment.IsDevelopment())
-{
-    app.UseHttpsRedirection();
-    app.UseHsts();
-}
-
-app.UseCors("DefaultCorsPolicy");
-app.UseAuthentication();
-app.UseAuthorization();
-
-using (var scope = app.Services.CreateScope())
-{
-    var permissionService = scope.ServiceProvider.GetRequiredService<IPermissionService>();
-    await permissionService.SeedDefaultPermissionsAsync();
-}
-
 
 app.UseExceptionHandler(appError =>
 {
@@ -319,6 +304,39 @@ app.UseExceptionHandler(appError =>
         await context.Response.WriteAsync(JsonSerializer.Serialize(new { error = "An internal server error occurred." }));
     });
 });
+
+// Update RemoteIpAddress / scheme from the proxy so rate limiting and audit
+// logs capture the real client, not the proxy itself.
+app.UseForwardedHeaders(new ForwardedHeadersOptions
+{
+    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+});
+
+
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
+
+if (!app.Environment.IsDevelopment())
+{
+    app.UseMiddleware<SecurityHeadersMiddleware>();
+    app.UseHttpsRedirection();
+    app.UseHsts();
+}
+
+app.UseRateLimiter();
+
+app.UseCors("DefaultCorsPolicy");
+app.UseAuthentication();
+app.UseAuthorization();
+
+using (var scope = app.Services.CreateScope())
+{
+    var permissionService = scope.ServiceProvider.GetRequiredService<IPermissionService>();
+    await permissionService.SeedDefaultPermissionsAsync();
+}
 
 app.MapControllers();
 
@@ -338,9 +356,11 @@ FILE: appsettings.Development.json
   "ApiSettings": {
     "AllowedOrigins": [
       "http://localhost:5115",
-      "http://bijayatestui.runasp.net"
+      "http://bijayatestui.runasp.net",
+      "https://bijayatestui.runasp.net"
     ],
     "CspExtraSources": [
+      "http://localhost:5000",
       "https://*.app.github.dev",
       "https://*.ngrok-free.app",
       "https://*.ngrok-free.dev"
@@ -360,7 +380,7 @@ FILE: appsettings.json
     }
   },
   "JwtSettings": {
-    "SecretKey": "ReplaceWithLongRandomSecret-9f2c4b8e7a1d6c3f5e0b9a2c4d8f1e7b",
+    "SecretKey": "__SET_VIA_ENV_VAR_JWT_SECRET_KEY_OR_DOTNET_USER_SECRETS__",
     "Issuer": "PasswordlessApi",
     "Audience": "PasswordlessApiUsers",
     "ExpiryMinutes": 60,
@@ -382,7 +402,15 @@ FILE: appsettings.json
     "EnableSuspiciousActivityDetection": true,
     "ForceReauthOnLocationChange": true
   },
-  "DefaultConnection": "Server=db58891.public.databaseasp.net; Database=db58891; User Id=db58891; Password=Z#q42aW_+N8c; Encrypt=True; TrustServerCertificate=True; MultipleActiveResultSets=True;"
+  "RateLimiting": {
+    "Login": { "PermitLimit": 5, "WindowMinutes": 5 },
+    "RefreshToken": { "PermitLimit": 30, "WindowMinutes": 1 },
+    "General": { "PermitLimit": 100, "WindowMinutes": 1 },
+    "Registration": { "PermitLimit": 5, "WindowMinutes": 15 }
+  },
+  "ConnectionStrings": {
+    "DefaultConnection": "Server=db58891.public.databaseasp.net; Database=db58891; User Id=db58891; Password=Z#q42aW_+N8c; Encrypt=True; TrustServerCertificate=True; MultipleActiveResultSets=True;"
+  }
 }
 
 
@@ -408,19 +436,18 @@ FILE: dotnet-tools.json
 FILE: Api\Authorization\PermissionAuthorizationHandler.cs
 --------------------------------------------------------------------------------
 using Microsoft.AspNetCore.Authorization;
-using PasswordlessApi.Api.Service.Interface.Rbac;
+using Microsoft.AspNetCore.Http;
 using PasswordlessApi.Api.Common;
+using PasswordlessApi.Api.Service.Interface.Rbac;
 
 namespace PasswordlessApi.Api.Authorization
 {
     public class PermissionAuthorizationHandler : AuthorizationHandler<PermissionRequirement>
     {
-        private readonly IUserRoleService _userRoleService;
         private readonly IHttpContextAccessor _httpContextAccessor;
 
-        public PermissionAuthorizationHandler(IUserRoleService userRoleService, IHttpContextAccessor httpContextAccessor)
+        public PermissionAuthorizationHandler(IHttpContextAccessor httpContextAccessor)
         {
-            _userRoleService = userRoleService;
             _httpContextAccessor = httpContextAccessor;
         }
 
@@ -433,7 +460,17 @@ namespace PasswordlessApi.Api.Authorization
                 return;
             }
 
-            var hasPermission = await _userRoleService.HasPermissionAsync(userId.Value, requirement.Permission);
+            // Authorization handlers are singletons, so scoped services (e.g. IUserRoleService
+            // and its DapperContext) must be resolved from the request scope, not injected.
+            var httpContext = _httpContextAccessor.HttpContext ?? context.Resource as HttpContext;
+            if (httpContext == null)
+            {
+                context.Fail();
+                return;
+            }
+
+            var userRoleService = httpContext.RequestServices.GetRequiredService<IUserRoleService>();
+            var hasPermission = await userRoleService.HasPermissionAsync(userId.Value, requirement.Permission);
             if (hasPermission)
             {
                 context.Succeed(requirement);
@@ -593,6 +630,13 @@ namespace PasswordlessApi.Api.Configuration
         public string BaseUrl { get; set; } = "http://localhost:5000";
 
         /// <summary>
+        /// The base URL of the front-end application. Used to build absolute links
+        /// (e.g. password reset) that are safe to click from an email client.
+        /// Falls back to <see cref="BaseUrl"/> when not configured.
+        /// </summary>
+        public string FrontendBaseUrl { get; set; } = string.Empty;
+
+        /// <summary>
         /// Friendly relying-party name shown to authenticators during FIDO2 ceremonies.
         /// </summary>
         public string ServerName { get; set; } = "PasswordlessApi";
@@ -698,13 +742,42 @@ namespace PasswordlessApi.Api.Configuration
             _configuration = configuration;
             _connectionString = _configuration.GetConnectionString("DefaultConnection")
                 ?? _configuration["DefaultConnection"]
-                ?? throw new InvalidCastException("Connection string 'DefaultConnection' not found in appsettings.json");
+                ?? Environment.GetEnvironmentVariable("DB_CONNECTION_STRING")
+                ?? throw new InvalidCastException("Connection string 'DefaultConnection' not found in configuration or environment variables.");
         }
 
         public IDbConnection CreateConnection()
         {
             return new SqlConnection(_connectionString);
         }
+    }
+}
+
+
+--------------------------------------------------------------------------------
+FILE: Api\Configuration\RateLimitSettings.cs
+--------------------------------------------------------------------------------
+namespace PasswordlessApi.Api.Configuration
+{
+    /// <summary>
+    /// Configuration for the named rate-limiting policies. Bound from the
+    /// "RateLimiting" section of appsettings.json so limits can be tuned without
+    /// recompiling. Sensible production defaults are provided if the section is absent.
+    /// </summary>
+    public class RateLimitSettings
+    {
+        public const string SectionName = "RateLimiting";
+
+        public RateLimitPolicy Login { get; set; } = new();
+        public RateLimitPolicy RefreshToken { get; set; } = new();
+        public RateLimitPolicy General { get; set; } = new();
+        public RateLimitPolicy Registration { get; set; } = new();
+    }
+
+    public class RateLimitPolicy
+    {
+        public int PermitLimit { get; set; } = 100;
+        public int WindowMinutes { get; set; } = 1;
     }
 }
 
@@ -730,10 +803,12 @@ FILE: Api\Controller\Account\AccountController.cs
 --------------------------------------------------------------------------------
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using PasswordlessApi.Api.Models.RequestModel.Account;
 using PasswordlessApi.Api.Models.ResponseModel.Account;
 using PasswordlessApi.Api.Service.Interface.Auth;
 using PasswordlessApi.Api.Common;
+using PasswordlessApi.Api.Middleware;
 
 namespace PasswordlessApi.Api.Controller.Account
 {
@@ -822,14 +897,18 @@ namespace PasswordlessApi.Api.Controller.Account
             return Ok(result);
         }
 
+        [AllowAnonymous]
         [HttpPost("password-reset")]
+        [EnableRateLimiting(SecurityRateLimiting.GeneralPolicy)]
         public async Task<ActionResult> RequestPasswordReset([FromBody] PasswordResetRequest request)
         {
             await _authService.RequestPasswordResetAsync(request.Email);
             return Ok(new { succeeded = true, message = "If an account with that email exists, a reset link was sent." });
         }
 
+        [AllowAnonymous]
         [HttpPost("password-reset/confirm")]
+        [EnableRateLimiting(SecurityRateLimiting.GeneralPolicy)]
         public async Task<ActionResult> ConfirmPasswordReset([FromBody] ConfirmPasswordResetRequest request)
         {
             var result = await _authService.ResetPasswordAsync(request.Token, request.NewPassword);
@@ -893,6 +972,7 @@ namespace PasswordlessApi.Api.Controller.Auth
         }
 
         [HttpPost("register")]
+        [EnableRateLimiting(SecurityRateLimiting.RegistrationPolicy)]
         public async Task<ActionResult<AuthResponse>> Register([FromBody] RegisterRequest request)
         {
             var result = await _authService.RegisterAsync(request);
@@ -911,6 +991,7 @@ namespace PasswordlessApi.Api.Controller.Auth
         }
 
         [HttpPost("fido2/options/register")]
+        [EnableRateLimiting(SecurityRateLimiting.GeneralPolicy)]
         public async Task<ActionResult<Fido2ChallengeResponse>> RequestAttestationOptions([FromBody] Fido2AttestationOptionsRequest request)
         {
             request.Origin ??= Request.Headers["Origin"].ToString();
@@ -991,6 +1072,7 @@ namespace PasswordlessApi.Api.Controller.Auth
         }
 
         [HttpPost("otp/request")]
+        [EnableRateLimiting(SecurityRateLimiting.GeneralPolicy)]
         public async Task<ActionResult<OtpResponse>> RequestOtp([FromBody] OtpRequest request)
         {
             var result = await _authService.RequestOtpAsync(request);
@@ -1045,6 +1127,7 @@ namespace PasswordlessApi.Api.Controller.Auth
 FILE: Api\Controller\Rbac\RbacController.cs
 --------------------------------------------------------------------------------
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using PasswordlessApi.Api.Models.DTOs.Rbac;
 using PasswordlessApi.Api.Models.Common;
 using PasswordlessApi.Api.Service.Interface.Rbac;
@@ -1053,6 +1136,7 @@ namespace PasswordlessApi.Api.Controller.Rbac
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class RbacController : ControllerBase
     {
         private readonly IRoleService _roleService;
@@ -1068,6 +1152,7 @@ namespace PasswordlessApi.Api.Controller.Rbac
         }
 
         [HttpPost("roles")]
+        [Authorize(Policy = "ManageRoles")]
         public async Task<ActionResult<RoleResponse>> CreateRole([FromBody] CreateRoleRequest request)
         {
             var role = await _roleService.CreateRoleAsync(request.Name, request.Description);
@@ -1137,6 +1222,7 @@ namespace PasswordlessApi.Api.Controller.Rbac
         }
 
         [HttpPost("roles/permissions")]
+        [Authorize(Policy = "ManageRoles")]
         public async Task<ActionResult<MessageResponse>> AssignPermission([FromBody] AssignPermissionRequest request)
         {
             var assigned = await _roleService.AssignPermissionToRoleAsync(request.RoleId, request.PermissionId);
@@ -1149,6 +1235,7 @@ namespace PasswordlessApi.Api.Controller.Rbac
         }
 
         [HttpDelete("roles/permissions")]
+        [Authorize(Policy = "ManageRoles")]
         public async Task<ActionResult<MessageResponse>> RemovePermission([FromBody] AssignPermissionRequest request)
         {
             var removed = await _roleService.RemovePermissionFromRoleAsync(request.RoleId, request.PermissionId);
@@ -1161,6 +1248,7 @@ namespace PasswordlessApi.Api.Controller.Rbac
         }
 
         [HttpPost("users/roles")]
+        [Authorize(Policy = "ManageUsers")]
         public async Task<ActionResult<MessageResponse>> AssignRoleToUser([FromBody] AssignRoleRequest request)
         {
             var assigned = await _userRoleService.AssignRoleToUserAsync(request.UserId, request.RoleId);
@@ -1173,6 +1261,7 @@ namespace PasswordlessApi.Api.Controller.Rbac
         }
 
         [HttpDelete("users/roles")]
+        [Authorize(Policy = "ManageUsers")]
         public async Task<ActionResult<MessageResponse>> RemoveRoleFromUser([FromBody] AssignRoleRequest request)
         {
             var removed = await _userRoleService.RemoveRoleFromUserAsync(request.UserId, request.RoleId);
@@ -1442,7 +1531,10 @@ namespace PasswordlessApi.Api.Controller.Security
 --------------------------------------------------------------------------------
 FILE: Api\Middleware\RateLimitingPolicy.cs
 --------------------------------------------------------------------------------
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.RateLimiting;
+using PasswordlessApi.Api.Configuration;
+using System.Threading.RateLimiting;
 
 namespace PasswordlessApi.Api.Middleware
 {
@@ -1451,31 +1543,51 @@ namespace PasswordlessApi.Api.Middleware
         public const string LoginPolicy = "login";
         public const string RefreshTokenPolicy = "refresh-token";
         public const string GeneralPolicy = "general";
+        public const string RegistrationPolicy = "registration";
 
-        public static void AddSecurityRateLimiting(this IServiceCollection services)
+        public static void AddSecurityRateLimiting(this IServiceCollection services, RateLimitSettings settings)
         {
             services.AddRateLimiter(options =>
             {
-                options.AddFixedWindowLimiter(LoginPolicy, windowOptions =>
-                {
-                    windowOptions.PermitLimit = 5;
-                    windowOptions.Window = TimeSpan.FromMinutes(5);
-                    windowOptions.QueueLimit = 0;
-                });
+                options.AddPolicy(LoginPolicy, context => CreateFixedWindowLimiter(
+                    context,
+                    _ => new FixedWindowRateLimiterOptions
+                    {
+                        PermitLimit = settings.Login.PermitLimit,
+                        Window = TimeSpan.FromMinutes(settings.Login.WindowMinutes),
+                        QueueLimit = 0,
+                        AutoReplenishment = true
+                    }));
 
-                options.AddFixedWindowLimiter(RefreshTokenPolicy, windowOptions =>
-                {
-                    windowOptions.PermitLimit = 30;
-                    windowOptions.Window = TimeSpan.FromMinutes(1);
-                    windowOptions.QueueLimit = 0;
-                });
+                options.AddPolicy(RefreshTokenPolicy, context => CreateFixedWindowLimiter(
+                    context,
+                    _ => new FixedWindowRateLimiterOptions
+                    {
+                        PermitLimit = settings.RefreshToken.PermitLimit,
+                        Window = TimeSpan.FromMinutes(settings.RefreshToken.WindowMinutes),
+                        QueueLimit = 0,
+                        AutoReplenishment = true
+                    }));
 
-                options.AddFixedWindowLimiter(GeneralPolicy, windowOptions =>
-                {
-                    windowOptions.PermitLimit = 100;
-                    windowOptions.Window = TimeSpan.FromMinutes(1);
-                    windowOptions.QueueLimit = 0;
-                });
+                options.AddPolicy(GeneralPolicy, context => CreateFixedWindowLimiter(
+                    context,
+                    _ => new FixedWindowRateLimiterOptions
+                    {
+                        PermitLimit = settings.General.PermitLimit,
+                        Window = TimeSpan.FromMinutes(settings.General.WindowMinutes),
+                        QueueLimit = 0,
+                        AutoReplenishment = true
+                    }));
+
+                options.AddPolicy(RegistrationPolicy, context => CreateFixedWindowLimiter(
+                    context,
+                    _ => new FixedWindowRateLimiterOptions
+                    {
+                        PermitLimit = settings.Registration.PermitLimit,
+                        Window = TimeSpan.FromMinutes(settings.Registration.WindowMinutes),
+                        QueueLimit = 0,
+                        AutoReplenishment = true
+                    }));
 
                 options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
                 options.OnRejected = async (context, _) =>
@@ -1484,6 +1596,32 @@ namespace PasswordlessApi.Api.Middleware
                     await Task.CompletedTask;
                 };
             });
+        }
+
+        // Partition each policy by client IP so that one client exhausting the
+        // limit does not lock out the entire application. Without an explicit
+        // partition key the named FixedWindowLimiter policies share a single
+        // global bucket across all callers.
+        private static RateLimitPartition<string> CreateFixedWindowLimiter(
+            HttpContext context,
+            Func<string, FixedWindowRateLimiterOptions> factory)
+        {
+            var ip = GetClientIpAddress(context) ?? "unknown";
+            return RateLimitPartition.GetFixedWindowLimiter(ip, factory);
+        }
+
+        private static string? GetClientIpAddress(HttpContext context)
+        {
+            if (context.Request.Headers.TryGetValue("X-Forwarded-For", out var forwardedFor))
+            {
+                var first = forwardedFor.ToString().Split(',')[0].Trim();
+                if (!string.IsNullOrEmpty(first))
+                {
+                    return first;
+                }
+            }
+
+            return context.Connection.RemoteIpAddress?.ToString();
         }
     }
 }
@@ -1516,7 +1654,6 @@ namespace PasswordlessApi.Api.Middleware
         {
             context.Response.Headers["X-Content-Type-Options"] = "nosniff";
             context.Response.Headers["X-Frame-Options"] = "DENY";
-            context.Response.Headers["X-XSS-Protection"] = "1; mode=block";
             context.Response.Headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
             context.Response.Headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()";
             context.Response.Headers["Content-Security-Policy"] = BuildContentSecurityPolicy();
@@ -1536,14 +1673,23 @@ namespace PasswordlessApi.Api.Middleware
         {
             var origins = _apiSettings.GetAllowedOrigins();
             var cspSources = origins.Concat(_apiSettings.CspExtraSources ?? [])
-                                    .Where(s => !string.IsNullOrWhiteSpace(s))
-                                    .Select(s => s.Trim())
-                                    .Distinct(StringComparer.OrdinalIgnoreCase)
-                                    .ToArray();
+                .Where(s => !string.IsNullOrWhiteSpace(s))
+                .Select(s => s.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray();
 
             var originDirectives = cspSources.Length > 0 ? string.Join(" ", cspSources) : "'self'";
 
-            return $"default-src 'self'; script-src {originDirectives}; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' {originDirectives}; frame-ancestors 'none';";
+            // IMPORTANT: Swagger UI requires 'unsafe-inline' and 'unsafe-eval' to function!
+            return $@"
+                default-src 'self';
+                script-src 'self' 'unsafe-inline' 'unsafe-eval' {originDirectives};
+                style-src 'self' 'unsafe-inline';
+                img-src 'self' data: https:;
+                font-src 'self' data:;
+                connect-src 'self' {originDirectives};
+                frame-ancestors 'none';
+            ";
         }
     }
 }
@@ -1896,6 +2042,8 @@ namespace PasswordlessApi.Api.Models.Entities
 --------------------------------------------------------------------------------
 FILE: Api\Models\RequestModel\Account\AccountRequestModel.cs
 --------------------------------------------------------------------------------
+using System.ComponentModel.DataAnnotations;
+
 namespace PasswordlessApi.Api.Models.RequestModel.Account
 {
     public class UpdateProfileRequest
@@ -1937,16 +2085,30 @@ namespace PasswordlessApi.Api.Models.RequestModel.Account
     public class ConfirmPasswordResetRequest
     {
         public string Token { get; set; } = string.Empty;
+
+        [Required]
+        [StringLength(128, MinimumLength = 8)]
+        [RegularExpression(@"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$", ErrorMessage = "Password must be at least 8 characters and contain uppercase, lowercase, and a number")]
         public string NewPassword { get; set; } = string.Empty;
     }
 
     public class ChangePasswordRequest
     {
+        [Required]
         public string CurrentPassword { get; set; } = string.Empty;
+
+        [Required]
+        [StringLength(128, MinimumLength = 8)]
+        [RegularExpression(@"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$", ErrorMessage = "Password must be at least 8 characters and contain uppercase, lowercase, and a number")]
         public string NewPassword { get; set; } = string.Empty;
+
+        [Required]
+        [StringLength(128, MinimumLength = 8)]
+        [Compare("NewPassword", ErrorMessage = "New password and confirmation do not match")]
         public string ConfirmPassword { get; set; } = string.Empty;
     }
 }
+
 
 
 --------------------------------------------------------------------------------
@@ -1967,7 +2129,7 @@ namespace PasswordlessApi.Api.Models.RequestModel.Auth
         public string Email { get; set; } = string.Empty;
 
         [Required]
-        [MinLength(6)]
+        [StringLength(128, MinimumLength = 8)]
         public string Password { get; set; } = string.Empty;
     }
 
@@ -1983,13 +2145,15 @@ namespace PasswordlessApi.Api.Models.RequestModel.Auth
     public class OtpRequest
     {
         [Required]
-        public int UserId { get; set; }
+        [EmailAddress]
+        public string Email { get; set; } = string.Empty;
     }
 
     public class OtpVerifyRequest
     {
         [Required]
-        public int UserId { get; set; }
+        [EmailAddress]
+        public string Email { get; set; } = string.Empty;
 
         [Required]
         public string Otp { get; set; } = string.Empty;
@@ -2210,6 +2374,7 @@ namespace PasswordlessApi.Api.Models.ResponseModel.Auth
     {
         public bool Success { get; set; }
         public string? Token { get; set; }
+        public string? RefreshToken { get; set; }
         public string? Message { get; set; }
     }
 }
@@ -2281,6 +2446,7 @@ using PasswordlessApi.Api.Models.Common;
 using PasswordlessApi.Api.Models.Entities;
 using PasswordlessApi.Api.Service.Interface.Repository;
 using PasswordlessApi.Api.Utility.PasswordHash;
+using PasswordlessApi.Api.Utility.TokenHash;
 using PasswordlessApi.Api.Service.Interface.Auth;
 using PasswordlessApi.Api.Utility.Jwt;
 using PasswordlessApi.Api.Service.Interface.Rbac;
@@ -2309,10 +2475,11 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
         private readonly IHttpContextAccessor _httpContextAccessor;
         private readonly IEmailService _emailService;
         private readonly SecuritySettings _securitySettings;
+        private readonly ApiSettings _apiSettings;
 
         private const string ProcedureName = DbConstants.Procedures.Users;
 
-        public AuthService(IGenericRepository<User> authRepository, IPasswordHash passwordHash, IJwtHelper jwtHelper, IFido2Service fido2Service, IDapperRepository dapperRepository, IUserRoleService userRoleService, IRoleService roleService, IOtpService otpService, IAuditLogService auditLogService, ILocationResolver locationResolver, IHttpContextAccessor httpContextAccessor, IEmailService emailService, IOptions<SecuritySettings> securitySettings)
+        public AuthService(IGenericRepository<User> authRepository, IPasswordHash passwordHash, IJwtHelper jwtHelper, IFido2Service fido2Service, IDapperRepository dapperRepository, IUserRoleService userRoleService, IRoleService roleService, IOtpService otpService, IAuditLogService auditLogService, ILocationResolver locationResolver, IHttpContextAccessor httpContextAccessor, IEmailService emailService, IOptions<SecuritySettings> securitySettings, IOptions<ApiSettings> apiSettings)
         {
             _authRepository = authRepository;
             _passwordHash = passwordHash;
@@ -2327,6 +2494,7 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
             _httpContextAccessor = httpContextAccessor;
             _emailService = emailService;
             _securitySettings = securitySettings.Value;
+            _apiSettings = apiSettings.Value;
         }
 
         public async Task<AuthResponse> RegisterAsync(RegisterRequest request)
@@ -2334,53 +2502,46 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
             var passwordHash = _passwordHash.HashPassword(request.Password);
 
             using var scope = new TransactionScope(TransactionScopeOption.Required, TransactionScopeAsyncFlowOption.Enabled);
-            try
+
+            var userIdResult = await _authRepository.QuerySingleAsync<UserIdResult>(
+                ProcedureName,
+                new { AuthType = DbConstants.AuthTypes.Register, Username = request.Username, Email = request.Email, PasswordHash = passwordHash });
+
+            if (userIdResult == null || !userIdResult.Succeeded || userIdResult.Data == null)
             {
-                var userIdResult = await _authRepository.QuerySingleAsync<UserIdResult>(
-                    ProcedureName,
-                    new { AuthType = DbConstants.AuthTypes.Register, Username = request.Username, Email = request.Email, PasswordHash = passwordHash });
-
-                if (userIdResult == null || !userIdResult.Succeeded || userIdResult.Data == null)
-                {
-                    return new AuthResponse { Message = "Registration failed" };
-                }
-
-                var token = _jwtHelper.GenerateToken(userIdResult.Data.UserId, request.Username);
-                var deviceInfo = GetDeviceInfo();
-                var refreshToken = await CreateRefreshTokenAsync(userIdResult.Data.UserId, deviceInfo);
-                await AssignDefaultRoleIfMissingAsync(userIdResult.Data.UserId);
-
-                var userWithRoles = await _userRoleService.GetUserWithRolesAndPermissionsAsync(userIdResult.Data.UserId);
-
-                await _auditLogService.LogAsync(
-                    userIdResult.Data.UserId,
-                    "UserRegistered",
-                    "User",
-                    userIdResult.Data.UserId.ToString(),
-                    null,
-                    request.Username,
-                    deviceInfo.IpAddress,
-                    deviceInfo.UserAgent);
-
-                scope.Complete();
-
-                return new AuthResponse
-                {
-                    UserId = userIdResult.Data.UserId,
-                    Username = request.Username,
-                    Email = request.Email,
-                    Token = token,
-                    RefreshToken = refreshToken,
-                    Message = "Registered successfully",
-                    Role = userWithRoles?.Role,
-                    Permissions = userWithRoles?.Permissions ?? new List<string>()
-                };
+                return new AuthResponse { Message = "Registration failed" };
             }
-            catch
+
+            var token = _jwtHelper.GenerateToken(userIdResult.Data.UserId, request.Username);
+            var deviceInfo = await GetDeviceInfoAsync();
+            var refreshToken = await CreateRefreshTokenAsync(userIdResult.Data.UserId, deviceInfo);
+            await AssignDefaultRoleIfMissingAsync(userIdResult.Data.UserId);
+
+            var userWithRoles = await _userRoleService.GetUserWithRolesAndPermissionsAsync(userIdResult.Data.UserId);
+
+            await _auditLogService.LogAsync(
+                userIdResult.Data.UserId,
+                "UserRegistered",
+                "User",
+                userIdResult.Data.UserId.ToString(),
+                null,
+                request.Username,
+                deviceInfo.IpAddress,
+                deviceInfo.UserAgent);
+
+            scope.Complete();
+
+            return new AuthResponse
             {
-                scope.Dispose();
-                throw;
-            }
+                UserId = userIdResult.Data.UserId,
+                Username = request.Username,
+                Email = request.Email,
+                Token = token,
+                RefreshToken = refreshToken,
+                Message = "Registered successfully",
+                Role = userWithRoles?.Role,
+                Permissions = userWithRoles?.Permissions ?? new List<string>()
+            };
         }
 
         public async Task<AuthResponse> LoginAsync(LoginRequest request, string? ipAddress = null, string? userAgent = null)
@@ -2391,6 +2552,7 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
 
             if (userIdResult == null || !userIdResult.Succeeded || userIdResult.Data == null || userIdResult.Data.UserId <= 0)
             {
+                _passwordHash.VerifyPassword(request.Password, "$2a$12$dummyhashdummyhashdummyhashdummyhashdu");
                 return new AuthResponse { Message = "Invalid username or password" };
             }
 
@@ -2490,7 +2652,7 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
                 ProcedureName,
                 new { AuthType = DbConstants.AuthTypes.Fido, FIDOOperation = DbConstants.FidoOperations.GetCredentialsByUserId, UserId = userId });
 
-            return result.Data!.ToList();
+            return result.Data ?? new List<UserCredential>();
         }
 
         public async Task<Fido2ChallengeResponse> RequestAttestationOptionsAsync(Fido2AttestationOptionsRequest request)
@@ -2549,7 +2711,7 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
         {
             var now = DateTime.UtcNow;
             var rawToken = _jwtHelper.GenerateRefreshToken();
-            var tokenHash = _passwordHash.HashPassword(rawToken);
+            var tokenHash = TokenHasher.HashToken(rawToken);
             var refreshExpiryDays = _jwtHelper.GetRefreshTokenExpiryDays();
 
             await _authRepository.ExecuteAsync(
@@ -2606,7 +2768,7 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
                 return new AuthResponse { Message = "Invalid access token claims" };
             }
 
-            var incomingTokenHash = _passwordHash.HashPassword(request.RefreshToken);
+            var incomingTokenHash = TokenHasher.HashToken(request.RefreshToken);
 
             var storedRefreshToken = await _authRepository.QuerySingleAsync<RefreshToken>(
                 ProcedureName,
@@ -2631,7 +2793,19 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
 
             if (refreshToken.IsRevoked)
             {
-                return new AuthResponse { Message = "Refresh token has been revoked" };
+                // A revoked refresh token being presented again is a classic sign of
+                // token theft (the legitimate owner rotated it and an attacker tried to
+                // reuse the old one). Revoke every remaining session to evict the attacker.
+                await RevokeAllSessionsAsync(userId);
+                await _auditLogService.LogAsync(
+                    userId,
+                    "TokenReuseDetected",
+                    "RefreshToken",
+                    refreshToken.Id.ToString(),
+                    null,
+                    "Revoked refresh token reused; all sessions invalidated");
+
+                return new AuthResponse { Message = "Session invalidated due to suspicious activity" };
             }
 
             if (refreshToken.ExpiresAt < now)
@@ -2694,7 +2868,7 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
 
         public async Task<ActiveSessionsResponse> GetActiveSessionsAsync(int userId, int currentRefreshTokenId = 0)
         {
-            var activeTokens = await _authRepository.QuerySingleAsync<List<RefreshToken>>(
+            var activeTokens = await _authRepository.QueryAsync<RefreshToken>(
                 ProcedureName,
                 new
                 {
@@ -2922,7 +3096,6 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
             if (user == null) return;
 
             var token = Guid.NewGuid().ToString("N") + Guid.NewGuid().ToString("N");
-            var tokenHash = _passwordHash.HashPassword(token);
             var expiresAt = DateTime.UtcNow.AddHours(1);
 
             await _authRepository.ExecuteAsync(
@@ -2932,12 +3105,18 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
                     AuthType = DbConstants.AuthTypes.ResetPassword,
                     FIDOOperation = "CreateResetToken",
                     Email = email,
-                    TokenHash = tokenHash,
+                    TokenHash = token,
                     ExpiresAt = expiresAt,
                     Now = DateTime.UtcNow
                 });
 
-            var resetLink = $"/reset-password?token={token}&email={Uri.EscapeDataString(email)}";
+            var frontendBaseUrl = _apiSettings.FrontendBaseUrl;
+            if (string.IsNullOrWhiteSpace(frontendBaseUrl))
+            {
+                frontendBaseUrl = _apiSettings.BaseUrl;
+            }
+
+            var resetLink = $"{frontendBaseUrl.TrimEnd('/')}/reset-password?token={token}&email={Uri.EscapeDataString(email)}";
             await _emailService.SendAsync(
                 email,
                 DbConstants.Email.PasswordResetSubject,
@@ -2976,31 +3155,24 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
         public async Task<MessageResponse> DeleteAccountAsync(int userId)
         {
             using var scope = new TransactionScope(TransactionScopeOption.Required, TransactionScopeAsyncFlowOption.Enabled);
-            try
-            {
-                var result = await _authRepository.ExecuteAsync(
-                    ProcedureName,
-                    new
-                    {
-                        AuthType = DbConstants.AuthTypes.DeleteAccount,
-                        UserId = userId,
-                        Now = DateTime.UtcNow
-                    });
 
-                if (result.Succeeded && result.Data > 0)
+            var result = await _authRepository.ExecuteAsync(
+                ProcedureName,
+                new
                 {
-                    await _auditLogService.LogAsync(userId, "AccountDeleted", "User", userId.ToString());
-                    scope.Complete();
-                    return MessageResponse.Success("Account scheduled for deletion");
-                }
+                    AuthType = DbConstants.AuthTypes.DeleteAccount,
+                    UserId = userId,
+                    Now = DateTime.UtcNow
+                });
 
-                return MessageResponse.Failure("Failed to delete account");
-            }
-            catch
+            if (result.Succeeded && result.Data > 0)
             {
-                scope.Dispose();
-                throw;
+                await _auditLogService.LogAsync(userId, "AccountDeleted", "User", userId.ToString());
+                scope.Complete();
+                return MessageResponse.Success("Account scheduled for deletion");
             }
+
+            return MessageResponse.Failure("Failed to delete account");
         }
 
         public async Task<SecuritySettingsResponse> GetSecuritySettingsAsync(int userId)
@@ -3109,7 +3281,7 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
 
         public async Task<ActivityLogResponse> GetActivityLogsAsync(int userId, ActivityQueryRequest query)
         {
-            var result = await _authRepository.QuerySingleAsync<List<AuditLog>>(
+            var result = await _authRepository.QueryAsync<AuditLog>(
                 ProcedureName,
                 new
                 {
@@ -3166,7 +3338,7 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
 
         private async Task EnforceConcurrentSessionLimitAsync(int userId)
         {
-            var activeTokens = await _authRepository.QuerySingleAsync<List<RefreshToken>>(
+            var activeTokens = await _authRepository.QueryAsync<RefreshToken>(
                 ProcedureName,
                 new
                 {
@@ -3201,7 +3373,7 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
             }
         }
 
-        private DeviceInfo GetDeviceInfo()
+        private async Task<DeviceInfo> GetDeviceInfoAsync()
         {
             var context = _httpContextAccessor.HttpContext;
             if (context == null)
@@ -3211,7 +3383,7 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
 
             var ip = GetClientIpAddress();
             var userAgent = GetUserAgent();
-            var location = _locationResolver.ResolveLocationAsync(ip).GetAwaiter().GetResult();
+            var location = await _locationResolver.ResolveLocationAsync(ip);
 
             return new DeviceInfo
             {
@@ -3267,6 +3439,9 @@ using PasswordlessApi.Api.Service.Interface.Repository;
 using PasswordlessApi.Api.Utility.Jwt;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.AspNetCore.Http;
+using PasswordlessApi.Api.Service.Interface.Security;
+using PasswordlessApi.Api.Utility.TokenHash;
 
 namespace PasswordlessApi.Api.Service.Implementation.Auth
 {
@@ -3276,13 +3451,17 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
         private readonly IJwtHelper _jwtHelper;
         private readonly ILogger<Fido2Service> _logger;
         private readonly ApiSettings _apiSettings;
+        private readonly IHttpContextAccessor _httpContextAccessor;
+        private readonly ILocationResolver _locationResolver;
 
-        public Fido2Service(IDapperRepository dapperRepository, IJwtHelper jwtHelper, IOptions<ApiSettings> apiSettings, ILogger<Fido2Service> logger)
+        public Fido2Service(IDapperRepository dapperRepository, IJwtHelper jwtHelper, IOptions<ApiSettings> apiSettings, ILogger<Fido2Service> logger, IHttpContextAccessor httpContextAccessor, ILocationResolver locationResolver)
         {
             _dapperRepository = dapperRepository;
             _jwtHelper = jwtHelper;
             _logger = logger;
             _apiSettings = apiSettings.Value;
+            _httpContextAccessor = httpContextAccessor;
+            _locationResolver = locationResolver;
         }
 
         private HashSet<string> GetAllowedOrigins()
@@ -3299,7 +3478,16 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
             var domain = uri.Host;
 
             var allowedOrigins = GetAllowedOrigins();
-            var allowedHosts = allowedOrigins.Select(o => new Uri(o).Host).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            if (allowedOrigins.Contains("*"))
+                return domain;
+
+            var allowedHosts = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var o in allowedOrigins)
+            {
+                if (Uri.TryCreate(o, UriKind.Absolute, out var parsed))
+                    allowedHosts.Add(parsed.Host);
+            }
+
             if (!allowedHosts.Contains(domain))
                 throw new SecurityException("Origin is not allowed for FIDO2 ceremonies");
 
@@ -3628,7 +3816,28 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
                 var username = user?.Username ?? credential.UserId.ToString();
                 var token = _jwtHelper.GenerateToken(credential.UserId, username);
 
-                return new Fido2VerifyResponse { Success = true, Token = token, Message = "FIDO2 verification successful" };
+                var ipAddress = GetClientIpAddress();
+                var userAgent = GetUserAgent();
+                var location = await _locationResolver.ResolveLocationAsync(ipAddress);
+
+                var rawRefreshToken = _jwtHelper.GenerateRefreshToken();
+                var refreshTokenHash = TokenHasher.HashToken(rawRefreshToken);
+                var refreshExpiryDays = _jwtHelper.GetRefreshTokenExpiryDays();
+
+                await _dapperRepository.ExecuteAsync(DbConstants.Procedures.Users, new
+                {
+                    AuthType = DbConstants.AuthTypes.RefreshToken,
+                    FIDOOperation = DbConstants.FidoOperations.CreateRefreshToken,
+                    UserId = credential.UserId,
+                    TokenHash = refreshTokenHash,
+                    ExpiresAt = DateTime.UtcNow.AddDays(refreshExpiryDays),
+                    Now = DateTime.UtcNow,
+                    IpAddress = ipAddress,
+                    UserAgent = userAgent,
+                    Location = location
+                });
+
+                return new Fido2VerifyResponse { Success = true, Token = token, RefreshToken = rawRefreshToken, Message = "FIDO2 verification successful" };
             }
             catch (Fido2VerificationException ex)
             {
@@ -3675,6 +3884,29 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
                 .Select(t => t!.Value)
                 .ToArray();
         }
+
+        private string? GetClientIpAddress()
+        {
+            var context = _httpContextAccessor.HttpContext;
+            if (context == null) return null;
+
+            if (context.Request.Headers.TryGetValue("X-Forwarded-For", out var forwardedFor))
+            {
+                var first = forwardedFor.ToString().Split(',')[0].Trim();
+                if (!string.IsNullOrEmpty(first))
+                {
+                    return first;
+                }
+            }
+
+            return context.Connection.RemoteIpAddress?.ToString();
+        }
+
+        private string? GetUserAgent()
+        {
+            var context = _httpContextAccessor.HttpContext;
+            return context?.Request.Headers["User-Agent"].ToString();
+        }
     }
 }
 
@@ -3682,7 +3914,9 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
 --------------------------------------------------------------------------------
 FILE: Api\Service\Implementation\Auth\OtpService.cs
 --------------------------------------------------------------------------------
-﻿using PasswordlessApi.Api.Common;
+﻿using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using PasswordlessApi.Api.Common;
 using PasswordlessApi.Api.Models.Entities;
 using PasswordlessApi.Api.Models.RequestModel.Auth;
 using PasswordlessApi.Api.Models.ResponseModel.Auth;
@@ -3701,6 +3935,8 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
         private readonly IJwtHelper _jwtHelper;
         private readonly IUserRoleService _userRoleService;
         private readonly IRoleService _roleService;
+        private readonly IHostEnvironment _env;
+        private readonly ILogger<OtpService> _logger;
         private const string ProcedureName = DbConstants.Procedures.Users;
 
         public OtpService(
@@ -3708,20 +3944,24 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
             IDapperRepository dapperRepository,
             IJwtHelper jwtHelper,
             IUserRoleService userRoleService,
-            IRoleService roleService)
+            IRoleService roleService,
+            IHostEnvironment env,
+            ILogger<OtpService> logger)
         {
             _userRepository = userRepository;
             _dapperRepository = dapperRepository;
             _jwtHelper = jwtHelper;
             _userRoleService = userRoleService;
             _roleService = roleService;
+            _env = env;
+            _logger = logger;
         }
 
         public async Task<OtpResponse> RequestOtpAsync(OtpRequest request)
         {
             var userResult = await _userRepository.QuerySingleAsync(
                 ProcedureName,
-                new { AuthType = DbConstants.AuthTypes.Login, UserId = request.UserId });
+                new { AuthType = DbConstants.AuthTypes.Login, Email = request.Email });
 
             if (userResult == null || !userResult.Succeeded || userResult.Data == null)
             {
@@ -3749,19 +3989,25 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
                     ExpiresAt = expiresAt
                 });
 
-            return new OtpResponse
+            var response = new OtpResponse
             {
                 Success = true,
-                Message = $"OTP sent to {user.Email} (Demo OTP: {otp})",
-                Otp = otp
+                Message = $"OTP sent to {user.Email}"
             };
+
+            if (_env.IsDevelopment())
+            {
+                _logger.LogInformation("DEV OTP for {Email}: {Otp}", user.Email, otp);
+            }
+
+            return response;
         }
 
         public async Task<AuthResponse> VerifyOtpAsync(OtpVerifyRequest request)
         {
             var userResult = await _userRepository.QuerySingleAsync(
                 ProcedureName,
-                new { AuthType = DbConstants.AuthTypes.Login, UserId = request.UserId });
+                new { AuthType = DbConstants.AuthTypes.Login, Email = request.Email });
 
             if (userResult == null || !userResult.Succeeded || userResult.Data == null)
             {
@@ -3776,7 +4022,7 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
                 {
                     AuthType = DbConstants.AuthTypes.EmailOtp,
                     FIDOOperation = "ConsumeOtp",
-                    UserId = request.UserId,
+                    UserId = user.Id,
                     Otp = request.Otp,
                     Now = DateTime.UtcNow
                 });
@@ -4039,7 +4285,7 @@ namespace PasswordlessApi.Api.Service.Implementation.Rbac
 
         public async Task<RoleDto?> GetRoleWithPermissionsAsync(int roleId)
         {
-            var result = await _dapperRepository.QueryMultipleAsync(
+            using var result = await _dapperRepository.QueryMultipleAsync(
                 DbConstants.Procedures.Rbac,
                 new { RoleAction = DbConstants.RbacActions.GetRoleWithPermissions, RoleId = roleId });
 
@@ -4166,7 +4412,7 @@ namespace PasswordlessApi.Api.Service.Implementation.Rbac
 
         public async Task<User?> GetUserWithRolesAndPermissionsAsync(int userId)
         {
-            var result = await _dapperRepository.QueryMultipleAsync(
+            using var result = await _dapperRepository.QueryMultipleAsync(
                 DbConstants.Procedures.Rbac,
                 new { UserRoleAction = DbConstants.RbacActions.GetUserWithRolesAndPermissions, UserId = userId });
 
@@ -4545,7 +4791,7 @@ namespace PasswordlessApi.Api.Service.Implementation.Security
 
         public async Task<List<AuditLog>> GetUserAuditLogsAsync(int userId, int limit = 50)
         {
-            var result = await _authRepository.QuerySingleAsync<AuditLog>(
+            var result = await _authRepository.QueryAsync<AuditLog>(
                 DbConstants.Procedures.Users,
                 new
                 {
@@ -4554,8 +4800,8 @@ namespace PasswordlessApi.Api.Service.Implementation.Security
                     UserId = userId
                 });
 
-            return result?.Succeeded == true && result.Data != null 
-                ? new List<AuditLog> { result.Data } 
+            return result?.Succeeded == true && result.Data != null
+                ? result.Data.Take(limit).ToList()
                 : new List<AuditLog>();
         }
     }
@@ -4590,7 +4836,7 @@ namespace PasswordlessApi.Api.Service.Implementation.Security
 
             try
             {
-                using var response = await _httpClient.GetAsync($"http://ip-api.com/json/{ipAddress}?fields=status,city,country", cancellationToken);
+                using var response = await _httpClient.GetAsync($"https://ipapi.co/{ipAddress}/json/", cancellationToken);
                 if (!response.IsSuccessStatusCode)
                 {
                     return null;
@@ -4598,12 +4844,14 @@ namespace PasswordlessApi.Api.Service.Implementation.Security
 
                 var json = await response.Content.ReadAsStringAsync(cancellationToken);
                 using var doc = System.Text.Json.JsonDocument.Parse(json);
-                if (doc.RootElement.TryGetProperty("status", out var status) && status.GetString() == "success")
+                if (doc.RootElement.TryGetProperty("error", out _))
                 {
-                    var city = doc.RootElement.TryGetProperty("city", out var c) ? c.GetString() : null;
-                    var country = doc.RootElement.TryGetProperty("country", out var co) ? co.GetString() : null;
-                    return $"{city}, {country}".Trim(',', ' ');
+                    return null;
                 }
+
+                var city = doc.RootElement.TryGetProperty("city", out var c) ? c.GetString() : null;
+                var country = doc.RootElement.TryGetProperty("country_name", out var co) ? co.GetString() : null;
+                return $"{city}, {country}".Trim(',', ' ');
             }
             catch (Exception ex)
             {
@@ -4975,6 +5223,10 @@ namespace PasswordlessApi.Api.Utility.Jwt
             Audience = configuration["JwtSettings:Audience"] ?? "PasswordlessApiUsers";
             _expiryMinutes = int.TryParse(configuration["JwtSettings:ExpiryMinutes"], out var parsed) ? parsed : 60;
             _refreshTokenExpiryDays = int.TryParse(configuration["JwtSettings:RefreshTokenExpiryDays"], out var refreshParsed) ? refreshParsed : 7;
+
+            var keyBytes = Encoding.UTF8.GetBytes(_secretKey);
+            if (keyBytes.Length < 16)
+                throw new InvalidOperationException("JWT Secret Key must be at least 16 characters long.");
         }
 
         public string GenerateToken(int userId, string username)
@@ -5070,6 +5322,33 @@ namespace PasswordlessApi.Api.Utility.PasswordHash
 
 
 --------------------------------------------------------------------------------
+FILE: Api\Utility\TokenHash\TokenHasher.cs
+--------------------------------------------------------------------------------
+using System.Security.Cryptography;
+using System.Text;
+
+namespace PasswordlessApi.Api.Utility.TokenHash
+{
+    /// <summary>
+    /// Fast, deterministic hash for high-entropy tokens (refresh tokens, password
+    /// reset tokens). BCrypt is intentionally avoided here because it is slow by
+    /// design and non-deterministic (random salt), which makes it unsuitable for
+    /// tokens that are only ever compared, never verified against a human-typed
+    /// password.
+    /// </summary>
+    public static class TokenHasher
+    {
+        public static string HashToken(string token)
+        {
+            using var sha256 = SHA256.Create();
+            var bytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(token));
+            return Convert.ToBase64String(bytes);
+        }
+    }
+}
+
+
+--------------------------------------------------------------------------------
 FILE: Properties\launchSettings.json
 --------------------------------------------------------------------------------
 ﻿{
@@ -5079,7 +5358,7 @@ FILE: Properties\launchSettings.json
       "commandName": "Project",
       "dotnetRunMessages": true,
       "launchBrowser": true,
-      "applicationUrl": "http://localhost:5000",
+      "applicationUrl": "http://localhost:5000", 
       "launchUrl": "swagger",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
@@ -5089,7 +5368,7 @@ FILE: Properties\launchSettings.json
       "commandName": "Project",
       "dotnetRunMessages": true,
       "launchBrowser": true,
-      "applicationUrl": "https://localhost:5001",
+      "applicationUrl": "https://localhost:5000", 
       "launchUrl": "swagger",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
