@@ -196,9 +196,18 @@
            @bind-Visible="PasskeyVisible">
         @if (PasskeyVisible)
         {
-            <PasskeyLogin UserId="@(LoggedInUserId > 0 ? LoggedInUserId : null)"
-                          AutoStart="false"
-                          OnCompleted="HandlePasskeyCompleted" />
+            @if (IsVerificationMode)
+            {
+                <PasskeyLogin UserId="@(LoggedInUserId > 0 ? LoggedInUserId : null)"
+                              AutoStart="false"
+                              OnCompleted="HandlePasskeyCompleted" />
+            }
+            else
+            {
+                <PasskeyLogin UserId="@(LoggedInUserId > 0 ? LoggedInUserId : null)"
+                              AutoStart="false"
+                              OnCompleted="HandlePasskeyCompleted" />
+            }
         }
     </Modal>
 </div>

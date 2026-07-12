@@ -57,6 +57,8 @@ FOLDER STRUCTURE:
         📁 Passkey/
           📄 PasskeyLogin.razor
           📄 PasskeyLogin.razor.cs
+          📄 PasskeySetup.razor
+          📄 PasskeySetup.razor.cs
         📁 Register/
           📄 Signup.razor
           📄 Signup.razor.cs
@@ -2197,9 +2199,18 @@ FILE: Components\Pages\Shared\Auth\Login\Login.razor
            @bind-Visible="PasskeyVisible">
         @if (PasskeyVisible)
         {
-            <PasskeyLogin UserId="@(LoggedInUserId > 0 ? LoggedInUserId : null)"
-                          AutoStart="false"
-                          OnCompleted="HandlePasskeyCompleted" />
+            @if (IsVerificationMode)
+            {
+                <PasskeyLogin UserId="@(LoggedInUserId > 0 ? LoggedInUserId : null)"
+                              AutoStart="false"
+                              OnCompleted="HandlePasskeyCompleted" />
+            }
+            else
+            {
+                <PasskeyLogin UserId="@(LoggedInUserId > 0 ? LoggedInUserId : null)"
+                              AutoStart="false"
+                              OnCompleted="HandlePasskeyCompleted" />
+            }
         }
     </Modal>
 </div>
@@ -2232,6 +2243,8 @@ namespace Auth.UI.Components.Pages.Shared.Login
         protected bool Succeeded { get; set; }
         protected int LoggedInUserId { get; set; }
         protected bool ShowPassword { get; set; }
+        protected bool IsVerificationMode { get; set; }
+        protected string LoggedInUsername { get; set; } = string.Empty;
 
         protected void TogglePassword() => ShowPassword = !ShowPassword;
 
@@ -2275,12 +2288,20 @@ namespace Auth.UI.Components.Pages.Shared.Login
             {
                 if (result.Data?.RequiresFido2 == true)
                 {
+                    // EXISTING: User has passkey, needs to VERIFY
                     LoggedInUserId = result.Data.UserId;
+                    PasskeyModalTitle = "Verify it's you";
+                    IsVerificationMode = true;
                     PasskeyVisible = true;
                 }
-                else
+                else if (result.Data?.RequiresFido2Registration == true)
                 {
-                    NavigationManager.NavigateTo("/profile");
+                    // NEW: User doesn't have passkey, needs to REGISTER
+                    LoggedInUserId = result.Data.UserId;
+                    LoggedInUsername = LoginModel.Username;
+                    PasskeyModalTitle = "Set up a passkey";
+                    IsVerificationMode = false;
+                    PasskeyVisible = true;
                 }
             }
         }
@@ -2704,6 +2725,157 @@ namespace Auth.UI.Components.Pages.Shared.Passkey
                 return ex.Message;
             }
         }
+    }
+}
+
+
+--------------------------------------------------------------------------------
+FILE: Components\Pages\Shared\Auth\Passkey\PasskeySetup.razor
+--------------------------------------------------------------------------------
+﻿@namespace Auth.UI.Components.Pages.Shared.Passkey
+@using Auth.UI.Components.UI.Icons
+<div class="lp-passkey">
+    @if (!string.IsNullOrEmpty(StatusMessage))
+    {
+        <div class="lp-alert lp-alert-danger" role="alert">@StatusMessage</div>
+    }
+    
+    @if (State == SetupState.Idle)
+    {
+        <div class="lp-passkey-hero">
+            <div class="lp-biometric is-static">
+                <Icon Name="fingerprint" Size="Icon.IconSize.Large" />
+            </div>
+            <h2 class="lp-passkey-title">Secure your account</h2>
+            <p class="lp-passkey-sub">Create a passkey for fast, passwordless sign-in next time.</p>
+        </div>
+        <button class="lp-submit" @onclick="StartRegistrationAsync" type="button">
+            <Icon Name="fingerprint" Size="Icon.IconSize.Small" /> Create Passkey
+        </button>
+        <button class="lp-passkey-ghost w-100 mt-2" @onclick="SkipSetup" type="button">
+            Skip for now
+        </button>
+    }
+    else if (State == SetupState.Processing)
+    {
+        <div class="lp-passkey-hero">
+            <div class="lp-biometric">
+                <Icon Name="fingerprint" Size="Icon.IconSize.Large" />
+            </div>
+            <h2 class="lp-passkey-title">Follow the prompt</h2>
+            <p class="lp-passkey-sub">@StatusDetail</p>
+        </div>
+    }
+    else if (State == SetupState.Success)
+    {
+        <div class="lp-passkey-hero">
+            <div class="lp-biometric is-static" style="color: var(--ui-success);">
+                <Icon Name="check-circle" Size="Icon.IconSize.Large" />
+            </div>
+            <h2 class="lp-passkey-title">Passkey Created!</h2>
+            <p class="lp-passkey-sub">You can now sign in with your passkey.</p>
+        </div>
+        <button class="lp-submit" @onclick="FinishSetup" type="button">Continue</button>
+    }
+</div>
+
+
+--------------------------------------------------------------------------------
+FILE: Components\Pages\Shared\Auth\Passkey\PasskeySetup.razor.cs
+--------------------------------------------------------------------------------
+﻿using Auth.UI.src.Manager.Controller;
+using Auth.UI.src.Model.Auth;
+using Microsoft.AspNetCore.Components;
+using Microsoft.JSInterop;
+using System.Text.Json;
+
+namespace Auth.UI.Components.Pages.Shared.Passkey
+{
+    public partial class PasskeySetup : ComponentBase
+    {
+        public enum SetupState { Idle, Processing, Success, Error }
+
+        [Inject] private AuthController AuthController { get; set; } = default!;
+        [Inject] private NavigationManager NavigationManager { get; set; } = default!;
+        [Inject] private IJSRuntime JsRuntime { get; set; } = default!;
+
+        [Parameter] public int UserId { get; set; }
+        [Parameter] public string Username { get; set; } = string.Empty;
+        [Parameter] public EventCallback OnCompleted { get; set; }
+        [Parameter] public EventCallback OnSkipped { get; set; }
+
+        protected SetupState State { get; set; } = SetupState.Idle;
+        protected string StatusMessage { get; set; } = string.Empty;
+        protected string StatusDetail { get; set; } = string.Empty;
+        private IJSObjectReference? _webAuthnModule;
+
+        protected override async Task OnAfterRenderAsync(bool firstRender)
+        {
+            if (firstRender)
+            {
+                _webAuthnModule = await JsRuntime.InvokeAsync<IJSObjectReference>("import", "./webauthn.js");
+            }
+        }
+
+        protected async Task StartRegistrationAsync()
+        {
+            State = SetupState.Processing;
+            StatusDetail = "Contacting server...";
+
+            var origin = new Uri(NavigationManager.BaseUri).GetLeftPart(UriPartial.Authority);
+            var optionsResult = await AuthController.RequestAttestationOptionsAsync(new Fido2AttestationOptionsRequest
+            {
+                UserId = UserId,
+                Username = Username,
+                Origin = origin
+            });
+
+            if (!optionsResult.Succeeded || optionsResult.Data == null)
+            {
+                State = SetupState.Error;
+                StatusMessage = optionsResult.Message ?? "Failed to get registration options.";
+                return;
+            }
+
+            StatusDetail = "Waiting for device...";
+            try
+            {
+                // Call JS to create credential
+                var cred = await _webAuthnModule!.InvokeAsync<WebAuthnCredential>(
+                    "createCredential",
+                    optionsResult.Data.PublicKeyCredentialCreationOptions,
+                    optionsResult.Data.Challenge);
+
+                StatusDetail = "Verifying with server...";
+                var verifyResult = await AuthController.RegisterCredentialAsync(new Fido2RegisterRequest
+                {
+                    UserId = UserId,
+                    Username = Username,
+                    AttestationResponse = JsonSerializer.Serialize(cred.response),
+                    AttestationChallenge = optionsResult.Data.Challenge,
+                    Transports = string.Join(",", cred.transports ?? new List<string>()),
+                    Origin = origin
+                });
+
+                if (verifyResult.Succeeded)
+                {
+                    State = SetupState.Success;
+                }
+                else
+                {
+                    State = SetupState.Error;
+                    StatusMessage = verifyResult.Message ?? "Registration failed.";
+                }
+            }
+            catch (Exception ex)
+            {
+                State = SetupState.Error;
+                StatusMessage = $"Device error: {ex.Message}";
+            }
+        }
+
+        protected void SkipSetup() => OnSkipped.InvokeAsync();
+        protected void FinishSetup() => OnCompleted.InvokeAsync();
     }
 }
 
@@ -7813,6 +7985,7 @@ namespace Auth.UI.src.Model.Auth
         public string? Message { get; set; }
         public string? Token { get; set; }
         public bool RequiresFido2 { get; set; }
+        public bool RequiresFido2Registration { get; set; }
     }
 
     public class UserIdResult

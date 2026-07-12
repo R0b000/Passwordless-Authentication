@@ -23,6 +23,10 @@ namespace Auth.UI.Components.Pages.Shared.Login
         protected int LoggedInUserId { get; set; }
         protected bool ShowPassword { get; set; }
 
+        // NEW: Tracks whether we are verifying an existing passkey or registering a new one
+        protected bool IsVerificationMode { get; set; }
+        protected string LoggedInUsername { get; set; } = string.Empty;
+
         protected void TogglePassword() => ShowPassword = !ShowPassword;
 
         protected void SocialAsync(string provider)
@@ -65,11 +69,22 @@ namespace Auth.UI.Components.Pages.Shared.Login
             {
                 if (result.Data?.RequiresFido2 == true)
                 {
+                    // EXISTING: User has passkey, needs to VERIFY
                     LoggedInUserId = result.Data.UserId;
+                    IsVerificationMode = true;
+                    PasskeyVisible = true;
+                }
+                else if (result.Data?.RequiresFido2Registration == true)
+                {
+                    // NEW: User doesn't have passkey, needs to REGISTER
+                    LoggedInUserId = result.Data.UserId;
+                    LoggedInUsername = LoginModel.Username;
+                    IsVerificationMode = false;
                     PasskeyVisible = true;
                 }
                 else
                 {
+                    // Standard login without FIDO2
                     NavigationManager.NavigateTo("/profile");
                 }
             }
@@ -78,7 +93,10 @@ namespace Auth.UI.Components.Pages.Shared.Login
         protected Modal PasskeyModal { get; set; } = default!;
         protected bool PasskeyVisible { get; set; }
 
-        protected string PasskeyModalTitle => LoggedInUserId > 0 ? "Verify it's you" : "Sign in with a passkey";
+        // UPDATED: Dynamically compute the title based on the mode
+        protected string PasskeyModalTitle => LoggedInUserId > 0
+            ? (IsVerificationMode ? "Verify it's you" : "Set up a passkey")
+            : "Sign in with a passkey";
 
         protected void OpenPasskeyModal()
         {
@@ -88,12 +106,21 @@ namespace Auth.UI.Components.Pages.Shared.Login
         protected void HandlePasskeyCompleted()
         {
             PasskeyVisible = false;
+            // Redirect to profile after successful setup or verification
+            NavigationManager.NavigateTo("/profile");
+        }
+
+        protected void HandlePasskeySkipped()
+        {
+            PasskeyVisible = false;
+            NavigationManager.NavigateTo("/profile");
         }
 
         protected void OnPasskeyCancel()
         {
             PasskeyVisible = false;
             LoggedInUserId = 0;
+            IsVerificationMode = false;
         }
     }
 }

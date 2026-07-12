@@ -1,0 +1,46 @@
+﻿@namespace Auth.UI.Components.Pages.Shared.Passkey
+@using Auth.UI.Components.UI.Icons
+<div class="lp-passkey">
+    @if (!string.IsNullOrEmpty(StatusMessage))
+    {
+        <div class="lp-alert lp-alert-danger" role="alert">@StatusMessage</div>
+    }
+    
+    @if (State == SetupState.Idle)
+    {
+        <div class="lp-passkey-hero">
+            <div class="lp-biometric is-static">
+                <Icon Name="fingerprint" Size="Icon.IconSize.Large" />
+            </div>
+            <h2 class="lp-passkey-title">Secure your account</h2>
+            <p class="lp-passkey-sub">Create a passkey for fast, passwordless sign-in next time.</p>
+        </div>
+        <button class="lp-submit" @onclick="StartRegistrationAsync" type="button">
+            <Icon Name="fingerprint" Size="Icon.IconSize.Small" /> Create Passkey
+        </button>
+        <button class="lp-passkey-ghost w-100 mt-2" @onclick="SkipSetup" type="button">
+            Skip for now
+        </button>
+    }
+    else if (State == SetupState.Processing)
+    {
+        <div class="lp-passkey-hero">
+            <div class="lp-biometric">
+                <Icon Name="fingerprint" Size="Icon.IconSize.Large" />
+            </div>
+            <h2 class="lp-passkey-title">Follow the prompt</h2>
+            <p class="lp-passkey-sub">@StatusDetail</p>
+        </div>
+    }
+    else if (State == SetupState.Success)
+    {
+        <div class="lp-passkey-hero">
+            <div class="lp-biometric is-static" style="color: var(--ui-success);">
+                <Icon Name="check-circle" Size="Icon.IconSize.Large" />
+            </div>
+            <h2 class="lp-passkey-title">Passkey Created!</h2>
+            <p class="lp-passkey-sub">You can now sign in with your passkey.</p>
+        </div>
+        <button class="lp-submit" @onclick="FinishSetup" type="button">Continue</button>
+    }
+</div>

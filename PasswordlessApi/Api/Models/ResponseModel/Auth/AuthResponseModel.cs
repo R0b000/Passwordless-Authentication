@@ -9,6 +9,7 @@ namespace PasswordlessApi.Api.Models.ResponseModel.Auth
         public string? Token { get; set; }
         public string? RefreshToken { get; set; }
         public bool RequiresFido2 { get; set; }
+        public bool RequiresFido2Registration { get; set; }
         public string? Role { get; set; }
         public List<string> Permissions { get; set; } = new();
     }

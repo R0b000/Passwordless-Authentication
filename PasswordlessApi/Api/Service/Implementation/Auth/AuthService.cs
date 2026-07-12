@@ -103,6 +103,7 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
                 Token = token,
                 RefreshToken = refreshToken,
                 Message = "Registered successfully",
+                RequiresFido2Registration = true,
                 Role = userWithRoles?.Role,
                 Permissions = userWithRoles?.Permissions ?? new List<string>()
             };
@@ -170,6 +171,24 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
 
             var userWithRoles = await _userRoleService.GetUserWithRolesAndPermissionsAsync(user.Data.Id);
 
+            bool hasFido2 = await HasFido2CredentialsAsync(user.Data.Id);
+
+            if (hasFido2)
+            {
+                return new AuthResponse
+                {
+                    UserId = user.Data.Id,
+                    Username = user.Data.Username,
+                    Email = user.Data.Email,
+                    Token = token,
+                    RefreshToken = refreshToken,
+                    Message = "Login successful",
+                    RequiresFido2 = true,
+                    Role = userWithRoles?.Role,
+                    Permissions = userWithRoles?.Permissions ?? new List<string>()
+                };
+            }
+
             return new AuthResponse
             {
                 UserId = user.Data.Id,
@@ -179,6 +198,7 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
                 RefreshToken = refreshToken,
                 Message = "Login successful",
                 RequiresFido2 = false,
+                RequiresFido2Registration = !hasFido2,
                 Role = userWithRoles?.Role,
                 Permissions = userWithRoles?.Permissions ?? new List<string>()
             };
