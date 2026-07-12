@@ -198,15 +198,18 @@
         {
             @if (IsVerificationMode)
             {
+                <!-- User HAS a passkey, needs to VERIFY it -->
                 <PasskeyLogin UserId="@(LoggedInUserId > 0 ? LoggedInUserId : null)"
                               AutoStart="false"
                               OnCompleted="HandlePasskeyCompleted" />
             }
             else
             {
-                <PasskeyLogin UserId="@(LoggedInUserId > 0 ? LoggedInUserId : null)"
-                              AutoStart="false"
-                              OnCompleted="HandlePasskeyCompleted" />
+                <!-- User DOES NOT have a passkey, needs to SETUP/REGISTER it -->
+                <PasskeySetup UserId="@LoggedInUserId"
+                              Username="@LoggedInUsername"
+                              OnCompleted="HandlePasskeyCompleted"
+                              OnSkipped="HandlePasskeySkipped" />
             }
         }
     </Modal>

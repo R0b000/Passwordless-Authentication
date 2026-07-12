@@ -106,21 +106,32 @@ namespace Auth.UI.Components.Pages.Shared.Login
         protected void HandlePasskeyCompleted()
         {
             PasskeyVisible = false;
+            StatusMessage = string.Empty;
             // Redirect to profile after successful setup or verification
             NavigationManager.NavigateTo("/profile");
         }
 
+        // NEW/UPDATED: Handle the "Skip for now" button from PasskeySetup
         protected void HandlePasskeySkipped()
         {
             PasskeyVisible = false;
+            StatusMessage = string.Empty; // Clear any errors
+                                          // User skipped passkey setup, but they are already logged in via password.
+                                          // Gracefully redirect without showing any errors.
             NavigationManager.NavigateTo("/profile");
         }
 
+        // UPDATED: Handle the Modal "Close" (X) button
         protected void OnPasskeyCancel()
         {
             PasskeyVisible = false;
             LoggedInUserId = 0;
             IsVerificationMode = false;
+            StatusMessage = string.Empty; // Clear any errors
+
+            // If they close the modal, they are still logged in via password. 
+            // Let them into the app without errors.
+            NavigationManager.NavigateTo("/profile");
         }
     }
 }
