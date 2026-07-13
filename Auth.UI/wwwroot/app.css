@@ -59,6 +59,27 @@ html, body {
     height: 1.9em;
 }
 
+/* Base icon sizing so inline SVGs (e.g. the passkey button) render correctly.
+   The SVG markup only carries a viewBox, so without explicit dimensions it
+   collapses or overflows its container. currentColor drives the stroke. */
+.ui-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 0;
+}
+
+.ui-icon-svg {
+    width: 1.25rem;
+    height: 1.25rem;
+    display: block;
+}
+
+.ui-icon-small .ui-icon-svg {
+    width: 1.1rem;
+    height: 1.1rem;
+}
+
 .auth-title {
     font-size: 1.35rem;
     font-weight: 700;

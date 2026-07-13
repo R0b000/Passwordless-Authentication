@@ -1,5 +1,6 @@
+using Auth.UI.src.Manager.Routing;
 using Auth.UI.Components.UI.Menu;
-using Auth.UI.src.Manager.Controller;
+using Auth.UI.src.Manager.Service.Interface;
 using Auth.UI.src.Model.Account;
 using Auth.UI.src.Utility;
 using Microsoft.AspNetCore.Components;
@@ -9,7 +10,7 @@ namespace Auth.UI.Components.Layout
 {
     public partial class AccountLayout : LayoutComponentBase
     {
-        [Inject] private AccountController AccountController { get; set; } = default!;
+        [Inject] private IAccountManager AccountManager { get; set; } = default!;
         [Inject] private NavigationManager Navigation { get; set; } = default!;
         [Inject] private ITokenStore TokenStore { get; set; } = default!;
 
@@ -59,7 +60,7 @@ namespace Auth.UI.Components.Layout
                 return;
             }
 
-            var result = await AccountController.GetProfileAsync();
+            var result = await AccountManager.GetProfileAsync();
             Profile = result.Succeeded ? result.Data : null;
         }
 
@@ -67,7 +68,7 @@ namespace Auth.UI.Components.Layout
         {
             if (_redirectToLogin)
             {
-                Navigation.NavigateTo("/login", replace: true);
+                Navigation.NavigateTo(AuthRoute.Login, replace: true);
             }
         }
 
@@ -87,7 +88,7 @@ namespace Auth.UI.Components.Layout
         {
             TokenStore.Clear();
             AccountMenuOpen = false;
-            Navigation.NavigateTo("/");
+            Navigation.NavigateTo(AuthRoute.Home);
         }
     }
 }

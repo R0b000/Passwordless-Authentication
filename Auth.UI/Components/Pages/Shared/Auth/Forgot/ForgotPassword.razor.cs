@@ -1,12 +1,12 @@
 using Auth.UI.Components.UI.Toaster;
-using Auth.UI.src.Manager.Controller;
+using Auth.UI.src.Manager.Service.Interface;
 using Microsoft.AspNetCore.Components;
 
 namespace Auth.UI.Components.Pages.Shared.Forgot
 {
     public partial class ForgotPassword : ComponentBase
     {
-        [Inject] private AccountController AccountController { get; set; } = default!;
+        [Inject] private IAccountManager AccountManager { get; set; } = default!;
         [Inject] private ToasterService Toaster { get; set; } = default!;
 
         protected string Email { get; set; } = string.Empty;
@@ -22,7 +22,7 @@ namespace Auth.UI.Components.Pages.Shared.Forgot
                 return;
             }
 
-            var result = await AccountController.RequestPasswordResetAsync(Email);
+            var result = await AccountManager.RequestPasswordResetAsync(Email);
             Succeeded = result.Succeeded;
             StatusMessage = result.Message ?? string.Empty;
             if (result.Succeeded) Toaster.ShowSuccess(StatusMessage);

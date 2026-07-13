@@ -1,5 +1,7 @@
 @page "/showcase"
 @namespace Auth.UI.Components.Pages.Shared.Showcase
+@using Microsoft.AspNetCore.Authorization
+@attribute [AllowAnonymous]
 @rendermode InteractiveServer
 @using static Microsoft.AspNetCore.Components.Web.RenderMode
 
@@ -127,7 +129,7 @@
 
 <section class="mb-5">
     <h4>Form</h4>
-    <Form Model="@FormModel" OnValidSubmit="OnFormValidSubmit" SubmitText="Save" CancelText="Reset" ShowCancel="true">
+    <Form Model="@FormModel" FormName="showcase-form" OnValidSubmit="OnFormValidSubmit" SubmitText="Save" CancelText="Reset" ShowCancel="true">
         <ChildContent>
             <div class="ui-form-group">
                 <label class="ui-form-label">Name</label>

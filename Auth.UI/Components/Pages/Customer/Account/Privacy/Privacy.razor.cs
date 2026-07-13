@@ -1,6 +1,6 @@
 using Auth.UI.Components.UI.Modal;
 using Auth.UI.Components.UI.Toaster;
-using Auth.UI.src.Manager.Controller;
+using Auth.UI.src.Manager.Service.Interface;
 using Auth.UI.src.Model.Account;
 using Microsoft.AspNetCore.Components;
 
@@ -8,7 +8,7 @@ namespace Auth.UI.Components.Pages.Customer.Account.Privacy
 {
     public partial class Privacy : ComponentBase
     {
-        [Inject] private AccountController AccountController { get; set; } = default!;
+        [Inject] private IAccountManager AccountManager { get; set; } = default!;
         [Inject] private ToasterService Toaster { get; set; } = default!;
 
         protected PrivacySettings Settings { get; set; } = new();
@@ -19,13 +19,13 @@ namespace Auth.UI.Components.Pages.Customer.Account.Privacy
 
         protected override async Task OnInitializedAsync()
         {
-            var result = await AccountController.GetPrivacyAsync();
+            var result = await AccountManager.GetPrivacyAsync();
             Settings = (result.Succeeded && result.Data is not null) ? result.Data : new PrivacySettings();
         }
 
         protected async Task SaveAsync()
         {
-            var result = await AccountController.UpdatePrivacyAsync(Settings);
+            var result = await AccountManager.UpdatePrivacyAsync(Settings);
             Succeeded = result.Succeeded;
             StatusMessage = result.Message ?? string.Empty;
             if (result.Succeeded) Toaster.ShowSuccess("Privacy preferences updated");
@@ -34,7 +34,7 @@ namespace Auth.UI.Components.Pages.Customer.Account.Privacy
 
         protected async Task DownloadAsync()
         {
-            var result = await AccountController.DownloadDataAsync();
+            var result = await AccountManager.DownloadDataAsync();
             if (result.Succeeded)
                 Toaster.ShowSuccess("Your data export is being prepared (demo)");
             else
@@ -45,7 +45,7 @@ namespace Auth.UI.Components.Pages.Customer.Account.Privacy
 
         protected async Task ConfirmDeleteAsync()
         {
-            var result = await AccountController.DeleteAccountAsync();
+            var result = await AccountManager.DeleteAccountAsync();
             if (result.Succeeded) Toaster.ShowSuccess("Account scheduled for deletion (demo)");
             else Toaster.ShowDanger(result.Message ?? "Deletion failed");
         }

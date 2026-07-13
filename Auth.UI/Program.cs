@@ -1,13 +1,28 @@
-using Auth.UI.src.Manager.Controller;
+using Auth.UI.src.Manager.Security;
 using Auth.UI.src.Manager.Service.Implementation;
 using Auth.UI.src.Manager.Service.Interface;
 using Auth.UI.src.Shared.Http;
 using Auth.UI.src.Utility;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Components.Authorization;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
+
+builder.Services.AddCascadingAuthenticationState();
+builder.Services.AddAuthorizationCore(options =>
+{
+    // Require authentication for every route by default. Public pages
+    // (sign-in, registration, password recovery, showcase) opt out with [AllowAnonymous].
+    options.FallbackPolicy = new AuthorizationPolicyBuilder()
+        .RequireAuthenticatedUser()
+        .Build();
+});
+
+builder.Services.AddScoped<AuthenticationStateProvider, TokenStoreAuthenticationStateProvider>();
+builder.Services.AddScoped<TokenStoreAuthenticationStateProvider>();
 
 builder.Services.AddScoped(sp =>
 {
@@ -20,11 +35,8 @@ builder.Services.AddScoped<IHttpService, HttpService>();
 builder.Services.AddScoped(typeof(GenericHttpRepository<>));
 builder.Services.AddScoped<ITokenStore, TokenStore>();
 builder.Services.AddScoped<IAuthManager, AuthManager>();
-builder.Services.AddScoped<AuthController>();
 builder.Services.AddScoped<IAccountManager, AccountManager>();
-builder.Services.AddScoped<AccountController>();
 builder.Services.AddScoped<ISecurityManager, SecurityManager>();
-builder.Services.AddScoped<SecurityController>();
 builder.Services.AddScoped<Auth.UI.Components.UI.Toaster.ToasterService>();
 
 var app = builder.Build();

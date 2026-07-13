@@ -1,4 +1,4 @@
-﻿using Auth.UI.src.Manager.Controller;
+﻿using Auth.UI.src.Manager.Service.Interface;
 using Auth.UI.src.Model.Auth;
 using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
@@ -10,7 +10,7 @@ namespace Auth.UI.Components.Pages.Shared.Passkey
     {
         public enum SetupState { Idle, Processing, Success, Error }
 
-        [Inject] private AuthController AuthController { get; set; } = default!;
+        [Inject] private IAuthManager AuthManager { get; set; } = default!;
         [Inject] private NavigationManager NavigationManager { get; set; } = default!;
         [Inject] private IJSRuntime JsRuntime { get; set; } = default!;
 
@@ -38,7 +38,7 @@ namespace Auth.UI.Components.Pages.Shared.Passkey
             StatusDetail = "Contacting server...";
 
             var origin = new Uri(NavigationManager.BaseUri).GetLeftPart(UriPartial.Authority);
-            var optionsResult = await AuthController.RequestAttestationOptionsAsync(new Fido2AttestationOptionsRequest
+            var optionsResult = await AuthManager.RequestAttestationOptionsAsync(new Fido2AttestationOptionsRequest
             {
                 UserId = UserId,
                 Username = Username,
@@ -62,7 +62,7 @@ namespace Auth.UI.Components.Pages.Shared.Passkey
                     optionsResult.Data.Challenge);
 
                 StatusDetail = "Verifying with server...";
-                var verifyResult = await AuthController.RegisterCredentialAsync(new Fido2RegisterRequest
+                var verifyResult = await AuthManager.RegisterCredentialAsync(new Fido2RegisterRequest
                 {
                     UserId = UserId,
                     Username = Username,
@@ -72,7 +72,7 @@ namespace Auth.UI.Components.Pages.Shared.Passkey
                     Origin = origin
                 });
 
-                if (verifyResult.Succeeded)
+                if (verifyResult.Succeeded && verifyResult.Data?.Success == true)
                 {
                     State = SetupState.Success;
                 }

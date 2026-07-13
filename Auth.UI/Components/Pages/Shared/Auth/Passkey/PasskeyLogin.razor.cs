@@ -1,4 +1,5 @@
-using Auth.UI.src.Manager.Controller;
+using Auth.UI.src.Manager.Routing;
+using Auth.UI.src.Manager.Service.Interface;
 using Auth.UI.src.Model.Auth;
 using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
@@ -9,7 +10,7 @@ namespace Auth.UI.Components.Pages.Shared.Passkey
     {
         public enum PasskeyState { Idle, Requesting, Awaiting, Verifying, Success, Error }
 
-        [Inject] private AuthController AuthController { get; set; } = default!;
+        [Inject] private IAuthManager AuthManager { get; set; } = default!;
         [Inject] private NavigationManager NavigationManager { get; set; } = default!;
         [Inject] private IJSRuntime JsRuntime { get; set; } = default!;
 
@@ -81,7 +82,7 @@ namespace Auth.UI.Components.Pages.Shared.Passkey
 
             try
             {
-                var result = await AuthController.GetUserByEmailAsync(Email);
+                var result = await AuthManager.GetUserByEmailAsync(Email);
                 if (result.Succeeded && result.Data is not null)
                 {
                     ResolvedUserId = result.Data.UserId;
@@ -124,7 +125,7 @@ namespace Auth.UI.Components.Pages.Shared.Passkey
         protected async Task RequestOtpAsync()
         {
             StatusMessage = string.Empty;
-            var response = await AuthController.RequestOtpAsync(new OtpRequest { UserId = ResolvedUserId });
+            var response = await AuthManager.RequestOtpAsync(new OtpRequest { UserId = ResolvedUserId });
             if (response.Succeeded)
             {
                 OtpRequested = true;
@@ -139,11 +140,13 @@ namespace Auth.UI.Components.Pages.Shared.Passkey
         protected async Task VerifyOtpAsync()
         {
             StatusMessage = string.Empty;
-            var response = await AuthController.VerifyOtpAsync(new OtpVerifyRequest { UserId = ResolvedUserId, Otp = OtpCode });
-            if (response.Succeeded)
+            var response = await AuthManager.VerifyOtpAsync(new OtpVerifyRequest { UserId = ResolvedUserId, Otp = OtpCode });
+            // HTTP 200 is returned even for a failed OTP check; only treat it as success
+            // when the response actually carries an auth token.
+            if (response.Succeeded && !string.IsNullOrEmpty(response.Data?.Token))
             {
                 await OnCompleted.InvokeAsync();
-                NavigationManager.NavigateTo("/profile");
+                NavigationManager.NavigateTo(AuthRoute.Profile);
                 return;
             }
 
@@ -166,7 +169,7 @@ namespace Auth.UI.Components.Pages.Shared.Passkey
             StatusDetail = "Contacting the server to prepare your passkey challenge…";
 
             var origin = new Uri(NavigationManager.BaseUri).GetLeftPart(UriPartial.Authority);
-            var result = await AuthController.CreateFido2ChallengeAsync(ResolvedUserId, origin);
+            var result = await AuthManager.CreateFido2ChallengeAsync(ResolvedUserId, origin);
             if (!result.Succeeded || result.Data is null)
             {
                 State = PasskeyState.Error;
@@ -212,13 +215,15 @@ namespace Auth.UI.Components.Pages.Shared.Passkey
             State = PasskeyState.Verifying;
             StatusDetail = "Verifying your passkey with the server…";
 
-            var result = await AuthController.VerifyFido2AssertionAsync(VerifyModel);
-            if (result.Succeeded)
+            var result = await AuthManager.VerifyFido2AssertionAsync(VerifyModel);
+            // result.Succeeded only reflects the HTTP transport. The API returns HTTP 200
+            // even when verification fails, so also check the business-level Success flag.
+            if (result.Succeeded && result.Data?.Success == true)
             {
                 State = PasskeyState.Success;
                 StatusDetail = result.Data?.Message ?? "You're signed in.";
                 await OnCompleted.InvokeAsync();
-                NavigationManager.NavigateTo("/profile");
+                NavigationManager.NavigateTo(AuthRoute.Profile);
                 return;
             }
 

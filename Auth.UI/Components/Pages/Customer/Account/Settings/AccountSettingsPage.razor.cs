@@ -1,5 +1,5 @@
 using Auth.UI.Components.UI.Toaster;
-using Auth.UI.src.Manager.Controller;
+using Auth.UI.src.Manager.Service.Interface;
 using Auth.UI.src.Model.Account;
 using Microsoft.AspNetCore.Components;
 
@@ -7,7 +7,7 @@ namespace Auth.UI.Components.Pages.Customer.Account.Settings
 {
     public partial class AccountSettingsPage : ComponentBase
     {
-        [Inject] private AccountController AccountController { get; set; } = default!;
+        [Inject] private IAccountManager AccountManager { get; set; } = default!;
         [Inject] private ToasterService Toaster { get; set; } = default!;
 
         protected AccountSettings? Settings { get; set; }
@@ -16,14 +16,14 @@ namespace Auth.UI.Components.Pages.Customer.Account.Settings
 
         protected override async Task OnInitializedAsync()
         {
-            var result = await AccountController.GetSettingsAsync();
+            var result = await AccountManager.GetSettingsAsync();
             Settings = result.Succeeded ? result.Data : new AccountSettings();
         }
 
         protected async Task SaveAsync()
         {
             if (Settings is null) return;
-            var result = await AccountController.UpdateSettingsAsync(Settings);
+            var result = await AccountManager.UpdateSettingsAsync(Settings);
             Succeeded = result.Succeeded;
             StatusMessage = result.Message ?? string.Empty;
             if (result.Succeeded) Toaster.ShowSuccess("Settings saved");
@@ -32,7 +32,7 @@ namespace Auth.UI.Components.Pages.Customer.Account.Settings
 
         protected async Task ResetAsync()
         {
-            var result = await AccountController.GetSettingsAsync();
+            var result = await AccountManager.GetSettingsAsync();
             if (result.Succeeded) Settings = result.Data;
             StatusMessage = string.Empty;
         }

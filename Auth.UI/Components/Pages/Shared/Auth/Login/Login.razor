@@ -1,6 +1,8 @@
 @page "/"
 @page "/login"
 @namespace Auth.UI.Components.Pages.Shared.Login
+@using Microsoft.AspNetCore.Authorization
+@attribute [AllowAnonymous]
 @using Auth.UI.Components.Pages.Shared.Passkey
 @layout LoginLayout
 @using static Microsoft.AspNetCore.Components.Web.RenderMode

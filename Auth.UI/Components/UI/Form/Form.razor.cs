@@ -6,6 +6,7 @@ namespace Auth.UI.Components.UI.Form
     public partial class Form : ComponentBase
     {
         [Parameter] public object? Model { get; set; }
+        [Parameter] public string FormName { get; set; } = "ui-form";
         [Parameter] public EventCallback<EditContext> OnValidSubmit { get; set; }
         [Parameter] public EventCallback<EditContext> OnInvalidSubmit { get; set; }
         [Parameter] public RenderFragment? ChildContent { get; set; }

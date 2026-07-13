@@ -1,6 +1,6 @@
 @namespace Auth.UI.Components.UI.Form
 
-<EditForm Model="@Model" OnValidSubmit="@OnValidSubmit" OnInvalidSubmit="@OnInvalidSubmit">
+<EditForm Model="@Model" FormName="@FormName" OnValidSubmit="@OnValidSubmit" OnInvalidSubmit="@OnInvalidSubmit">
     <div class="ui-form">
         @if (ChildContent is not null)
         {

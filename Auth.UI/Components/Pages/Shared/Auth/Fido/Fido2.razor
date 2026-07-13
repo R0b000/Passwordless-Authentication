@@ -1,6 +1,8 @@
 @page "/fido2"
 @page "/fido2/{UserIdParam:int}"
 @namespace Auth.UI.Components.Pages.Shared.Fido
+@using Microsoft.AspNetCore.Authorization
+@attribute [AllowAnonymous]
 @using static Microsoft.AspNetCore.Components.Web.RenderMode
 @rendermode InteractiveServer
 

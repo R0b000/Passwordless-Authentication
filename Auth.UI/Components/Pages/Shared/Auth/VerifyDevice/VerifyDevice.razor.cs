@@ -1,5 +1,6 @@
+using Auth.UI.src.Manager.Routing;
 using Auth.UI.Components.UI.Toaster;
-using Auth.UI.src.Manager.Controller;
+using Auth.UI.src.Manager.Service.Interface;
 using Auth.UI.src.Model.Security;
 using Microsoft.AspNetCore.Components;
 
@@ -7,7 +8,7 @@ namespace Auth.UI.Components.Pages.Shared.VerifyDevice
 {
     public partial class VerifyDevice : ComponentBase
     {
-        [Inject] private SecurityController SecurityController { get; set; } = default!;
+        [Inject] private ISecurityManager SecurityManager { get; set; } = default!;
         [Inject] private ToasterService Toaster { get; set; } = default!;
         [Inject] private NavigationManager Navigation { get; set; } = default!;
 
@@ -23,7 +24,7 @@ namespace Auth.UI.Components.Pages.Shared.VerifyDevice
 
         protected async Task VerifyAsync()
         {
-            var result = await SecurityController.VerifyDeviceAsync(new VerifyDeviceRequest
+            var result = await SecurityManager.VerifyDeviceAsync(new VerifyDeviceRequest
             {
                 Code = Code,
                 TrustDevice = TrustDevice
@@ -35,7 +36,7 @@ namespace Auth.UI.Components.Pages.Shared.VerifyDevice
             if (result.Succeeded)
             {
                 Toaster.ShowSuccess(StatusMessage);
-                Navigation.NavigateTo("/");
+                Navigation.NavigateTo(AuthRoute.Home);
             }
             else
             {

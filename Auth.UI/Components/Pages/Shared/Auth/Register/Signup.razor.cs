@@ -1,5 +1,6 @@
+using Auth.UI.src.Manager.Routing;
 using Auth.UI.Components.UI.Toaster;
-using Auth.UI.src.Manager.Controller;
+using Auth.UI.src.Manager.Service.Interface;
 using Auth.UI.src.Model.Auth;
 using Microsoft.AspNetCore.Components;
 
@@ -7,7 +8,7 @@ namespace Auth.UI.Components.Pages.Shared.Register
 {
     public partial class Signup : ComponentBase
     {
-        [Inject] private AccountController AccountController { get; set; } = default!;
+        [Inject] private IAccountManager AccountManager { get; set; } = default!;
         [Inject] private ToasterService Toaster { get; set; } = default!;
         [Inject] private NavigationManager Navigation { get; set; } = default!;
 
@@ -62,14 +63,14 @@ namespace Auth.UI.Components.Pages.Shared.Register
                 return;
             }
 
-            var result = await AccountController.RegisterAsync(Model);
+            var result = await AccountManager.RegisterAsync(Model);
             Succeeded = result.Succeeded;
             StatusMessage = result.Message ?? string.Empty;
 
             if (result.Succeeded)
             {
                 Toaster.ShowSuccess("Account created. Please sign in.");
-                Navigation.NavigateTo("/login");
+                Navigation.NavigateTo(AuthRoute.Login);
             }
             else
             {

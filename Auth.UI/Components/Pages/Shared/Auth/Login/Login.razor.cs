@@ -1,6 +1,7 @@
 using Auth.UI.Components.UI.Modal;
 using Auth.UI.Components.UI.Toaster;
-using Auth.UI.src.Manager.Controller;
+using Auth.UI.src.Manager.Routing;
+using Auth.UI.src.Manager.Service.Interface;
 using Auth.UI.src.Model.Auth;
 using Auth.UI.src.Utility;
 using Microsoft.AspNetCore.Components;
@@ -11,7 +12,7 @@ namespace Auth.UI.Components.Pages.Shared.Login
 {
     public partial class Login : ComponentBase
     {
-        [Inject] private AuthController AuthController { get; set; } = default!;
+        [Inject] private IAuthManager AuthManager { get; set; } = default!;
         [Inject] private NavigationManager NavigationManager { get; set; } = default!;
         [Inject] private IJSRuntime JsRuntime { get; set; } = default!;
         [Inject] private ToasterService Toaster { get; set; } = default!;
@@ -41,7 +42,7 @@ namespace Auth.UI.Components.Pages.Shared.Login
         {
             if (_redirectToProfile)
             {
-                NavigationManager.NavigateTo("/profile", replace: true);
+                NavigationManager.NavigateTo(AuthRoute.Profile, replace: true);
             }
         }
 
@@ -63,7 +64,7 @@ namespace Auth.UI.Components.Pages.Shared.Login
         {
             StatusMessage = string.Empty;
 
-            var result = await AuthController.RegisterAsync(RegisterModel);
+            var result = await AuthManager.RegisterAsync(RegisterModel);
             Succeeded = result.Succeeded;
             StatusMessage = result.Data?.Message ?? result.Message ?? "Registration failed";
 
@@ -79,32 +80,48 @@ namespace Auth.UI.Components.Pages.Shared.Login
         {
             StatusMessage = string.Empty;
 
-            var result = await AuthController.LoginAsync(LoginModel);
-            Succeeded = result.Succeeded;
-            StatusMessage = result.Data?.Message ?? result.Message ?? "Login failed";
+            var result = await AuthManager.LoginAsync(LoginModel);
 
-            if (result.Succeeded)
+            // The API returns HTTP 200 even for failed logins (e.g. bad password), so a
+            // successful HTTP response does NOT mean the user is authenticated. Only treat the
+            // login as successful when the response actually carries an auth token or a
+            // required FIDO2 step. Otherwise show the error and stay on the login page.
+            if (!result.Succeeded || result.Data is null)
             {
-                if (result.Data?.RequiresFido2 == true)
-                {
-                    // EXISTING: User has passkey, needs to VERIFY
-                    LoggedInUserId = result.Data.UserId;
-                    IsVerificationMode = true;
-                    PasskeyVisible = true;
-                }
-                else if (result.Data?.RequiresFido2Registration == true)
-                {
-                    // NEW: User doesn't have passkey, needs to REGISTER
-                    LoggedInUserId = result.Data.UserId;
-                    LoggedInUsername = LoginModel.Username;
-                    IsVerificationMode = false;
-                    PasskeyVisible = true;
-                }
-                else
-                {
-                    // Standard login without FIDO2
-                    NavigationManager.NavigateTo("/profile");
-                }
+                Succeeded = false;
+                StatusMessage = result.Message ?? "Login failed";
+                return;
+            }
+
+            var data = result.Data;
+            if (data.RequiresFido2)
+            {
+                // User has a passkey and must verify it.
+                Succeeded = true;
+                LoggedInUserId = data.UserId;
+                IsVerificationMode = true;
+                PasskeyVisible = true;
+            }
+            else if (data.RequiresFido2Registration)
+            {
+                // User exists but has no passkey yet and must register one.
+                Succeeded = true;
+                LoggedInUserId = data.UserId;
+                LoggedInUsername = LoginModel.Username;
+                IsVerificationMode = false;
+                PasskeyVisible = true;
+            }
+            else if (!string.IsNullOrEmpty(data.Token))
+            {
+                // Standard login without FIDO2: a token means we are authenticated.
+                Succeeded = true;
+                NavigationManager.NavigateTo(AuthRoute.Profile);
+            }
+            else
+            {
+                // Login failed (invalid credentials). Do NOT navigate; surface the error.
+                Succeeded = false;
+                StatusMessage = data.Message ?? "Invalid username or password";
             }
         }
 
@@ -118,6 +135,14 @@ namespace Auth.UI.Components.Pages.Shared.Login
 
         protected void OpenPasskeyModal()
         {
+            // Standalone passkey sign-in: the FIDO2/Passkey ceremony must not start until
+            // the user's identity is known. Entering verification mode presents the
+            // PasskeyLogin component, which requires the email to be entered and validated
+            // (account resolved) BEFORE the passkey process is initiated. Without this, the
+            // flow would begin with UserId = 0 and registration/verification would fail.
+            IsVerificationMode = true;
+            LoggedInUserId = 0;
+            LoggedInUsername = string.Empty;
             PasskeyVisible = true;
         }
 
@@ -126,7 +151,7 @@ namespace Auth.UI.Components.Pages.Shared.Login
             PasskeyVisible = false;
             StatusMessage = string.Empty;
             // Redirect to profile after successful setup or verification
-            NavigationManager.NavigateTo("/profile");
+            NavigationManager.NavigateTo(AuthRoute.Profile);
         }
 
         protected void HandlePasskeySkipped()
@@ -135,7 +160,7 @@ namespace Auth.UI.Components.Pages.Shared.Login
             StatusMessage = string.Empty;
             LoggedInUserId = 0;
             IsVerificationMode = false;
-            NavigationManager.NavigateTo("/profile");
+            NavigationManager.NavigateTo(AuthRoute.Profile);
         }
 
         protected void OnPasskeyCancel()
@@ -152,7 +177,7 @@ namespace Auth.UI.Components.Pages.Shared.Login
             }
             else
             {
-                NavigationManager.NavigateTo("/profile");
+                NavigationManager.NavigateTo(AuthRoute.Profile);
             }
         }
     }

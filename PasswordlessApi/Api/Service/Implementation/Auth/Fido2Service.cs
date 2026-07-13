@@ -15,7 +15,6 @@ using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.Http;
 using PasswordlessApi.Api.Service.Interface.Security;
 using PasswordlessApi.Api.Utility.TokenHash;
-using System.Transactions;
 
 namespace PasswordlessApi.Api.Service.Implementation.Auth
 {
@@ -197,38 +196,33 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
                 var publicKey = Convert.ToBase64String(result.PublicKey);
                 var signCount = (long)result.SignCount;
 
-                // Persist the credential and consume the one-time registration challenge in a
-                // single atomic transaction. Previously the credential was written WITHOUT a
-                // transaction and the challenge was never marked as used (unlike the assertion
-                // path, which calls ConsumeChallenge). A transient failure between verification
-                // and commit, or a reused challenge, could leave the user with NO stored
-                // credential while the client believed registration succeeded. That made
-                // HasFido2CredentialsAsync stay false, so the registration prompt reappeared on
-                // every subsequent login. Consuming the challenge here also prevents the same
-                // challenge from being reused after a successful registration.
-                using (var scope = new TransactionScope(TransactionScopeOption.Required, TransactionScopeAsyncFlowOption.Enabled))
+                // Persist the credential, then consume the one-time registration challenge.
+                // Previously this was wrapped in an ambient TransactionScope while
+                // DapperRepository opens and closes a SEPARATE connection for every call. That
+                // combination can promote to a distributed transaction (or have the pooled
+                // connection reclaimed before commit), so MakeNewCredentialAsync reported
+                // success to the client while nothing was actually written to UserCredentials.
+                // HasFido2CredentialsAsync then stayed false and the passkey prompt reappeared
+                // on every login. Writing directly (matching the proven assertion path) guarantees
+                // the verified credential is saved, and consuming the challenge prevents reuse.
+                await _dapperRepository.ExecuteAsync(DbConstants.Procedures.Users, new
                 {
-                    await _dapperRepository.ExecuteAsync(DbConstants.Procedures.Users, new
-                    {
-                        AuthType = DbConstants.AuthTypes.Fido,
-                        FIDOOperation = DbConstants.FidoOperations.UpsertCredential,
-                        UserId = request.UserId,
-                        CredentialId = credentialId,
-                        PublicKey = publicKey,
-                        SignCount = signCount,
-                        Transports = request.Transports
-                    });
+                    AuthType = DbConstants.AuthTypes.Fido,
+                    FIDOOperation = DbConstants.FidoOperations.UpsertCredential,
+                    UserId = request.UserId,
+                    CredentialId = credentialId,
+                    PublicKey = publicKey,
+                    SignCount = signCount,
+                    Transports = request.Transports
+                });
 
-                    await _dapperRepository.ExecuteAsync(DbConstants.Procedures.Users, new
-                    {
-                        AuthType = DbConstants.AuthTypes.Fido,
-                        FIDOOperation = DbConstants.FidoOperations.ConsumeChallenge,
-                        UserId = request.UserId,
-                        Challenge = request.AttestationChallenge
-                    });
-
-                    scope.Complete();
-                }
+                await _dapperRepository.ExecuteAsync(DbConstants.Procedures.Users, new
+                {
+                    AuthType = DbConstants.AuthTypes.Fido,
+                    FIDOOperation = DbConstants.FidoOperations.ConsumeChallenge,
+                    UserId = request.UserId,
+                    Challenge = request.AttestationChallenge
+                });
 
                 return new Fido2VerifyResponse { Success = true, Message = "Passkey registered successfully" };
             }
