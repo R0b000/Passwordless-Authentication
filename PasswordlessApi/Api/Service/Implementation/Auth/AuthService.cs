@@ -109,7 +109,7 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
             };
         }
 
-        public async Task<AuthResponse> LoginAsync(LoginRequest request, string? ipAddress = null, string? userAgent = null)
+        public async Task<Response<AuthResponse>> LoginAsync(LoginRequest request, string? ipAddress = null, string? userAgent = null)
         {
             var result = await _authRepository.QuerySingleAsync<UserIdResult>(
                 ProcedureName,
@@ -117,7 +117,7 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
 
             if (result == null || !result.Succeeded || result.Data == null || result.Data.UserId <= 0)
             {
-                return new AuthResponse { Message = "Invalid username or password" };
+                return Response<AuthResponse>.Failure("Invalid username or password");
             }
 
             var user = await _authRepository.QuerySingleAsync<User>(
@@ -126,26 +126,26 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
 
             if (user == null || !user.Succeeded || user.Data == null || string.IsNullOrEmpty(user.Data.PasswordHash))
             {
-                return new AuthResponse { Message = "Invalid username or password" };
+                return Response<AuthResponse>.Failure("Invalid username or password");
             }
 
             if (!_passwordHash.VerifyPassword(request.Password, user.Data.PasswordHash))
             {
-                return new AuthResponse { Message = "Invalid username or password" };
+                return Response<AuthResponse>.Failure("Invalid username or password");
             }
 
             bool hasFido2 = await HasFido2CredentialsAsync(user.Data.Id);
 
             if (hasFido2)
             {
-                return new AuthResponse
-                {
+                return Response<AuthResponse>.Success(new AuthResponse
+                { 
                     UserId = user.Data.Id,
                     Username = user.Data.Username,
                     Email = user.Data.Email,
                     Message = "FIDO2 verification required",
                     RequiresFido2 = true
-                };
+                });
             }
 
             var token = _jwtHelper.GenerateToken(user.Data.Id, user.Data.Username);
@@ -173,7 +173,7 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
 
             var userWithRoles = await _userRoleService.GetUserWithRolesAndPermissionsAsync(user.Data.Id);
 
-            return new AuthResponse
+            return Response<AuthResponse>.Success(new AuthResponse
             {
                 UserId = user.Data.Id,
                 Username = user.Data.Username,
@@ -185,7 +185,7 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
                 RequiresFido2Registration = !hasFido2,
                 Role = userWithRoles?.Role,
                 Permissions = userWithRoles?.Permissions ?? new List<string>()
-            };
+            });
         }
 
         public async Task<User?> GetUserByIdAsync(int userId)

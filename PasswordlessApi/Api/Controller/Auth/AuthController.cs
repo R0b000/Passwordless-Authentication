@@ -8,6 +8,7 @@ using PasswordlessApi.Api.Models.ResponseModel.Auth;
 using PasswordlessApi.Api.Service.Interface.Auth;
 using PasswordlessApi.Api.Service.Interface.Rbac;
 using PasswordlessApi.Api.Common;
+using PasswordlessApi.Api.Models.Common;
 
 namespace PasswordlessApi.Api.Controller.Auth
 {
@@ -34,7 +35,7 @@ namespace PasswordlessApi.Api.Controller.Auth
 
         [HttpPost("login")]
         [EnableRateLimiting(SecurityRateLimiting.LoginPolicy)]
-        public async Task<ActionResult<AuthResponse>> Login([FromBody] LoginRequest request)
+        public async Task<ActionResult<Response<AuthResponse>>> Login([FromBody] LoginRequest request)
         {
             var ipAddress = GetClientIpAddress();
             var userAgent = GetUserAgent();

@@ -197,15 +197,6 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
                 var publicKey = Convert.ToBase64String(result.PublicKey);
                 var signCount = (long)result.SignCount;
 
-                // Persist the credential and consume the one-time registration challenge in a
-                // single atomic transaction. Previously the credential was written WITHOUT a
-                // transaction and the challenge was never marked as used (unlike the assertion
-                // path, which calls ConsumeChallenge). A transient failure between verification
-                // and commit, or a reused challenge, could leave the user with NO stored
-                // credential while the client believed registration succeeded. That made
-                // HasFido2CredentialsAsync stay false, so the registration prompt reappeared on
-                // every subsequent login. Consuming the challenge here also prevents the same
-                // challenge from being reused after a successful registration.
                 using (var scope = new TransactionScope(TransactionScopeOption.Required, TransactionScopeAsyncFlowOption.Enabled))
                 {
                     await _dapperRepository.ExecuteAsync(DbConstants.Procedures.Users, new
