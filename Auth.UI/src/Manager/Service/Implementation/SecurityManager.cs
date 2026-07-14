@@ -8,94 +8,47 @@ namespace Auth.UI.src.Manager.Service.Implementation
 {
     public class SecurityManager : ISecurityManager
     {
-        private readonly GenericHttpRepository<SecuritySettings> _settingsRepository;
-        private readonly GenericHttpRepository<List<DeviceSessionResponse>> _sessionsRepository;
-        private readonly GenericHttpRepository<ActivityLogResponse> _activityRepository;
-        private readonly GenericHttpRepository<ActionResponse> _actionRepository;
+        private readonly IHttpService _httpService;
         private readonly ITokenStore _tokenStore;
 
-        public SecurityManager(
-            GenericHttpRepository<SecuritySettings> settingsRepository,
-            GenericHttpRepository<List<DeviceSessionResponse>> sessionsRepository,
-            GenericHttpRepository<ActivityLogResponse> activityRepository,
-            GenericHttpRepository<ActionResponse> actionRepository,
-            ITokenStore tokenStore)
+        public SecurityManager(IHttpService httpService, ITokenStore tokenStore)
         {
-            _settingsRepository = settingsRepository;
-            _sessionsRepository = sessionsRepository;
-            _activityRepository = activityRepository;
-            _actionRepository = actionRepository;
+            _httpService = httpService;
             _tokenStore = tokenStore;
         }
 
         public async Task<Response<SecuritySettings>> GetSecurityAsync()
         {
-            var token = _tokenStore.GetToken();
-            if (string.IsNullOrWhiteSpace(token))
-            {
-                return Response<SecuritySettings>.Failure("No authentication token present");
-            }
-
-            return await _settingsRepository.GetSingleAsync("api/security/settings", token);
+            return await _httpService.GetAsync<SecuritySettings>(SecurityRoute.Settings);
         }
 
         public async Task<Response<SecuritySettings>> UpdateSecurityAsync(SecuritySettings settings)
         {
-            var token = _tokenStore.GetToken();
-            if (string.IsNullOrWhiteSpace(token))
-            {
-                return Response<SecuritySettings>.Failure("No authentication token present");
-            }
-
-            return await _settingsRepository.QuerySingleAsync("api/security/settings", settings, token);
+            return await _httpService.PostAsync<SecuritySettings, SecuritySettings>(SecurityRoute.Settings, settings);
         }
 
         public async Task<Response<bool>> ChangePasswordAsync(ChangePasswordRequest request)
         {
-            var token = _tokenStore.GetToken();
-            if (string.IsNullOrWhiteSpace(token))
-            {
-                return Response<bool>.Failure("No authentication token present");
-            }
-
-            var result = await _actionRepository.QuerySingleAsync("api/security/change-password", request, token);
-            return Response<bool>.Success(result?.Succeeded ?? false, result?.Message ?? "Password changed");
+            var result = await _httpService.PostAsync<ChangePasswordRequest, ActionResponse>(SecurityRoute.ChangePassword, request);
+            return Response<bool>.Success(result.Succeeded, result.Message ?? "Password changed");
         }
 
         public async Task<Response<SecuritySettings>> EnableTwoFactorAsync()
         {
-            var token = _tokenStore.GetToken();
-            if (string.IsNullOrWhiteSpace(token))
-            {
-                return Response<SecuritySettings>.Failure("No authentication token present");
-            }
-
-            return await _settingsRepository.QuerySingleAsync("api/security/2fa/enable", null, token);
+            return await _httpService.PostAsync<object, SecuritySettings>(SecurityRoute.Enable2FA, null!);
         }
 
         public async Task<Response<SecuritySettings>> DisableTwoFactorAsync()
         {
-            var token = _tokenStore.GetToken();
-            if (string.IsNullOrWhiteSpace(token))
-            {
-                return Response<SecuritySettings>.Failure("No authentication token present");
-            }
-
-            return await _settingsRepository.QuerySingleAsync("api/security/2fa/disable", null, token);
+            return await _httpService.PostAsync<object, SecuritySettings>(SecurityRoute.Disable2FA, null!);
         }
 
         public async Task<Response<List<SessionInfo>>> GetSessionsAsync()
         {
-            var token = _tokenStore.GetToken();
-            if (string.IsNullOrWhiteSpace(token))
+            var result = await _httpService.GetAsync<List<DeviceSessionResponse>>(SecurityRoute.Devices);
+            if (!result.Succeeded || result.Data is null)
             {
-                return Response<List<SessionInfo>>.Failure("No authentication token present");
-            }
-
-            var result = await _sessionsRepository.GetSingleAsync("api/auth/devices", token);
-            if (result == null || result.Data == null)
-            {
-                return Response<List<SessionInfo>>.Failure("Failed to load sessions");
+                return Response<List<SessionInfo>>.Failure(result.Message ?? "Failed to load sessions");
             }
 
             var sessions = result.Data.Select<DeviceSessionResponse, SessionInfo>(s => new SessionInfo
@@ -115,41 +68,24 @@ namespace Auth.UI.src.Manager.Service.Implementation
 
         public async Task<Response<bool>> RevokeSessionAsync(string id)
         {
-            var token = _tokenStore.GetToken();
-            if (string.IsNullOrWhiteSpace(token))
-            {
-                return Response<bool>.Failure("No authentication token present");
-            }
-
             if (!int.TryParse(id, out var sessionId))
             {
                 return Response<bool>.Failure("Invalid session ID");
             }
 
-            var result = await _actionRepository.QuerySingleAsync($"api/auth/devices/{sessionId}", null, token);
-            return Response<bool>.Success(result?.Succeeded ?? false, result?.Message ?? "Session revoked");
+            var result = await _httpService.DeleteAsync<ActionResponse>($"{SecurityRoute.Devices}/{sessionId}");
+            return Response<bool>.Success(result.Succeeded, result.Message ?? "Session revoked");
         }
 
         public async Task<Response<bool>> RevokeAllSessionsAsync(bool includingCurrent)
         {
-            var token = _tokenStore.GetToken();
-            if (string.IsNullOrWhiteSpace(token))
-            {
-                return Response<bool>.Failure("No authentication token present");
-            }
-
-            var result = await _actionRepository.QuerySingleAsync("api/auth/devices/logout-all", new { includingCurrent }, token);
-            return Response<bool>.Success(result?.Succeeded ?? false, result?.Message ?? "Sessions revoked");
+            var result = await _httpService.PostAsync<object, ActionResponse>(
+                SecurityRoute.DevicesRevokeAll, new { includingCurrent });
+            return Response<bool>.Success(result.Succeeded, result.Message ?? "Sessions revoked");
         }
 
         public async Task<Response<List<ActivityLogEntry>>> GetActivityAsync(ActivityQuery query)
         {
-            var token = _tokenStore.GetToken();
-            if (string.IsNullOrWhiteSpace(token))
-            {
-                return Response<List<ActivityLogEntry>>.Failure("No authentication token present");
-            }
-
             var queryParams = new Dictionary<string, string?>
             {
                 ["from"] = query.From?.ToString("o"),
@@ -162,10 +98,10 @@ namespace Auth.UI.src.Manager.Service.Implementation
                 .Where(kv => !string.IsNullOrEmpty(kv.Value))
                 .Select(kv => $"{kv.Key}={Uri.EscapeDataString(kv.Value!)}"));
 
-            var result = await _activityRepository.GetSingleAsync($"api/security/activity?{queryString}", token);
-            if (result == null)
+            var result = await _httpService.GetAsync<ActivityLogResponse>($"{SecurityRoute.Activity}?{queryString}");
+            if (!result.Succeeded || result.Data is null)
             {
-                return Response<List<ActivityLogEntry>>.Failure("Failed to load activity");
+                return Response<List<ActivityLogEntry>>.Failure(result.Message ?? "Failed to load activity");
             }
 
             return Response<List<ActivityLogEntry>>.Success(result.Data.Entries);
@@ -173,14 +109,8 @@ namespace Auth.UI.src.Manager.Service.Implementation
 
         public async Task<Response<bool>> VerifyDeviceAsync(VerifyDeviceRequest request)
         {
-            var token = _tokenStore.GetToken();
-            if (string.IsNullOrWhiteSpace(token))
-            {
-                return Response<bool>.Failure("No authentication token present");
-            }
-
-            var result = await _actionRepository.QuerySingleAsync("api/security/device/verify", request, token);
-            return Response<bool>.Success(result?.Succeeded ?? false, result?.Message ?? "Device verified");
+            var result = await _httpService.PostAsync<VerifyDeviceRequest, ActionResponse>(SecurityRoute.VerifyDevice, request);
+            return Response<bool>.Success(result.Succeeded, result.Message ?? "Device verified");
         }
 
         private static string ParseDeviceType(string? userAgent)

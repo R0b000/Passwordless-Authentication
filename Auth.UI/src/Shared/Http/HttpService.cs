@@ -1,4 +1,5 @@
-using System.Collections.Generic;
+using Auth.UI.src.Common;
+using Auth.UI.src.Utility;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
@@ -8,104 +9,124 @@ namespace Auth.UI.src.Shared.Http
     public class HttpService : IHttpService
     {
         private readonly HttpClient _httpClient;
+        private readonly ITokenStore _tokenStore;
+        private readonly JsonSerializerOptions _jsonOptions = new() { PropertyNameCaseInsensitive = true };
 
-        public HttpService(HttpClient httpClient)
+        public HttpService(HttpClient httpClient, ITokenStore tokenStore)
         {
             _httpClient = httpClient;
+            _tokenStore = tokenStore;
         }
 
-        public async Task<HttpResult<T>> GetAsync<T>(string url, string? bearerToken = null)
+        public async Task<Response<T>> GetAsync<T>(string url)
         {
             using var request = new HttpRequestMessage(HttpMethod.Get, url);
-            ApplyBearer(request, bearerToken);
-
-            using var response = await _httpClient.SendAsync(request);
-            if (!response.IsSuccessStatusCode)
-            {
-                return new HttpResult<T> { Succeeded = false, StatusCode = (int)response.StatusCode, Error = await ReadErrorAsync(response) };
-            }
-
-            var data = await response.Content.ReadFromJsonAsync<T>();
-            return new HttpResult<T> { Succeeded = true, StatusCode = (int)response.StatusCode, Data = data };
+            ApplyBearer(request);
+            return await SendAndParseAsync<T>(request);
         }
 
-        public async Task<HttpResult<TResponse>> PostAsync<TRequest, TResponse>(string url, TRequest body, string? bearerToken = null)
+        public async Task<Response<TResponse>> PostAsync<TRequest, TResponse>(string url, TRequest body)
         {
             using var request = new HttpRequestMessage(HttpMethod.Post, url);
-            ApplyBearer(request, bearerToken);
+            ApplyBearer(request);
 
             if (body is not null)
             {
-                request.Content = JsonContent.Create(body);
+                request.Content = JsonContent.Create(body, options: _jsonOptions);
             }
 
-            using var response = await _httpClient.SendAsync(request);
-            if (!response.IsSuccessStatusCode)
-            {
-                return new HttpResult<TResponse> { Succeeded = false, StatusCode = (int)response.StatusCode, Error = await ReadErrorAsync(response) };
-            }
-
-            var data = await response.Content.ReadFromJsonAsync<TResponse>();
-            return new HttpResult<TResponse> { Succeeded = true, StatusCode = (int)response.StatusCode, Data = data };
+            return await SendAndParseAsync<TResponse>(request);
         }
 
-        private static async Task<string> ReadErrorAsync(HttpResponseMessage response)
+        public async Task<Response<T>> DeleteAsync<T>(string url)
         {
-            var body = await response.Content.ReadAsStringAsync();
-            if (string.IsNullOrWhiteSpace(body))
+            using var request = new HttpRequestMessage(HttpMethod.Delete, url);
+            ApplyBearer(request);
+            return await SendAndParseAsync<T>(request);
+        }
+
+        private async Task<Response<T>> SendAndParseAsync<T>(HttpRequestMessage request)
+        {
+            using var response = await _httpClient.SendAsync(request);
+            var content = await response.Content.ReadAsStringAsync();
+
+            if (!response.IsSuccessStatusCode)
             {
-                return $"Request failed with status {(int)response.StatusCode}.";
+                return Response<T>.Failure(ParseErrorMessage(content) ?? $"HTTP {(int)response.StatusCode}");
+            }
+
+            if (string.IsNullOrWhiteSpace(content))
+            {
+                return Response<T>.Failure("Empty server response");
             }
 
             try
             {
-                using var doc = JsonDocument.Parse(body);
+                using var doc = JsonDocument.Parse(content);
                 var root = doc.RootElement;
 
-                if (root.TryGetProperty("errors", out var errorsEl) && errorsEl.ValueKind == JsonValueKind.Object)
-                {
-                    var messages = new List<string>();
-                    foreach (var prop in errorsEl.EnumerateObject())
-                    {
-                        if (prop.Value.ValueKind == JsonValueKind.Array)
-                        {
-                            foreach (var item in prop.Value.EnumerateArray())
-                            {
-                                if (item.ValueKind == JsonValueKind.String)
-                                {
-                                    messages.Add(item.GetString()!);
-                                }
-                            }
-                        }
-                    }
+                // The API consistently returns a Response<T> envelope ({ succeeded, message, data })
+                // for wrapped results and action results. Raw domain models (and JSON arrays)
+                // are returned unwrapped. Detect the envelope by the presence of a "succeeded"
+                // or "data" property.
+                var isEnvelope = root.ValueKind == JsonValueKind.Object &&
+                                 (root.TryGetProperty("succeeded", out _) || root.TryGetProperty("data", out _));
 
-                    if (messages.Count > 0)
+                if (isEnvelope)
+                {
+                    var wrapped = JsonSerializer.Deserialize<Response<T>>(content, _jsonOptions);
+                    if (wrapped is not null)
                     {
-                        return string.Join(" ", messages);
+                        return wrapped;
                     }
                 }
 
-                foreach (var key in new[] { "message", "Message", "title", "Title", "detail", "Detail" })
+                // Unwrapped payload: the body IS the T instance.
+                var raw = JsonSerializer.Deserialize<T>(content, _jsonOptions);
+                if (raw is not null)
                 {
-                    if (root.TryGetProperty(key, out var el) && el.ValueKind == JsonValueKind.String)
-                    {
-                        return el.GetString()!;
-                    }
+                    var message = root.ValueKind == JsonValueKind.Object && root.TryGetProperty("message", out var messageEl)
+                        ? messageEl.GetString()
+                        : null;
+                    return Response<T>.Success(raw, message);
                 }
+
+                return Response<T>.Failure("Failed to parse server response");
             }
             catch
             {
-                // Fall through to returning the raw body.
+                return Response<T>.Failure("Failed to parse server response");
             }
-
-            return body.Length > 300 ? body[..300] : body;
         }
 
-        private static void ApplyBearer(HttpRequestMessage request, string? bearerToken)
+        private static string? ParseErrorMessage(string content)
         {
-            if (!string.IsNullOrWhiteSpace(bearerToken))
+            if (string.IsNullOrWhiteSpace(content)) return null;
+            try
             {
-                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", bearerToken);
+                using var doc = JsonDocument.Parse(content);
+                if (doc.RootElement.ValueKind == JsonValueKind.Object)
+                {
+                    foreach (var key in new[] { "message", "title", "detail" })
+                    {
+                        if (doc.RootElement.TryGetProperty(key, out var el) && el.ValueKind == JsonValueKind.String)
+                        {
+                            return el.GetString();
+                        }
+                    }
+                }
+            }
+            catch { }
+
+            return content.Length > 200 ? content[..200] : content;
+        }
+
+        private void ApplyBearer(HttpRequestMessage request)
+        {
+            var token = _tokenStore.GetToken();
+            if (!string.IsNullOrWhiteSpace(token))
+            {
+                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
             }
         }
     }

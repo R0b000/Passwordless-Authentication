@@ -8291,7 +8291,7 @@ namespace Auth.UI.src.Shared.Http
 
         public async Task<Response<T>> QuerySingleAsync(string endpoint, object request, string? bearerToken = null)
         {
-            var result = await _httpService.PostAsync<object, T>(endpoint, request, bearerToken);
+            var result = await _httpService.PostAsync<object, Response<T>>(endpoint, request, bearerToken);
             if (!result.Succeeded)
             {
                 return Response<T>.Failure(result.Error ?? "Request failed or returned no data");
@@ -8302,7 +8302,7 @@ namespace Auth.UI.src.Shared.Http
                 return Response<T>.Failure(result.Error ?? "Request failed or returned no data");
             }
 
-            return Response<T>.Success(result.Data);
+            return result.Data;
         }
 
         public async Task<Response<T>> GetSingleAsync(string endpoint, string? bearerToken = null)

@@ -16,9 +16,8 @@ builder.Services.AddScoped(sp =>
     return new HttpClient(handler) { BaseAddress = new Uri(baseUrl) };
 });
 
-builder.Services.AddScoped<IHttpService, HttpService>();
-builder.Services.AddScoped(typeof(GenericHttpRepository<>));
 builder.Services.AddScoped<ITokenStore, TokenStore>();
+builder.Services.AddScoped<IHttpService, HttpService>();
 builder.Services.AddScoped<IAuthManager, AuthManager>();
 builder.Services.AddScoped<AuthController>();
 builder.Services.AddScoped<IAccountManager, AccountManager>();

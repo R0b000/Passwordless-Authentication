@@ -8,29 +8,18 @@ namespace Auth.UI.src.Manager.Service.Implementation
 {
     public class AuthManager : IAuthManager
     {
-        private readonly GenericHttpRepository<AuthResponse> _authRepository;
-        private readonly GenericHttpRepository<Fido2ChallengeResponse> _challengeRepository;
-        private readonly GenericHttpRepository<Fido2VerifyResponse> _verifyRepository;
-        private readonly GenericHttpRepository<OtpResponse> _otpRepository;
+        private readonly IHttpService _httpService;
         private readonly ITokenStore _tokenStore;
 
-        public AuthManager(
-            GenericHttpRepository<AuthResponse> authRepository,
-            GenericHttpRepository<Fido2ChallengeResponse> challengeRepository,
-            GenericHttpRepository<Fido2VerifyResponse> verifyRepository,
-            GenericHttpRepository<OtpResponse> otpRepository,
-            ITokenStore tokenStore)
+        public AuthManager(IHttpService httpService, ITokenStore tokenStore)
         {
-            _authRepository = authRepository;
-            _challengeRepository = challengeRepository;
-            _verifyRepository = verifyRepository;
-            _otpRepository = otpRepository;
+            _httpService = httpService;
             _tokenStore = tokenStore;
         }
 
         public async Task<Response<AuthResponse>> RegisterAsync(RegisterRequest request)
         {
-            var result = await _authRepository.QuerySingleAsync("api/auth/register", request);
+            var result = await _httpService.PostAsync<RegisterRequest, AuthResponse>(AuthRoute.Register, request);
             if (result.Succeeded && result.Data?.Token is not null)
             {
                 _tokenStore.SetToken(result.Data.Token);
@@ -41,7 +30,7 @@ namespace Auth.UI.src.Manager.Service.Implementation
 
         public async Task<Response<AuthResponse>> LoginAsync(LoginRequest request)
         {
-            var result = await _authRepository.QuerySingleAsync("api/auth/login", request);
+            var result = await _httpService.PostAsync<LoginRequest, AuthResponse>(AuthRoute.Login, request);
             if (result.Succeeded && result.Data?.Token is not null)
             {
                 _tokenStore.SetToken(result.Data.Token);
@@ -52,45 +41,33 @@ namespace Auth.UI.src.Manager.Service.Implementation
 
         public async Task<Response<AuthResponse>> GetCurrentUserAsync()
         {
-            var token = _tokenStore.GetToken();
-            if (string.IsNullOrWhiteSpace(token))
-            {
-                return Response<AuthResponse>.Failure("No authentication token present");
-            }
-
-            return await _authRepository.GetSingleAsync("api/auth/me", token);
+            return await _httpService.GetAsync<AuthResponse>(AuthRoute.Me);
         }
 
         public async Task<Response<AuthResponse>> GetUserByEmailAsync(string email)
         {
-            return await _authRepository.GetSingleAsync($"api/auth/lookup?email={Uri.EscapeDataString(email)}");
+            return await _httpService.GetAsync<AuthResponse>($"{AuthRoute.Lookup}?email={Uri.EscapeDataString(email)}");
         }
 
         public async Task<Response<Fido2ChallengeResponse>> RequestAttestationOptionsAsync(Fido2AttestationOptionsRequest request)
         {
-            var token = _tokenStore.GetToken();
-            var result = await _challengeRepository.QuerySingleAsync("api/auth/fido2/options/register", request, token);
-            return result;
+            return await _httpService.PostAsync<Fido2AttestationOptionsRequest, Fido2ChallengeResponse>(AuthRoute.Fido2Options, request);
         }
 
         public async Task<Response<Fido2VerifyResponse>> RegisterCredentialAsync(Fido2RegisterRequest request)
         {
-            var token = _tokenStore.GetToken();
-            var result = await _verifyRepository.QuerySingleAsync("api/auth/fido2/register", request, token);
-            return result;
+            return await _httpService.PostAsync<Fido2RegisterRequest, Fido2VerifyResponse>(AuthRoute.Fido2Register, request);
         }
 
         public async Task<Response<Fido2ChallengeResponse>> CreateFido2ChallengeAsync(int userId, string origin)
         {
-            var token = _tokenStore.GetToken();
-            var result = await _challengeRepository.QuerySingleAsync("api/auth/fido2/challenge", new Fido2ChallengeRequest { UserId = userId, Origin = origin }, token);
-            return result;
+            return await _httpService.PostAsync<Fido2ChallengeRequest, Fido2ChallengeResponse>(
+                AuthRoute.Fido2Challenge, new Fido2ChallengeRequest { UserId = userId, Origin = origin });
         }
 
         public async Task<Response<Fido2VerifyResponse>> VerifyFido2AssertionAsync(Fido2VerifyRequest request)
         {
-            var token = _tokenStore.GetToken();
-            var result = await _verifyRepository.QuerySingleAsync("api/auth/fido2/verify", request, token);
+            var result = await _httpService.PostAsync<Fido2VerifyRequest, Fido2VerifyResponse>(AuthRoute.Fido2Verify, request);
             if (result.Succeeded && result.Data?.Token is not null)
             {
                 _tokenStore.SetToken(result.Data.Token);
@@ -101,13 +78,12 @@ namespace Auth.UI.src.Manager.Service.Implementation
 
         public async Task<Response<OtpResponse>> RequestOtpAsync(OtpRequest request)
         {
-            var result = await _otpRepository.QuerySingleAsync("api/auth/otp/request", request);
-            return result;
+            return await _httpService.PostAsync<OtpRequest, OtpResponse>(AuthRoute.OtpRequest, request);
         }
 
         public async Task<Response<AuthResponse>> VerifyOtpAsync(OtpVerifyRequest request)
         {
-            var result = await _authRepository.QuerySingleAsync("api/auth/otp/verify", request);
+            var result = await _httpService.PostAsync<OtpVerifyRequest, AuthResponse>(AuthRoute.OtpVerify, request);
             if (result.Succeeded && result.Data?.Token is not null)
             {
                 _tokenStore.SetToken(result.Data.Token);
