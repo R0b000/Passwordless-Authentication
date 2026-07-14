@@ -23,10 +23,9 @@ namespace PasswordlessApi.Api.Utility.Jwt
             _expiryMinutes = int.TryParse(configuration["JwtSettings:ExpiryMinutes"], out var parsed) ? parsed : 60;
             _refreshTokenExpiryDays = int.TryParse(configuration["JwtSettings:RefreshTokenExpiryDays"], out var refreshParsed) ? refreshParsed : 7;
 
-            if (string.IsNullOrWhiteSpace(_secretKey) || _secretKey is "fake_jwt_token" or "fake_local_key")
-            {
-                throw new InvalidOperationException("JWT signing secret is not configured.");
-            }
+            var keyBytes = Encoding.UTF8.GetBytes(_secretKey);
+            if (keyBytes.Length < 16)
+                throw new InvalidOperationException("JWT Secret Key must be at least 16 characters long.");
         }
 
         public string GenerateToken(int userId, string username)

@@ -1,27 +1,46 @@
 export async function createCredential(optionsJson, challenge) {
     const options = JSON.parse(optionsJson);
-    options.challenge = base64UrlToArrayBuffer(options.challenge);
-    if (options.user) {
-        options.user.id = base64UrlToArrayBuffer(options.user.id);
-    }
+
+    // Helper to convert base64url to ArrayBuffer
+    const base64urlToBuffer = (base64url) => {
+        const base64 = base64url.replace(/-/g, '+').replace(/_/g, '/');
+        const padLen = (4 - base64.length % 4) % 4;
+        const padded = base64 + '='.repeat(padLen);
+        const binary = atob(padded);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+        return bytes.buffer;
+    };
+
+    // Helper to convert ArrayBuffer to base64url
+    const bufferToBase64url = (buffer) => {
+        const bytes = new Uint8Array(buffer);
+        let binary = '';
+        for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
+        return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+    };
+
+    // WebAuthn requires ArrayBuffers for challenges and user IDs
+    options.challenge = base64urlToBuffer(options.challenge);
+    options.user.id = base64urlToBuffer(options.user.id);
     if (options.excludeCredentials) {
-        options.excludeCredentials = options.excludeCredentials.map(c => ({
-            ...c,
-            id: base64UrlToArrayBuffer(c.id)
-        }));
+        for (let cred of options.excludeCredentials) {
+            cred.id = base64urlToBuffer(cred.id);
+        }
     }
 
-    const cred = await navigator.credentials.create({ publicKey: options });
+    // Trigger the browser's native passkey/biometric creation prompt
+    const credential = await navigator.credentials.create({ publicKey: options });
+
     return {
-        id: bufferToBase64Url(cred.rawId),
-        rawId: bufferToBase64Url(cred.rawId),
-        type: cred.type,
+        id: credential.id,
+        rawId: bufferToBase64url(credential.rawId),
+        type: credential.type,
         response: {
-            clientDataJSON: bufferToBase64Url(cred.response.clientDataJSON),
-            attestationObject: bufferToBase64Url(cred.response.attestationObject)
+            clientDataJSON: bufferToBase64url(credential.response.clientDataJSON),
+            attestationObject: bufferToBase64url(credential.response.attestationObject)
         },
-        challenge: challenge,
-        transports: cred.response.getTransports ? cred.response.getTransports() : []
+        transports: credential.response.getTransports ? credential.response.getTransports() : []
     };
 }
 

@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace PasswordlessApi.Api.Models.RequestModel.Account
 {
     public class UpdateProfileRequest
@@ -39,13 +41,27 @@ namespace PasswordlessApi.Api.Models.RequestModel.Account
     public class ConfirmPasswordResetRequest
     {
         public string Token { get; set; } = string.Empty;
+
+        [Required]
+        [StringLength(128, MinimumLength = 8)]
+        [RegularExpression(@"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$", ErrorMessage = "Password must be at least 8 characters and contain uppercase, lowercase, and a number")]
         public string NewPassword { get; set; } = string.Empty;
     }
 
     public class ChangePasswordRequest
     {
+        [Required]
         public string CurrentPassword { get; set; } = string.Empty;
+
+        [Required]
+        [StringLength(128, MinimumLength = 8)]
+        [RegularExpression(@"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$", ErrorMessage = "Password must be at least 8 characters and contain uppercase, lowercase, and a number")]
         public string NewPassword { get; set; } = string.Empty;
+
+        [Required]
+        [StringLength(128, MinimumLength = 8)]
+        [Compare("NewPassword", ErrorMessage = "New password and confirmation do not match")]
         public string ConfirmPassword { get; set; } = string.Empty;
     }
 }
+

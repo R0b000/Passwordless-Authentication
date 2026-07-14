@@ -2,6 +2,7 @@ using Auth.UI.Components.UI.Modal;
 using Auth.UI.Components.UI.Toaster;
 using Auth.UI.src.Manager.Controller;
 using Auth.UI.src.Model.Auth;
+using Auth.UI.src.Utility;
 using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
 using System.Text.Json.Serialization;
@@ -14,6 +15,7 @@ namespace Auth.UI.Components.Pages.Shared.Login
         [Inject] private NavigationManager NavigationManager { get; set; } = default!;
         [Inject] private IJSRuntime JsRuntime { get; set; } = default!;
         [Inject] private ToasterService Toaster { get; set; } = default!;
+        [Inject] private ITokenStore TokenStore { get; set; } = default!;
 
         protected string Mode { get; set; } = "login";
         protected RegisterRequest RegisterModel { get; set; } = new();
@@ -22,6 +24,26 @@ namespace Auth.UI.Components.Pages.Shared.Login
         protected bool Succeeded { get; set; }
         protected int LoggedInUserId { get; set; }
         protected bool ShowPassword { get; set; }
+
+        protected bool IsVerificationMode { get; set; }
+        protected string LoggedInUsername { get; set; } = string.Empty;
+        protected bool _redirectToProfile;
+
+        protected override void OnInitialized()
+        {
+            if (TokenStore.GetToken() is not null)
+            {
+                _redirectToProfile = true;
+            }
+        }
+
+        protected override async Task OnAfterRenderAsync(bool firstRender)
+        {
+            if (_redirectToProfile)
+            {
+                NavigationManager.NavigateTo("/profile", replace: true);
+            }
+        }
 
         protected void TogglePassword() => ShowPassword = !ShowPassword;
 
@@ -65,11 +87,22 @@ namespace Auth.UI.Components.Pages.Shared.Login
             {
                 if (result.Data?.RequiresFido2 == true)
                 {
+                    // EXISTING: User has passkey, needs to VERIFY
                     LoggedInUserId = result.Data.UserId;
+                    IsVerificationMode = true;
+                    PasskeyVisible = true;
+                }
+                else if (result.Data?.RequiresFido2Registration == true)
+                {
+                    // NEW: User doesn't have passkey, needs to REGISTER
+                    LoggedInUserId = result.Data.UserId;
+                    LoggedInUsername = LoginModel.Username;
+                    IsVerificationMode = false;
                     PasskeyVisible = true;
                 }
                 else
                 {
+                    // Standard login without FIDO2
                     NavigationManager.NavigateTo("/profile");
                 }
             }
@@ -78,7 +111,10 @@ namespace Auth.UI.Components.Pages.Shared.Login
         protected Modal PasskeyModal { get; set; } = default!;
         protected bool PasskeyVisible { get; set; }
 
-        protected string PasskeyModalTitle => LoggedInUserId > 0 ? "Verify it's you" : "Sign in with a passkey";
+        // UPDATED: Dynamically compute the title based on the mode
+        protected string PasskeyModalTitle => LoggedInUserId > 0
+            ? (IsVerificationMode ? "Verify it's you" : "Set up a passkey")
+            : "Sign in with a passkey";
 
         protected void OpenPasskeyModal()
         {
@@ -88,12 +124,36 @@ namespace Auth.UI.Components.Pages.Shared.Login
         protected void HandlePasskeyCompleted()
         {
             PasskeyVisible = false;
+            StatusMessage = string.Empty;
+            // Redirect to profile after successful setup or verification
+            NavigationManager.NavigateTo("/profile");
+        }
+
+        protected void HandlePasskeySkipped()
+        {
+            PasskeyVisible = false;
+            StatusMessage = string.Empty;
+            LoggedInUserId = 0;
+            IsVerificationMode = false;
+            NavigationManager.NavigateTo("/profile");
         }
 
         protected void OnPasskeyCancel()
         {
+            var wasVerification = IsVerificationMode;
             PasskeyVisible = false;
             LoggedInUserId = 0;
+            IsVerificationMode = false;
+            StatusMessage = string.Empty;
+
+            if (wasVerification)
+            {
+                TokenStore.Clear();
+            }
+            else
+            {
+                NavigationManager.NavigateTo("/profile");
+            }
         }
     }
 }

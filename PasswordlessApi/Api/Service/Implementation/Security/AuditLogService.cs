@@ -1,3 +1,4 @@
+using PasswordlessApi.Api.Common;
 using PasswordlessApi.Api.Models.Entities;
 using PasswordlessApi.Api.Service.Interface.Repository;
 using PasswordlessApi.Api.Service.Interface.Security;
@@ -7,7 +8,6 @@ namespace PasswordlessApi.Api.Service.Implementation.Security
     public class AuditLogService : IAuditLogService
     {
         private readonly IGenericRepository<AuditLog> _authRepository;
-        private const string ProcedureName = "sp_Users";
 
         public AuditLogService(IGenericRepository<AuditLog> authRepository)
         {
@@ -18,10 +18,10 @@ namespace PasswordlessApi.Api.Service.Implementation.Security
             string? oldValue = null, string? newValue = null, string? ipAddress = null, string? userAgent = null)
         {
             await _authRepository.ExecuteAsync(
-                ProcedureName,
+                DbConstants.Procedures.Users,
                 new
                 {
-                    AuthType = "AuditLog",
+                    AuthType = DbConstants.AuthTypes.AuditLog,
                     FIDOOperation = "Create",
                     UserId = userId,
                     Action = action,
@@ -36,17 +36,17 @@ namespace PasswordlessApi.Api.Service.Implementation.Security
 
         public async Task<List<AuditLog>> GetUserAuditLogsAsync(int userId, int limit = 50)
         {
-            var result = await _authRepository.QuerySingleAsync<AuditLog>(
-                ProcedureName,
+            var result = await _authRepository.QueryAsync<AuditLog>(
+                DbConstants.Procedures.Users,
                 new
                 {
-                    AuthType = "AuditLog",
+                    AuthType = DbConstants.AuthTypes.AuditLog,
                     FIDOOperation = "GetByUser",
                     UserId = userId
                 });
 
-            return result?.Succeeded == true && result.Data != null 
-                ? new List<AuditLog> { result.Data } 
+            return result?.Succeeded == true && result.Data != null
+                ? result.Data.Take(limit).ToList()
                 : new List<AuditLog>();
         }
     }

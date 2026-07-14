@@ -1,0 +1,13 @@
+CREATE TABLE [dbo].[Roles] (
+    [Id] INT IDENTITY(1,1) NOT NULL,
+    [Name] NVARCHAR(100) NOT NULL,
+    [Description] NVARCHAR(500) NULL,
+    [IsSystemRole] BIT NOT NULL CONSTRAINT [DF_Roles_IsSystemRole] DEFAULT (0),
+    [CreatedAt] DATETIME2 NOT NULL CONSTRAINT [DF_Roles_CreatedAt] DEFAULT (SYSUTCDATETIME()),
+    [UpdatedAt] DATETIME2 NOT NULL CONSTRAINT [DF_Roles_UpdatedAt] DEFAULT (SYSUTCDATETIME()),
+    CONSTRAINT [PK_Roles] PRIMARY KEY ([Id])
+);
+GO
+
+CREATE UNIQUE INDEX [IX_Roles_Name] ON [dbo].[Roles] ([Name]);
+GO

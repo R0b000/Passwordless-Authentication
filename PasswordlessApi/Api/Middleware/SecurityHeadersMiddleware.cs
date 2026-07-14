@@ -22,7 +22,6 @@ namespace PasswordlessApi.Api.Middleware
         {
             context.Response.Headers["X-Content-Type-Options"] = "nosniff";
             context.Response.Headers["X-Frame-Options"] = "DENY";
-            context.Response.Headers["X-XSS-Protection"] = "1; mode=block";
             context.Response.Headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
             context.Response.Headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()";
             context.Response.Headers["Content-Security-Policy"] = BuildContentSecurityPolicy();
@@ -42,14 +41,23 @@ namespace PasswordlessApi.Api.Middleware
         {
             var origins = _apiSettings.GetAllowedOrigins();
             var cspSources = origins.Concat(_apiSettings.CspExtraSources ?? [])
-                                    .Where(s => !string.IsNullOrWhiteSpace(s))
-                                    .Select(s => s.Trim())
-                                    .Distinct(StringComparer.OrdinalIgnoreCase)
-                                    .ToArray();
+                .Where(s => !string.IsNullOrWhiteSpace(s))
+                .Select(s => s.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray();
 
             var originDirectives = cspSources.Length > 0 ? string.Join(" ", cspSources) : "'self'";
 
-            return $"default-src 'self'; script-src {originDirectives}; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' {originDirectives}; frame-ancestors 'none';";
+            // IMPORTANT: Swagger UI requires 'unsafe-inline' and 'unsafe-eval' to function!
+            return $@"
+                default-src 'self';
+                script-src 'self' 'unsafe-inline' 'unsafe-eval' {originDirectives};
+                style-src 'self' 'unsafe-inline';
+                img-src 'self' data: https:;
+                font-src 'self' data:;
+                connect-src 'self' {originDirectives};
+                frame-ancestors 'none';
+            ";
         }
     }
 }

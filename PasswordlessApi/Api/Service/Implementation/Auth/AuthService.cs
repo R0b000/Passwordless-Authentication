@@ -1,3 +1,5 @@
+using PasswordlessApi.Api.Configuration;
+using PasswordlessApi.Api.Common;
 using PasswordlessApi.Api.Models.RequestModel.Auth;
 using PasswordlessApi.Api.Models.RequestModel.Security;
 using PasswordlessApi.Api.Models.RequestModel.Account;
@@ -8,10 +10,12 @@ using PasswordlessApi.Api.Models.Common;
 using PasswordlessApi.Api.Models.Entities;
 using PasswordlessApi.Api.Service.Interface.Repository;
 using PasswordlessApi.Api.Utility.PasswordHash;
+using PasswordlessApi.Api.Utility.TokenHash;
 using PasswordlessApi.Api.Service.Interface.Auth;
 using PasswordlessApi.Api.Utility.Jwt;
+using PasswordlessApi.Api.Service.Interface.Rbac;
 using PasswordlessApi.Api.Service.Interface.Security;
-using PasswordlessApi.Api.Configuration;
+using System.Transactions;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using Microsoft.IdentityModel.Tokens;
@@ -26,67 +30,70 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
         private readonly IPasswordHash _passwordHash;
         private readonly IJwtHelper _jwtHelper;
         private readonly IFido2Service _fido2Service;
-        private readonly ILocationResolver _locationResolver;
+        private readonly IDapperRepository _dapperRepository;
+        private readonly IUserRoleService _userRoleService;
+        private readonly IRoleService _roleService;
+        private readonly IOtpService _otpService;
         private readonly IAuditLogService _auditLogService;
+        private readonly ILocationResolver _locationResolver;
         private readonly IHttpContextAccessor _httpContextAccessor;
+        private readonly IEmailService _emailService;
         private readonly SecuritySettings _securitySettings;
-        private const string ProcedureName = "sp_Users";
+        private readonly ApiSettings _apiSettings;
 
-        public AuthService(
-            IGenericRepository<User> authRepository, 
-            IPasswordHash passwordHash, 
-            IJwtHelper jwtHelper, 
-            IFido2Service fido2Service,
-            ILocationResolver locationResolver,
-            IAuditLogService auditLogService,
-            IHttpContextAccessor httpContextAccessor,
-            Microsoft.Extensions.Options.IOptions<SecuritySettings> securitySettings)
+        private const string ProcedureName = DbConstants.Procedures.Users;
+
+        public AuthService(IGenericRepository<User> authRepository, IPasswordHash passwordHash, IJwtHelper jwtHelper, IFido2Service fido2Service, IDapperRepository dapperRepository, IUserRoleService userRoleService, IRoleService roleService, IOtpService otpService, IAuditLogService auditLogService, ILocationResolver locationResolver, IHttpContextAccessor httpContextAccessor, IEmailService emailService, IOptions<SecuritySettings> securitySettings, IOptions<ApiSettings> apiSettings)
         {
             _authRepository = authRepository;
             _passwordHash = passwordHash;
             _jwtHelper = jwtHelper;
             _fido2Service = fido2Service;
-            _locationResolver = locationResolver;
+            _dapperRepository = dapperRepository;
+            _userRoleService = userRoleService;
+            _roleService = roleService;
+            _otpService = otpService;
             _auditLogService = auditLogService;
+            _locationResolver = locationResolver;
             _httpContextAccessor = httpContextAccessor;
+            _emailService = emailService;
             _securitySettings = securitySettings.Value;
+            _apiSettings = apiSettings.Value;
         }
 
         public async Task<AuthResponse> RegisterAsync(RegisterRequest request)
         {
             var passwordHash = _passwordHash.HashPassword(request.Password);
 
-            var param = new
-            {
-                AuthType = "Register",
-                Username = request.Username,
-                Email = request.Email,
-                PasswordHash = passwordHash
-            };
+            using var scope = new TransactionScope(TransactionScopeOption.Required, TransactionScopeAsyncFlowOption.Enabled);
 
-            var userIdResult = await _authRepository.QuerySingleAsync<UserIdResult>(ProcedureName, param);
+            var userIdResult = await _authRepository.QuerySingleAsync<UserIdResult>(
+                ProcedureName,
+                new { AuthType = DbConstants.AuthTypes.Register, Username = request.Username, Email = request.Email, PasswordHash = passwordHash });
 
             if (userIdResult == null || !userIdResult.Succeeded || userIdResult.Data == null)
             {
-                return new AuthResponse
-                {
-                    Message = "Registration failed"
-                };
+                return new AuthResponse { Message = "Registration failed" };
             }
 
             var token = _jwtHelper.GenerateToken(userIdResult.Data.UserId, request.Username);
-            var deviceInfo = GetDeviceInfo();
-            await CreateRefreshTokenAsync(userIdResult.Data.UserId, deviceInfo);
+            var deviceInfo = await GetDeviceInfoAsync();
+            var refreshToken = await CreateRefreshTokenAsync(userIdResult.Data.UserId, deviceInfo);
+            await AssignDefaultRoleIfMissingAsync(userIdResult.Data.UserId);
+
+            var userWithRoles = await _userRoleService.GetUserWithRolesAndPermissionsAsync(userIdResult.Data.UserId);
 
             await _auditLogService.LogAsync(
-                userIdResult.Data.UserId, 
-                "UserRegistered", 
-                "User", 
+                userIdResult.Data.UserId,
+                "UserRegistered",
+                "User",
                 userIdResult.Data.UserId.ToString(),
-                null, 
+                null,
                 request.Username,
                 deviceInfo.IpAddress,
                 deviceInfo.UserAgent);
+
+            scope.Complete();
 
             return new AuthResponse
             {
@@ -94,69 +101,51 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
                 Username = request.Username,
                 Email = request.Email,
                 Token = token,
-                Message = "Registered successfully"
+                RefreshToken = refreshToken,
+                Message = "Registered successfully",
+                RequiresFido2Registration = true,
+                Role = userWithRoles?.Role,
+                Permissions = userWithRoles?.Permissions ?? new List<string>()
             };
         }
 
-        public async Task<AuthResponse> LoginAsync(LoginRequest request, string? ipAddress = null, string? userAgent = null)
+        public async Task<Response<AuthResponse>> LoginAsync(LoginRequest request, string? ipAddress = null, string? userAgent = null)
         {
-            var param = new
-            {
-                AuthType = "Login",
-                Username = request.Username
-            };
-
-            var userIdResult = await _authRepository.QuerySingleAsync<UserIdResult>(
+            var result = await _authRepository.QuerySingleAsync<UserIdResult>(
                 ProcedureName,
-                param
-            );
+                new { AuthType = DbConstants.AuthTypes.Login, Username = request.Username });
 
-            if (userIdResult == null || !userIdResult.Succeeded || userIdResult.Data == null || userIdResult.Data.UserId <= 0)
+            if (result == null || !result.Succeeded || result.Data == null || result.Data.UserId <= 0)
             {
-                return new AuthResponse
-                {
-                    Message = "Invalid username or password"
-                };
+                return Response<AuthResponse>.Failure("Invalid username or password");
             }
 
-            var param_1 = new
-            {
-                AuthType = "Login",
-                UserId = userIdResult.Data.UserId
-            };
-
-            var user = await _authRepository.QuerySingleAsync<User>(ProcedureName, param_1);
+            var user = await _authRepository.QuerySingleAsync<User>(
+                ProcedureName,
+                new { AuthType = DbConstants.AuthTypes.Login, UserId = result.Data.UserId });
 
             if (user == null || !user.Succeeded || user.Data == null || string.IsNullOrEmpty(user.Data.PasswordHash))
             {
-                return new AuthResponse
-                {
-                    Message = "Invalid username or password"
-                };
+                return Response<AuthResponse>.Failure("Invalid username or password");
             }
 
-            var isValid = _passwordHash.VerifyPassword(request.Password, user.Data.PasswordHash);
-
-            if (!isValid)
+            if (!_passwordHash.VerifyPassword(request.Password, user.Data.PasswordHash))
             {
-                return new AuthResponse
-                {
-                    Message = "Invalid username or password"
-                };
+                return Response<AuthResponse>.Failure("Invalid username or password");
             }
 
-            var hasFido2Credentials = await HasFido2CredentialsAsync(user.Data.Id);
+            bool hasFido2 = await HasFido2CredentialsAsync(user.Data.Id);
 
-            if (hasFido2Credentials)
+            if (hasFido2)
             {
-                return new AuthResponse
-                {
+                return Response<AuthResponse>.Success(new AuthResponse
+                { 
                     UserId = user.Data.Id,
                     Username = user.Data.Username,
                     Email = user.Data.Email,
                     Message = "FIDO2 verification required",
                     RequiresFido2 = true
-                };
+                });
             }
 
             var token = _jwtHelper.GenerateToken(user.Data.Id, user.Data.Username);
@@ -165,14 +154,16 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
                 IpAddress = ipAddress ?? GetClientIpAddress(),
                 UserAgent = userAgent ?? GetUserAgent()
             };
+
             deviceInfo.Location = await _locationResolver.ResolveLocationAsync(deviceInfo.IpAddress);
 
+            await AssignDefaultRoleIfMissingAsync(user.Data.Id);
             await EnforceConcurrentSessionLimitAsync(user.Data.Id);
-            await CreateRefreshTokenAsync(user.Data.Id, deviceInfo);
+            var refreshToken = await CreateRefreshTokenAsync(user.Data.Id, deviceInfo);
 
             await _auditLogService.LogAsync(
                 user.Data.Id,
-                "UserLogin",
+                "UserLoggedIn",
                 "User",
                 user.Data.Id.ToString(),
                 null,
@@ -180,22 +171,28 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
                 deviceInfo.IpAddress,
                 deviceInfo.UserAgent);
 
-            return new AuthResponse
+            var userWithRoles = await _userRoleService.GetUserWithRolesAndPermissionsAsync(user.Data.Id);
+
+            return Response<AuthResponse>.Success(new AuthResponse
             {
                 UserId = user.Data.Id,
                 Username = user.Data.Username,
                 Email = user.Data.Email,
                 Token = token,
+                RefreshToken = refreshToken,
                 Message = "Login successful",
-                RequiresFido2 = false
-            };
+                RequiresFido2 = false,
+                RequiresFido2Registration = !hasFido2,
+                Role = userWithRoles?.Role,
+                Permissions = userWithRoles?.Permissions ?? new List<string>()
+            });
         }
 
         public async Task<User?> GetUserByIdAsync(int userId)
         {
             var userResult = await _authRepository.QuerySingleAsync<User>(
                 ProcedureName,
-                new { AuthType = "Login", UserId = userId });
+                new { AuthType = DbConstants.AuthTypes.Login, UserId = userId });
             return userResult.Succeeded ? userResult.Data : null;
         }
 
@@ -203,126 +200,27 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
         {
             var userResult = await _authRepository.QuerySingleAsync<User>(
                 ProcedureName,
-                new { AuthType = "Login", Email = email });
+                new { AuthType = DbConstants.AuthTypes.Login, Email = email });
             return userResult.Succeeded ? userResult.Data : null;
         }
 
-        public async Task<OtpResponse> RequestOtpAsync(OtpRequest request)
+        public Task<OtpResponse> RequestOtpAsync(OtpRequest request)
         {
-            var userResult = await _authRepository.QuerySingleAsync<User>(
-                ProcedureName,
-                new { AuthType = "Login", UserId = request.UserId });
-
-            if (userResult == null || !userResult.Succeeded || userResult.Data == null)
-            {
-                return new OtpResponse { Success = false, Message = "User not found" };
-            }
-
-            var user = userResult.Data;
-            if (string.IsNullOrEmpty(user.Email))
-            {
-                return new OtpResponse { Success = false, Message = "User does not have an email configured" };
-            }
-
-            var random = new Random();
-            var otp = random.Next(100000, 999999).ToString();
-            var expiresAt = DateTime.UtcNow.AddMinutes(5);
-
-            await _authRepository.ExecuteAsync(
-                ProcedureName,
-                new
-                {
-                    AuthType = "EmailOtp",
-                    FIDOOperation = "CreateOtp",
-                    UserId = user.Id,
-                    Otp = otp,
-                    ExpiresAt = expiresAt
-                });
-
-            return new OtpResponse
-            {
-                Success = true,
-                Message = $"OTP sent to {user.Email} (Demo OTP: {otp})",
-                Otp = otp
-            };
+            return _otpService.RequestOtpAsync(request);
         }
 
-        public async Task<AuthResponse> VerifyOtpAsync(OtpVerifyRequest request)
+        public Task<AuthResponse> VerifyOtpAsync(OtpVerifyRequest request)
         {
-            var now = DateTime.UtcNow;
-            var param = new
-            {
-                AuthType = "Login",
-                UserId = request.UserId
-            };
-
-            var userResult = await _authRepository.QuerySingleAsync<User>(
-                ProcedureName,
-                param);
-
-            if (userResult == null || !userResult.Succeeded || userResult.Data == null)
-            {
-                return new AuthResponse { Message = "User not found" };
-            }
-
-            var user = userResult.Data;
-            var param_1 = new
-            {
-                AuthType = "EmailOtp",
-                FIDOOperation = "ConsumeOtp",
-                UserId = request.UserId,
-                Otp = request.Otp,
-                Now = now
-            };
-
-            var isConsumed = await _authRepository.QueryFirstAsync<bool>(
-                ProcedureName,
-                param_1);
-
-            if (isConsumed != true)
-            {
-                return new AuthResponse { Message = "Invalid or expired OTP" };
-            }
-
-            var token = _jwtHelper.GenerateToken(user.Id, user.Username);
-            var deviceInfo = GetDeviceInfo();
-            await CreateRefreshTokenAsync(user.Id, deviceInfo);
-
-            await _auditLogService.LogAsync(
-                user.Id,
-                "OtpLogin",
-                "User",
-                user.Id.ToString(),
-                null,
-                "OTP login successful",
-                deviceInfo.IpAddress,
-                deviceInfo.UserAgent);
-
-            return new AuthResponse
-            {
-                UserId = user.Id,
-                Username = user.Username,
-                Email = user.Email,
-                Token = token,
-                Message = "Login successful",
-                RequiresFido2 = false
-            };
+            return _otpService.VerifyOtpAsync(request);
         }
 
         public async Task<List<UserCredential>> GetUserCredentialsAsync(int userId)
         {
-            var param = new
-            {
-                AuthType = "FIDO",
-                FIDOOperation = "GetCredentialsByUserId",
-                UserId = userId
-            };
-
             var result = await _authRepository.QueryAsync<UserCredential>(
                 ProcedureName,
-                param);
+                new { AuthType = DbConstants.AuthTypes.Fido, FIDOOperation = DbConstants.FidoOperations.GetCredentialsByUserId, UserId = userId });
 
-             return result.Data!.ToList();
+            return result.Data ?? new List<UserCredential>();
         }
 
         public async Task<Fido2ChallengeResponse> RequestAttestationOptionsAsync(Fido2AttestationOptionsRequest request)
@@ -347,51 +245,62 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
 
         private async Task<bool> HasFido2CredentialsAsync(int userId)
         {
-            var param = new
-            {
-                AuthType = "FIDO",
-                FIDOOperation = "GetCredentialsByUserId",
-                UserId = userId
-            };
-
             var result = await _authRepository.QueryAsync<UserCredential>(
                 ProcedureName,
-                param);
+                new { AuthType = DbConstants.AuthTypes.Fido, FIDOOperation = DbConstants.FidoOperations.GetCredentialsByUserId, UserId = userId });
 
             return result.Succeeded && result.Data != null && result.Data.Any();
         }
 
-        private class DeviceInfo
+        private async Task AssignDefaultRoleIfMissingAsync(int userId)
         {
-            public string? IpAddress { get; set; }
-            public string? UserAgent { get; set; }
-            public string? Location { get; set; }
+            var userRoles = await _userRoleService.GetUserRoleNamesAsync(userId);
+            if (!userRoles.Any())
+            {
+                var user = await GetUserByIdAsync(userId);
+                if (user != null && !string.IsNullOrEmpty(user.Username))
+                {
+                    var roleName = user.Username.Equals("admin", StringComparison.OrdinalIgnoreCase) ? "Admin" : "User";
+                    var role = await _roleService.GetRoleByNameAsync(roleName);
+                    if (role == null)
+                    {
+                        role = await _roleService.CreateRoleAsync(roleName, $"Default {roleName} role");
+                    }
+
+                    if (role != null)
+                    {
+                        await _userRoleService.AssignRoleToUserAsync(userId, role.Id);
+                    }
+                }
+            }
         }
 
-        private async Task CreateRefreshTokenAsync(int userId, DeviceInfo? deviceInfo = null)
+        private async Task<string> CreateRefreshTokenAsync(int userId, DeviceInfo deviceInfo)
         {
             var now = DateTime.UtcNow;
             var rawToken = _jwtHelper.GenerateRefreshToken();
-            var tokenHash = _passwordHash.HashPassword(rawToken);
+            var tokenHash = TokenHasher.HashToken(rawToken);
             var refreshExpiryDays = _jwtHelper.GetRefreshTokenExpiryDays();
 
             await _authRepository.ExecuteAsync(
                 ProcedureName,
                 new
                 {
-                    AuthType = "RefreshToken",
-                    FIDOOperation = "CreateRefreshToken",
+                    AuthType = DbConstants.AuthTypes.RefreshToken,
+                    FIDOOperation = DbConstants.FidoOperations.CreateRefreshToken,
                     UserId = userId,
                     TokenHash = tokenHash,
                     ExpiresAt = now.AddDays(refreshExpiryDays),
                     Now = now,
-                    IpAddress = deviceInfo?.IpAddress,
-                    UserAgent = deviceInfo?.UserAgent,
-                    Location = deviceInfo?.Location
+                    IpAddress = deviceInfo.IpAddress,
+                    UserAgent = deviceInfo.UserAgent,
+                    Location = deviceInfo.Location
                 });
+
+            return rawToken;
         }
 
-        public async Task<AuthResponse> RefreshTokenAsync(PasswordlessApi.Api.Models.RequestModel.Security.RefreshTokenRequest request)
+        public async Task<AuthResponse> RefreshTokenAsync(RefreshTokenRequest request)
         {
             var now = DateTime.UtcNow;
             var tokenHandler = new JwtSecurityTokenHandler();
@@ -427,14 +336,14 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
                 return new AuthResponse { Message = "Invalid access token claims" };
             }
 
-            var incomingTokenHash = _passwordHash.HashPassword(request.RefreshToken);
+            var incomingTokenHash = TokenHasher.HashToken(request.RefreshToken);
 
             var storedRefreshToken = await _authRepository.QuerySingleAsync<RefreshToken>(
                 ProcedureName,
                 new
                 {
-                    AuthType = "RefreshToken",
-                    FIDOOperation = "GetRefreshToken",
+                    AuthType = DbConstants.AuthTypes.RefreshToken,
+                    FIDOOperation = DbConstants.FidoOperations.GetRefreshToken,
                     TokenHash = incomingTokenHash
                 });
 
@@ -452,7 +361,19 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
 
             if (refreshToken.IsRevoked)
             {
-                return new AuthResponse { Message = "Refresh token has been revoked" };
+                // A revoked refresh token being presented again is a classic sign of
+                // token theft (the legitimate owner rotated it and an attacker tried to
+                // reuse the old one). Revoke every remaining session to evict the attacker.
+                await RevokeAllSessionsAsync(userId);
+                await _auditLogService.LogAsync(
+                    userId,
+                    "TokenReuseDetected",
+                    "RefreshToken",
+                    refreshToken.Id.ToString(),
+                    null,
+                    "Revoked refresh token reused; all sessions invalidated");
+
+                return new AuthResponse { Message = "Session invalidated due to suspicious activity" };
             }
 
             if (refreshToken.ExpiresAt < now)
@@ -461,8 +382,8 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
                     ProcedureName,
                     new
                     {
-                        AuthType = "RefreshToken",
-                        FIDOOperation = "RevokeRefreshToken",
+                        AuthType = DbConstants.AuthTypes.RefreshToken,
+                        FIDOOperation = DbConstants.FidoOperations.RevokeRefreshToken,
                         TokenHash = incomingTokenHash,
                         Now = now
                     });
@@ -470,71 +391,28 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
                 return new AuthResponse { Message = "Refresh token expired" };
             }
 
-            var currentLocation = request.IpAddress != null ? await _locationResolver.ResolveLocationAsync(request.IpAddress) : null;
-            var previousLocation = refreshToken.Location;
-
-            if (_securitySettings.EnableSuspiciousActivityDetection 
-                && !string.IsNullOrEmpty(previousLocation) 
-                && !string.IsNullOrEmpty(currentLocation) 
-                && !string.Equals(previousLocation, currentLocation, StringComparison.OrdinalIgnoreCase))
-            {
-                await _auditLogService.LogAsync(
-                    userId,
-                    "SuspiciousRefreshToken",
-                    "RefreshToken",
-                    refreshToken.Id.ToString(),
-                    previousLocation,
-                    currentLocation,
-                    request.IpAddress,
-                    request.UserAgent);
-
-                await _authRepository.ExecuteAsync(
-                    ProcedureName,
-                    new
-                    {
-                        AuthType = "RefreshToken",
-                        FIDOOperation = "RevokeRefreshToken",
-                        TokenHash = incomingTokenHash,
-                        Now = now
-                    });
-
-                if (_securitySettings.ForceReauthOnLocationChange)
-                {
-                    return new AuthResponse 
-                    { 
-                        Message = "Suspicious activity detected. Please re-authenticate.",
-                        RequiresFido2 = true 
-                    };
-                }
-
-                await _auditLogService.LogAsync(
-                    userId,
-                    "SuspiciousRefreshTokenFlagged",
-                    "RefreshToken",
-                    refreshToken.Id.ToString(),
-                    previousLocation,
-                    currentLocation,
-                    request.IpAddress,
-                    request.UserAgent);
-            }
-
             await _authRepository.ExecuteAsync(
                 ProcedureName,
                 new
                 {
-                    AuthType = "RefreshToken",
-                    FIDOOperation = "RevokeRefreshToken",
+                    AuthType = DbConstants.AuthTypes.RefreshToken,
+                    FIDOOperation = DbConstants.FidoOperations.RevokeRefreshToken,
                     TokenHash = incomingTokenHash,
                     Now = now
                 });
 
             var newAccessToken = _jwtHelper.GenerateToken(userId, usernameClaim ?? string.Empty);
+            var newRefreshToken = _jwtHelper.GenerateRefreshToken();
+
             var newDeviceInfo = new DeviceInfo
             {
                 IpAddress = request.IpAddress,
-                UserAgent = request.UserAgent,
-                Location = currentLocation
+                UserAgent = request.UserAgent
             };
+            var currentLocation = await _locationResolver.ResolveLocationAsync(newDeviceInfo.IpAddress);
+            newDeviceInfo.Location = currentLocation;
+
+            await EnforceConcurrentSessionLimitAsync(userId);
             await CreateRefreshTokenAsync(userId, newDeviceInfo);
 
             await _auditLogService.LogAsync(
@@ -558,12 +436,12 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
 
         public async Task<ActiveSessionsResponse> GetActiveSessionsAsync(int userId, int currentRefreshTokenId = 0)
         {
-            var activeTokens = await _authRepository.QuerySingleAsync<List<RefreshToken>>(
+            var activeTokens = await _authRepository.QueryAsync<RefreshToken>(
                 ProcedureName,
                 new
                 {
-                    AuthType = "RefreshToken",
-                    FIDOOperation = "GetActiveTokensForUser",
+                    AuthType = DbConstants.AuthTypes.RefreshToken,
+                    FIDOOperation = DbConstants.FidoOperations.GetActiveTokensForUser,
                     UserId = userId
                 });
 
@@ -596,17 +474,13 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
                 ProcedureName,
                 new
                 {
-                    AuthType = "RefreshToken",
-                    FIDOOperation = "RevokeAllForUser",
+                    AuthType = DbConstants.AuthTypes.RefreshToken,
+                    FIDOOperation = DbConstants.FidoOperations.RevokeAllForUser,
                     UserId = userId,
                     Now = DateTime.UtcNow
                 });
 
-            await _auditLogService.LogAsync(
-                userId,
-                "RevokeAllSessions",
-                "User",
-                userId.ToString());
+            await _auditLogService.LogAsync(userId, "RevokeAllSessions", "User", userId.ToString());
         }
 
         public async Task RevokeSessionAsync(int sessionId, int userId)
@@ -615,8 +489,8 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
                 ProcedureName,
                 new
                 {
-                    AuthType = "RefreshToken",
-                    FIDOOperation = "GetRefreshTokenById",
+                    AuthType = DbConstants.AuthTypes.RefreshToken,
+                    FIDOOperation = DbConstants.FidoOperations.GetRefreshTokenById,
                     SessionId = sessionId
                 });
 
@@ -626,28 +500,24 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
                     ProcedureName,
                     new
                     {
-                        AuthType = "RefreshToken",
-                        FIDOOperation = "RevokeRefreshToken",
+                        AuthType = DbConstants.AuthTypes.RefreshToken,
+                        FIDOOperation = DbConstants.FidoOperations.RevokeRefreshToken,
                         TokenHash = stored.Data.TokenHash,
                         Now = DateTime.UtcNow
-                });
+                    });
 
-                await _auditLogService.LogAsync(
-                    userId,
-                    "RevokeSession",
-                    "RefreshToken",
-                    sessionId.ToString());
+                await _auditLogService.LogAsync(userId, "RevokeSession", "RefreshToken", sessionId.ToString());
             }
         }
 
         public async Task<UserProfileResponse?> GetProfileAsync(int userId)
         {
-            var user = await _authRepository.QuerySingleAsync<User>(ProcedureName, new { AuthType = "Login", UserId = userId });
+            var user = await _authRepository.QuerySingleAsync<User>(ProcedureName, new { AuthType = DbConstants.AuthTypes.Login, UserId = userId });
             if (user?.Succeeded != true || user.Data == null) return null;
 
             var profile = await _authRepository.QuerySingleAsync<UserProfileResponse>(
                 ProcedureName,
-                new { AuthType = "GetProfile", UserId = userId });
+                new { AuthType = DbConstants.AuthTypes.GetProfile, UserId = userId });
 
             if (profile?.Succeeded == true && profile.Data != null)
             {
@@ -670,7 +540,7 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
                 ProcedureName,
                 new
                 {
-                    AuthType = "UpdateProfile",
+                    AuthType = DbConstants.AuthTypes.UpdateProfile,
                     UserId = userId,
                     request.Username,
                     request.Email,
@@ -692,7 +562,7 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
         {
             var result = await _authRepository.QuerySingleAsync<AccountSettingsResponse>(
                 ProcedureName,
-                new { AuthType = "GetSettings", UserId = userId });
+                new { AuthType = DbConstants.AuthTypes.GetSettings, UserId = userId });
 
             if (result?.Succeeded == true && result.Data != null)
             {
@@ -708,7 +578,7 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
                 ProcedureName,
                 new
                 {
-                    AuthType = "UpdateSettings",
+                    AuthType = DbConstants.AuthTypes.UpdateSettings,
                     UserId = userId,
                     request.DisplayName,
                     request.Username,
@@ -748,7 +618,7 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
         {
             var result = await _authRepository.QuerySingleAsync<PrivacySettingsResponse>(
                 ProcedureName,
-                new { AuthType = "GetPrivacy", UserId = userId });
+                new { AuthType = DbConstants.AuthTypes.GetPrivacy, UserId = userId });
 
             if (result?.Succeeded == true && result.Data != null)
             {
@@ -764,7 +634,7 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
                 ProcedureName,
                 new
                 {
-                    AuthType = "UpdatePrivacy",
+                    AuthType = DbConstants.AuthTypes.UpdatePrivacy,
                     UserId = userId,
                     request.ProfileVisibility,
                     request.DataSharing,
@@ -790,7 +660,37 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
 
         public async Task RequestPasswordResetAsync(string email)
         {
-            await _auditLogService.LogAsync(0, "PasswordResetRequested", "User", email, null, "Password reset requested");
+            var user = await GetUserByEmailAsync(email);
+            if (user == null) return;
+
+            var token = Guid.NewGuid().ToString("N") + Guid.NewGuid().ToString("N");
+            var expiresAt = DateTime.UtcNow.AddHours(1);
+
+            await _authRepository.ExecuteAsync(
+                ProcedureName,
+                new
+                {
+                    AuthType = DbConstants.AuthTypes.ResetPassword,
+                    FIDOOperation = "CreateResetToken",
+                    Email = email,
+                    TokenHash = token,
+                    ExpiresAt = expiresAt,
+                    Now = DateTime.UtcNow
+                });
+
+            var frontendBaseUrl = _apiSettings.FrontendBaseUrl;
+            if (string.IsNullOrWhiteSpace(frontendBaseUrl))
+            {
+                frontendBaseUrl = _apiSettings.BaseUrl;
+            }
+
+            var resetLink = $"{frontendBaseUrl.TrimEnd('/')}/reset-password?token={token}&email={Uri.EscapeDataString(email)}";
+            await _emailService.SendAsync(
+                email,
+                DbConstants.Email.PasswordResetSubject,
+                string.Format(DbConstants.Email.PasswordResetBodyTemplate, resetLink));
+
+            await _auditLogService.LogAsync(user.Id, "PasswordResetRequested", "User", user.Id.ToString(), null, "Password reset requested");
         }
 
         public async Task<MessageResponse> ResetPasswordAsync(string token, string newPassword)
@@ -800,7 +700,7 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
                 ProcedureName,
                 new
                 {
-                    AuthType = "ResetPassword",
+                    AuthType = DbConstants.AuthTypes.ResetPassword,
                     TokenHash = token,
                     PasswordHash = passwordHash,
                     Now = DateTime.UtcNow
@@ -822,11 +722,13 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
 
         public async Task<MessageResponse> DeleteAccountAsync(int userId)
         {
+            using var scope = new TransactionScope(TransactionScopeOption.Required, TransactionScopeAsyncFlowOption.Enabled);
+
             var result = await _authRepository.ExecuteAsync(
                 ProcedureName,
                 new
                 {
-                    AuthType = "DeleteAccount",
+                    AuthType = DbConstants.AuthTypes.DeleteAccount,
                     UserId = userId,
                     Now = DateTime.UtcNow
                 });
@@ -834,6 +736,7 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
             if (result.Succeeded && result.Data > 0)
             {
                 await _auditLogService.LogAsync(userId, "AccountDeleted", "User", userId.ToString());
+                scope.Complete();
                 return MessageResponse.Success("Account scheduled for deletion");
             }
 
@@ -844,7 +747,7 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
         {
             var result = await _authRepository.QuerySingleAsync<SecuritySettingsResponse>(
                 ProcedureName,
-                new { AuthType = "GetSecurity", UserId = userId });
+                new { AuthType = DbConstants.AuthTypes.GetSecurity, UserId = userId });
 
             if (result?.Succeeded == true && result.Data != null)
             {
@@ -860,7 +763,7 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
                 ProcedureName,
                 new
                 {
-                    AuthType = "UpdateSecurity",
+                    AuthType = DbConstants.AuthTypes.UpdateSecurity,
                     UserId = userId,
                     request.AlertOnNewDevice,
                     request.RequirePasswordForSensitive,
@@ -878,7 +781,7 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
 
         public async Task<MessageResponse> ChangePasswordAsync(int userId, ChangePasswordRequest request)
         {
-            var user = await _authRepository.QuerySingleAsync<User>(ProcedureName, new { AuthType = "Login", UserId = userId });
+            var user = await _authRepository.QuerySingleAsync<User>(ProcedureName, new { AuthType = DbConstants.AuthTypes.Login, UserId = userId });
             if (user?.Succeeded != true || user.Data == null)
             {
                 return MessageResponse.Failure("User not found");
@@ -899,7 +802,7 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
                 ProcedureName,
                 new
                 {
-                    AuthType = "ChangePassword",
+                    AuthType = DbConstants.AuthTypes.ChangePassword,
                     UserId = userId,
                     PasswordHash = newPasswordHash,
                     Now = DateTime.UtcNow
@@ -918,7 +821,7 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
         {
             var result = await _authRepository.QuerySingleAsync<SecuritySettingsResponse>(
                 ProcedureName,
-                new { AuthType = "Enable2FA", UserId = userId, Now = DateTime.UtcNow });
+                new { AuthType = DbConstants.AuthTypes.Enable2Fa, UserId = userId, Now = DateTime.UtcNow });
 
             if (result?.Succeeded == true && result.Data != null)
             {
@@ -933,7 +836,7 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
         {
             var result = await _authRepository.QuerySingleAsync<SecuritySettingsResponse>(
                 ProcedureName,
-                new { AuthType = "Disable2FA", UserId = userId, Now = DateTime.UtcNow });
+                new { AuthType = DbConstants.AuthTypes.Disable2Fa, UserId = userId, Now = DateTime.UtcNow });
 
             if (result?.Succeeded == true && result.Data != null)
             {
@@ -946,11 +849,11 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
 
         public async Task<ActivityLogResponse> GetActivityLogsAsync(int userId, ActivityQueryRequest query)
         {
-            var result = await _authRepository.QuerySingleAsync<List<AuditLog>>(
+            var result = await _authRepository.QueryAsync<AuditLog>(
                 ProcedureName,
                 new
                 {
-                    AuthType = "AuditLog",
+                    AuthType = DbConstants.AuthTypes.AuditLog,
                     FIDOOperation = "GetByUser",
                     UserId = userId
                 });
@@ -1003,12 +906,12 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
 
         private async Task EnforceConcurrentSessionLimitAsync(int userId)
         {
-            var activeTokens = await _authRepository.QuerySingleAsync<List<RefreshToken>>(
+            var activeTokens = await _authRepository.QueryAsync<RefreshToken>(
                 ProcedureName,
                 new
                 {
-                    AuthType = "RefreshToken",
-                    FIDOOperation = "GetActiveTokensForUser",
+                    AuthType = DbConstants.AuthTypes.RefreshToken,
+                    FIDOOperation = DbConstants.FidoOperations.GetActiveTokensForUser,
                     UserId = userId
                 });
 
@@ -1021,8 +924,8 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
                         ProcedureName,
                         new
                         {
-                            AuthType = "RefreshToken",
-                            FIDOOperation = "RevokeRefreshToken",
+                            AuthType = DbConstants.AuthTypes.RefreshToken,
+                            FIDOOperation = DbConstants.FidoOperations.RevokeRefreshToken,
                             TokenHash = oldest.TokenHash,
                             Now = DateTime.UtcNow
                         });
@@ -1038,7 +941,7 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
             }
         }
 
-        private DeviceInfo GetDeviceInfo()
+        private async Task<DeviceInfo> GetDeviceInfoAsync()
         {
             var context = _httpContextAccessor.HttpContext;
             if (context == null)
@@ -1048,7 +951,7 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
 
             var ip = GetClientIpAddress();
             var userAgent = GetUserAgent();
-            var location = _locationResolver.ResolveLocationAsync(ip).GetAwaiter().GetResult();
+            var location = await _locationResolver.ResolveLocationAsync(ip);
 
             return new DeviceInfo
             {
@@ -1075,6 +978,13 @@ namespace PasswordlessApi.Api.Service.Implementation.Auth
         {
             var context = _httpContextAccessor.HttpContext;
             return context?.Request.Headers["User-Agent"].ToString();
+        }
+
+        private class DeviceInfo
+        {
+            public string? IpAddress { get; set; }
+            public string? UserAgent { get; set; }
+            public string? Location { get; set; }
         }
     }
 }

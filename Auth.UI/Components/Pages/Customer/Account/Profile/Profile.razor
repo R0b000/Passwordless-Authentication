@@ -16,7 +16,10 @@
         </div>
         @if (!EditMode)
         {
-            <Button Variant="Button.ButtonVariant.Primary" IconName="edit" OnClick="EnterEdit">Edit profile</Button>
+            <div class="d-flex gap-2 flex-wrap">
+                <Button Variant="Button.ButtonVariant.Primary" IconName="edit" OnClick="EnterEdit">Edit profile</Button>
+                <Button Variant="Button.ButtonVariant.Danger" Outline="true" IconName="x" OnClick="Logout">Log out</Button>
+            </div>
         }
     </div>
 

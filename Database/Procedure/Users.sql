@@ -26,7 +26,23 @@ CREATE OR ALTER PROCEDURE dbo.sp_Users
     @EntityId NVARCHAR(200) = NULL,
     @OldValue NVARCHAR(MAX) = NULL,
     @NewValue NVARCHAR(MAX) = NULL,
-    @SessionId INT = NULL
+    @SessionId INT = NULL,
+    @Phone NVARCHAR(50) = NULL,
+    @Bio NVARCHAR(MAX) = NULL,
+    @EmailPreferences NVARCHAR(50) = NULL,
+    @Timezone NVARCHAR(50) = NULL,
+    @Language NVARCHAR(10) = NULL,
+    @EmailNotifications BIT = NULL,
+    @PushNotifications BIT = NULL,
+    @SmsAlerts BIT = NULL,
+    @MarketingEmails BIT = NULL,
+    @ProfileVisibility NVARCHAR(20) = NULL,
+    @DataSharing BIT = NULL,
+    @ThirdPartyConnections BIT = NULL,
+    @CookiePreferences NVARCHAR(50) = NULL,
+    @AlertOnNewDevice BIT = NULL,
+    @RequirePasswordForSensitive BIT = NULL,
+    @TwoFactorMethod NVARCHAR(20) = NULL
 AS
 BEGIN
     SET NOCOUNT ON;

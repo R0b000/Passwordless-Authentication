@@ -10,101 +10,48 @@ namespace Auth.UI.src.Manager.Service.Implementation
 {
     public class AccountManager : IAccountManager
     {
-        private readonly GenericHttpRepository<UserProfile> _profileRepository;
-        private readonly GenericHttpRepository<AccountSettings> _settingsRepository;
-        private readonly GenericHttpRepository<PrivacySettings> _privacyRepository;
-        private readonly GenericHttpRepository<AuthResponse> _authRepository;
-        private readonly GenericHttpRepository<ActionResponse> _actionRepository;
-        private readonly GenericHttpRepository<string> _stringRepository;
+        private readonly IHttpService _httpService;
         private readonly ITokenStore _tokenStore;
 
-        public AccountManager(
-            GenericHttpRepository<UserProfile> profileRepository,
-            GenericHttpRepository<AccountSettings> settingsRepository,
-            GenericHttpRepository<PrivacySettings> privacyRepository,
-            GenericHttpRepository<AuthResponse> authRepository,
-            GenericHttpRepository<ActionResponse> actionRepository,
-            GenericHttpRepository<string> stringRepository,
-            ITokenStore tokenStore)
+        public AccountManager(IHttpService httpService, ITokenStore tokenStore)
         {
-            _profileRepository = profileRepository;
-            _settingsRepository = settingsRepository;
-            _privacyRepository = privacyRepository;
-            _authRepository = authRepository;
-            _actionRepository = actionRepository;
-            _stringRepository = stringRepository;
+            _httpService = httpService;
             _tokenStore = tokenStore;
         }
 
         public async Task<Response<UserProfile>> GetProfileAsync()
         {
-            var token = _tokenStore.GetToken();
-            if (string.IsNullOrWhiteSpace(token))
-            {
-                return Response<UserProfile>.Failure("No authentication token present");
-            }
-
-            return await _profileRepository.GetSingleAsync("api/account/profile", token);
+            return await _httpService.GetAsync<UserProfile>(AccountRoute.Profile);
         }
 
         public async Task<Response<UserProfile>> UpdateProfileAsync(UserProfile profile)
         {
-            var token = _tokenStore.GetToken();
-            if (string.IsNullOrWhiteSpace(token))
-            {
-                return Response<UserProfile>.Failure("No authentication token present");
-            }
-
-            return await _profileRepository.QuerySingleAsync("api/account/profile", profile, token);
+            return await _httpService.PostAsync<UserProfile, UserProfile>(AccountRoute.Profile, profile);
         }
 
         public async Task<Response<AccountSettings>> GetSettingsAsync()
         {
-            var token = _tokenStore.GetToken();
-            if (string.IsNullOrWhiteSpace(token))
-            {
-                return Response<AccountSettings>.Failure("No authentication token present");
-            }
-
-            return await _settingsRepository.GetSingleAsync("api/account/settings", token);
+            return await _httpService.GetAsync<AccountSettings>(AccountRoute.Settings);
         }
 
         public async Task<Response<AccountSettings>> UpdateSettingsAsync(AccountSettings settings)
         {
-            var token = _tokenStore.GetToken();
-            if (string.IsNullOrWhiteSpace(token))
-            {
-                return Response<AccountSettings>.Failure("No authentication token present");
-            }
-
-            return await _settingsRepository.QuerySingleAsync("api/account/settings", settings, token);
+            return await _httpService.PostAsync<AccountSettings, AccountSettings>(AccountRoute.Settings, settings);
         }
 
         public async Task<Response<PrivacySettings>> GetPrivacyAsync()
         {
-            var token = _tokenStore.GetToken();
-            if (string.IsNullOrWhiteSpace(token))
-            {
-                return Response<PrivacySettings>.Failure("No authentication token present");
-            }
-
-            return await _privacyRepository.GetSingleAsync("api/account/privacy", token);
+            return await _httpService.GetAsync<PrivacySettings>(AccountRoute.Privacy);
         }
 
         public async Task<Response<PrivacySettings>> UpdatePrivacyAsync(PrivacySettings privacy)
         {
-            var token = _tokenStore.GetToken();
-            if (string.IsNullOrWhiteSpace(token))
-            {
-                return Response<PrivacySettings>.Failure("No authentication token present");
-            }
-
-            return await _privacyRepository.QuerySingleAsync("api/account/privacy", privacy, token);
+            return await _httpService.PostAsync<PrivacySettings, PrivacySettings>(AccountRoute.Privacy, privacy);
         }
 
         public async Task<Response<AuthResponse>> RegisterAsync(RegisterRequest request)
         {
-            var result = await _authRepository.QuerySingleAsync("api/auth/register", request);
+            var result = await _httpService.PostAsync<RegisterRequest, AuthResponse>(AuthRoute.Register, request);
             if (result.Succeeded && result.Data?.Token is not null)
             {
                 _tokenStore.SetToken(result.Data.Token);
@@ -115,29 +62,23 @@ namespace Auth.UI.src.Manager.Service.Implementation
 
         public async Task<Response<bool>> RequestPasswordResetAsync(string email)
         {
-            var token = _tokenStore.GetToken();
-            var result = await _actionRepository.QuerySingleAsync("api/account/password-reset", new { email }, token);
-            return Response<bool>.Success(result?.Succeeded ?? false, result?.Message ?? "Request sent");
+            var result = await _httpService.PostAsync<object, ActionResponse>(AccountRoute.PasswordReset, new { email });
+            return Response<bool>.Success(result.Succeeded, result.Message ?? "Request sent");
         }
 
         public async Task<Response<bool>> ResetPasswordAsync(string token, string newPassword)
         {
-            var result = await _actionRepository.QuerySingleAsync("api/account/password-reset/confirm", new { token, newPassword });
-            return Response<bool>.Success(result?.Succeeded ?? false, result?.Message ?? "Password reset");
+            var result = await _httpService.PostAsync<object, ActionResponse>(
+                AccountRoute.PasswordResetConfirm, new { token, newPassword });
+            return Response<bool>.Success(result.Succeeded, result.Message ?? "Password reset");
         }
 
         public async Task<Response<string>> DownloadDataAsync()
         {
-            var token = _tokenStore.GetToken();
-            if (string.IsNullOrWhiteSpace(token))
+            var result = await _httpService.GetAsync<string>(AccountRoute.DataExport);
+            if (!result.Succeeded || result.Data is null)
             {
-                return Response<string>.Failure("No authentication token present");
-            }
-
-            var result = await _stringRepository.GetSingleAsync("api/account/data-export", token);
-            if (result == null)
-            {
-                return Response<string>.Failure("Failed to download data");
+                return Response<string>.Failure(result.Message ?? "Failed to download data");
             }
 
             return Response<string>.Success(result.Data, "Export prepared");
@@ -145,14 +86,8 @@ namespace Auth.UI.src.Manager.Service.Implementation
 
         public async Task<Response<bool>> DeleteAccountAsync()
         {
-            var token = _tokenStore.GetToken();
-            if (string.IsNullOrWhiteSpace(token))
-            {
-                return Response<bool>.Failure("No authentication token present");
-            }
-
-            var result = await _actionRepository.QuerySingleAsync("api/account", null, token);
-            return Response<bool>.Success(result?.Succeeded ?? false, result?.Message ?? "Account deleted");
+            var result = await _httpService.DeleteAsync<ActionResponse>(AccountRoute.Delete);
+            return Response<bool>.Success(result.Succeeded, result.Message ?? "Account deleted");
         }
     }
 }

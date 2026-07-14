@@ -12,7 +12,7 @@ namespace PasswordlessApi.Api.Service.Interface.Auth
     public interface IAuthService
     {
         Task<AuthResponse> RegisterAsync(RegisterRequest request);
-        Task<AuthResponse> LoginAsync(LoginRequest request, string? ipAddress = null, string? userAgent = null);
+        Task<Response<AuthResponse>> LoginAsync(LoginRequest request, string? ipAddress = null, string? userAgent = null);
         Task<User?> GetUserByIdAsync(int userId);
         Task<User?> GetUserByEmailAsync(string email);
         Task<OtpResponse> RequestOtpAsync(OtpRequest request);

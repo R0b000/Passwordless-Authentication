@@ -23,7 +23,7 @@ namespace PasswordlessApi.Api.Service.Implementation.Security
 
             try
             {
-                using var response = await _httpClient.GetAsync($"http://ip-api.com/json/{ipAddress}?fields=status,city,country", cancellationToken);
+                using var response = await _httpClient.GetAsync($"https://ipapi.co/{ipAddress}/json/", cancellationToken);
                 if (!response.IsSuccessStatusCode)
                 {
                     return null;
@@ -31,12 +31,14 @@ namespace PasswordlessApi.Api.Service.Implementation.Security
 
                 var json = await response.Content.ReadAsStringAsync(cancellationToken);
                 using var doc = System.Text.Json.JsonDocument.Parse(json);
-                if (doc.RootElement.TryGetProperty("status", out var status) && status.GetString() == "success")
+                if (doc.RootElement.TryGetProperty("error", out _))
                 {
-                    var city = doc.RootElement.TryGetProperty("city", out var c) ? c.GetString() : null;
-                    var country = doc.RootElement.TryGetProperty("country", out var co) ? co.GetString() : null;
-                    return $"{city}, {country}".Trim(',', ' ');
+                    return null;
                 }
+
+                var city = doc.RootElement.TryGetProperty("city", out var c) ? c.GetString() : null;
+                var country = doc.RootElement.TryGetProperty("country_name", out var co) ? co.GetString() : null;
+                return $"{city}, {country}".Trim(',', ' ');
             }
             catch (Exception ex)
             {

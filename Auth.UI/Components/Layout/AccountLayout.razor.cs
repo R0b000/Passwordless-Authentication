@@ -15,6 +15,7 @@ namespace Auth.UI.Components.Layout
 
         protected UserProfile? Profile { get; set; }
         protected bool AccountMenuOpen { get; set; }
+        protected bool _redirectToLogin;
 
         protected string AccountInitial =>
             string.IsNullOrEmpty(Profile?.DisplayName) ? "?" : Profile!.DisplayName[0].ToString().ToUpperInvariant();
@@ -52,8 +53,22 @@ namespace Auth.UI.Components.Layout
 
         protected override async Task OnInitializedAsync()
         {
+            if (TokenStore.GetToken() is null)
+            {
+                _redirectToLogin = true;
+                return;
+            }
+
             var result = await AccountController.GetProfileAsync();
             Profile = result.Succeeded ? result.Data : null;
+        }
+
+        protected override async Task OnAfterRenderAsync(bool firstRender)
+        {
+            if (_redirectToLogin)
+            {
+                Navigation.NavigateTo("/login", replace: true);
+            }
         }
 
         protected void ToggleAccountMenu() => AccountMenuOpen = !AccountMenuOpen;

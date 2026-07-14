@@ -7,10 +7,18 @@ using PasswordlessApi.Api.Configuration;
 using PasswordlessApi.Api.Middleware;
 using PasswordlessApi.Api.Service.Implementation.Auth;
 using PasswordlessApi.Api.Service.Implementation.Repository;
+using PasswordlessApi.Api.Service.Implementation.Rbac;
+using PasswordlessApi.Api.Service.Implementation.Security;
 using PasswordlessApi.Api.Service.Interface.Auth;
 using PasswordlessApi.Api.Service.Interface.Repository;
+using PasswordlessApi.Api.Service.Interface.Rbac;
+using PasswordlessApi.Api.Service.Interface.Security;
 using PasswordlessApi.Api.Utility.Jwt;
 using PasswordlessApi.Api.Utility.PasswordHash;
+using PasswordlessApi.Api.Authorization;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.HttpOverrides;
+using System.Text.Json;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -35,13 +43,19 @@ if (string.IsNullOrWhiteSpace(jwtSecret) || jwtSecret is "fake_jwt_token" or "fa
     jwtSecret = Guid.NewGuid().ToString("N");
 }
 
+builder.Configuration["JwtSettings:SecretKey"] = jwtSecret;
+
 var key = Encoding.UTF8.GetBytes(jwtSecret);
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddControllers();
 builder.Services.AddMemoryCache();
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("ManageUsers", policy => policy.Requirements.Add(new PermissionRequirement("users.write")));
+    options.AddPolicy("ManageRoles", policy => policy.Requirements.Add(new PermissionRequirement("roles.write")));
+});
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
@@ -60,8 +74,39 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
-builder.Services.AddHttpClient<PasswordlessApi.Api.Service.Implementation.Security.IpApiLocationResolver>();
+builder.Services.Configure<ApiSettings>(builder.Configuration.GetSection(ApiSettings.SectionName));
+builder.Services.Configure<SecuritySettings>(builder.Configuration.GetSection(nameof(SecuritySettings)));
 
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("DefaultCorsPolicy", policy =>
+    {
+        var apiSettings = builder.Configuration.GetSection(ApiSettings.SectionName).Get<ApiSettings>();
+        if (apiSettings == null || !apiSettings.AllowedOrigins.Any())
+        {
+            policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod();
+            return;
+        }
+
+        if (apiSettings.IsWildcardOrigin())
+        {
+            policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod();
+        }
+        else
+        {
+            policy.WithOrigins(apiSettings.GetAllowedOrigins())
+                  .AllowAnyHeader()
+                  .AllowAnyMethod();
+
+            if (apiSettings.AllowCredentials)
+            {
+                policy.AllowCredentials();
+            }
+        }
+    });
+});
+
+builder.Services.AddHttpClient<ILocationResolver, PasswordlessApi.Api.Service.Implementation.Security.IpApiLocationResolver>();
 builder.Services.AddScoped<DapperContext>();
 builder.Services.AddScoped<IDapperRepository, DapperRepository>();
 builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
@@ -71,47 +116,36 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IFido2Service, Fido2Service>();
 builder.Services.AddScoped<IOtpService, OtpService>();
 builder.Services.AddScoped<IUserCredentialService, UserCredentialService>();
-builder.Services.AddScoped<PasswordlessApi.Api.Service.Interface.Security.ILocationResolver, PasswordlessApi.Api.Service.Implementation.Security.IpApiLocationResolver>();
-builder.Services.AddScoped<PasswordlessApi.Api.Service.Interface.Security.IAuditLogService, PasswordlessApi.Api.Service.Implementation.Security.AuditLogService>();
-builder.Services.AddScoped<PasswordlessApi.Api.Service.Interface.Security.IRateLimiter, PasswordlessApi.Api.Service.Implementation.Security.InMemoryRateLimiter>();
+builder.Services.AddScoped<IRoleService, RoleService>();
+builder.Services.AddScoped<IPermissionService, PermissionService>();
+builder.Services.AddScoped<IUserRoleService, UserRoleService>();
+builder.Services.AddScoped<IAuditLogService, AuditLogService>();
+builder.Services.AddScoped<IEmailService, LoggingEmailService>();
 builder.Services.AddHttpContextAccessor();
+builder.Services.AddSingleton<IAuthorizationHandler, PermissionAuthorizationHandler>();
+builder.Services.Configure<RateLimitSettings>(builder.Configuration.GetSection(RateLimitSettings.SectionName));
+var rateLimitSettings = builder.Configuration.GetSection(RateLimitSettings.SectionName).Get<RateLimitSettings>() ?? new RateLimitSettings();
+builder.Services.AddSecurityRateLimiting(rateLimitSettings);
 
-// Centralized, strongly typed API configuration (base URL + authorized origins).
-// This single section drives BOTH the CORS policy and the FIDO2 relying-party setup.
-builder.Services.Configure<ApiSettings>(builder.Configuration.GetSection(ApiSettings.SectionName));
-builder.Services.Configure<SecuritySettings>(builder.Configuration.GetSection("SecuritySettings"));
+var app = builder.Build();
 
-var apiSettings = builder.Configuration.GetSection(ApiSettings.SectionName).Get<ApiSettings>() ?? new ApiSettings();
-var allowedOrigins = apiSettings.GetAllowedOrigins();
-
-builder.Services.AddCors(options =>
+app.UseExceptionHandler(appError =>
 {
-    options.AddPolicy("DefaultCorsPolicy", policy =>
+    appError.Run(async context =>
     {
-        if (apiSettings.IsWildcardOrigin())
-        {
-            // Wildcard cannot be combined with AllowCredentials per the CORS spec.
-            policy.AllowAnyOrigin()
-                  .AllowAnyHeader()
-                  .AllowAnyMethod();
-        }
-        else if (allowedOrigins.Length > 0)
-        {
-            var builderPolicy = policy.WithOrigins(allowedOrigins)
-                                      .AllowAnyHeader()
-                                      .AllowAnyMethod();
-
-            if (apiSettings.AllowCredentials)
-            {
-                builderPolicy.AllowCredentials();
-            }
-        }
+        context.Response.StatusCode = 500;
+        context.Response.ContentType = "application/json";
+        await context.Response.WriteAsync(JsonSerializer.Serialize(new { error = "An internal server error occurred." }));
     });
 });
 
-builder.Services.AddSecurityRateLimiting();
+// Update RemoteIpAddress / scheme from the proxy so rate limiting and audit
+// logs capture the real client, not the proxy itself.
+app.UseForwardedHeaders(new ForwardedHeadersOptions
+{
+    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+});
 
-var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
 {
@@ -121,15 +155,23 @@ if (app.Environment.IsDevelopment())
 
 if (!app.Environment.IsDevelopment())
 {
+    app.UseMiddleware<SecurityHeadersMiddleware>();
     app.UseHttpsRedirection();
     app.UseHsts();
 }
 
+app.UseRateLimiter();
+
 app.UseCors("DefaultCorsPolicy");
 app.UseAuthentication();
 app.UseAuthorization();
-app.UseMiddleware<SecurityHeadersMiddleware>();
-app.UseRateLimiter();
+
+using (var scope = app.Services.CreateScope())
+{
+    var permissionService = scope.ServiceProvider.GetRequiredService<IPermissionService>();
+    await permissionService.SeedDefaultPermissionsAsync();
+}
+
 app.MapControllers();
 
 app.Run();

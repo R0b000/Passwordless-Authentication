@@ -13,7 +13,7 @@ namespace PasswordlessApi.Api.Models.RequestModel.Auth
         public string Email { get; set; } = string.Empty;
 
         [Required]
-        [MinLength(6)]
+        [StringLength(128, MinimumLength = 8)]
         public string Password { get; set; } = string.Empty;
     }
 
@@ -29,13 +29,15 @@ namespace PasswordlessApi.Api.Models.RequestModel.Auth
     public class OtpRequest
     {
         [Required]
-        public int UserId { get; set; }
+        [EmailAddress]
+        public string Email { get; set; } = string.Empty;
     }
 
     public class OtpVerifyRequest
     {
         [Required]
-        public int UserId { get; set; }
+        [EmailAddress]
+        public string Email { get; set; } = string.Empty;
 
         [Required]
         public string Otp { get; set; } = string.Empty;

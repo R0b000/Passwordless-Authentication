@@ -21,6 +21,7 @@ namespace Auth.UI.src.Model.Auth
         public string? Message { get; set; }
         public string? Token { get; set; }
         public bool RequiresFido2 { get; set; }
+        public bool RequiresFido2Registration { get; set; }
     }
 
     public class UserIdResult

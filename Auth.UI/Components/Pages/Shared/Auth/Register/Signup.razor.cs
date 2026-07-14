@@ -27,6 +27,27 @@ namespace Auth.UI.Components.Pages.Shared.Register
                 return;
             }
 
+            if (Model.Username.Length < 3)
+            {
+                Succeeded = false;
+                StatusMessage = "Username must be at least 3 characters.";
+                return;
+            }
+
+            if (!IsValidEmail(Model.Email))
+            {
+                Succeeded = false;
+                StatusMessage = "Enter a valid email address.";
+                return;
+            }
+
+            if (Model.Password.Length < 8 || Model.Password.Length > 128)
+            {
+                Succeeded = false;
+                StatusMessage = "Password must be between 8 and 128 characters.";
+                return;
+            }
+
             if (Model.Password != ConfirmPassword)
             {
                 Succeeded = false;
@@ -54,6 +75,16 @@ namespace Auth.UI.Components.Pages.Shared.Register
             {
                 Toaster.ShowDanger(StatusMessage);
             }
+        }
+
+        private static bool IsValidEmail(string email)
+        {
+            return !string.IsNullOrWhiteSpace(email)
+                && email.Length <= 300
+                && System.Text.RegularExpressions.Regex.IsMatch(
+                    email,
+                    @"^[^@\s]+@[^@\s]+\.[^@\s]+$",
+                    System.Text.RegularExpressions.RegexOptions.IgnoreCase);
         }
     }
 }
