@@ -23,8 +23,6 @@ namespace API.Shared.Authorization
                 return;
             }
 
-            // Authorization handlers are singletons, so scoped services (e.g. IUserRoleService
-            // and its DapperContext) must be resolved from the request scope, not injected.
             var httpContext = _httpContextAccessor.HttpContext ?? context.Resource as HttpContext;
             if (httpContext == null)
             {

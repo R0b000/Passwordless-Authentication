@@ -1,5 +1,4 @@
 using API.Shared.Models.Entities;
-using PasswordlessApi.Api.Service.Interface.Repository;
 
 namespace API.Shared.Service.Interface.Security
 {

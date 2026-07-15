@@ -1,13 +1,13 @@
 using Auth.UI.Shared.Components.Toaster;
-using Auth.UI.Shared.Manager.Controller;
-using Auth.UI.src.Model.Security;
+using Auth.UI.Shared.Model.Security;
 using Microsoft.AspNetCore.Components;
+using UI.Shared.Manager.Interface.Auth;
 
 namespace Auth.UI.Components.Pages.Shared.VerifyDevice
 {
     public partial class VerifyDevice : ComponentBase
     {
-        [Inject] private SecurityController SecurityController { get; set; } = default!;
+        [Inject] private ISecurityManager SecurityManager { get; set; } = default!;
         [Inject] private ToasterService Toaster { get; set; } = default!;
         [Inject] private NavigationManager Navigation { get; set; } = default!;
 
@@ -23,7 +23,7 @@ namespace Auth.UI.Components.Pages.Shared.VerifyDevice
 
         protected async Task VerifyAsync()
         {
-            var result = await SecurityController.VerifyDeviceAsync(new VerifyDeviceRequest
+            var result = await SecurityManager.VerifyDeviceAsync(new VerifyDeviceRequest
             {
                 Code = Code,
                 TrustDevice = TrustDevice

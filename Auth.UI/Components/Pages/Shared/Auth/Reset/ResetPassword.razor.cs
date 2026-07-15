@@ -1,6 +1,6 @@
 using Auth.UI.Shared.Components.Toaster;
-using Auth.UI.Shared.Manager.Interface;
 using Microsoft.AspNetCore.Components;
+using UI.Shared.Manager.Interface.Auth;
 
 namespace Auth.UI.Components.Pages.Shared.Reset
 {

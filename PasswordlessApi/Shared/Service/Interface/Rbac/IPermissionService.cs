@@ -1,5 +1,4 @@
 using API.Shared.Models.Entities;
-using PasswordlessApi.Api.Models.DTOs.Rbac;
 
 namespace API.Shared.Service.Interface.Rbac
 {

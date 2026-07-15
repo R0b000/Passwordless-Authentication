@@ -1,17 +1,17 @@
 using Auth.UI.Components.UI.Modal;
 using Auth.UI.Shared.Components.Toaster;
-using Auth.UI.Shared.Manager.Controller;
 using Auth.UI.Shared.Model.Auth;
 using Auth.UI.Shared.Utility;
 using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
 using System.Text.Json.Serialization;
+using UI.Shared.Manager.Interface.Auth;
 
 namespace Auth.UI.Components.Pages.Shared.Login
 {
     public partial class Login : ComponentBase
     {
-        [Inject] private AuthController AuthController { get; set; } = default!;
+        [Inject] private IAuthManager AuthManager { get; set; } = default!;
         [Inject] private NavigationManager NavigationManager { get; set; } = default!;
         [Inject] private IJSRuntime JsRuntime { get; set; } = default!;
         [Inject] private ToasterService Toaster { get; set; } = default!;
@@ -63,7 +63,7 @@ namespace Auth.UI.Components.Pages.Shared.Login
         {
             StatusMessage = string.Empty;
 
-            var result = await AuthController.RegisterAsync(RegisterModel);
+            var result = await AuthManager.RegisterAsync(RegisterModel);
             Succeeded = result.Succeeded;
             StatusMessage = result.Data?.Message ?? result.Message ?? "Registration failed";
 
@@ -79,7 +79,7 @@ namespace Auth.UI.Components.Pages.Shared.Login
         {
             StatusMessage = string.Empty;
 
-            var result = await AuthController.LoginAsync(LoginModel);
+            var result = await AuthManager.LoginAsync(LoginModel);
             Succeeded = result.Succeeded;
             StatusMessage = result.Data?.Message ?? result.Message ?? "Login failed";
 

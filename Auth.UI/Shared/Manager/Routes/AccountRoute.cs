@@ -1,4 +1,4 @@
-namespace Auth.UI.Shared.Http
+namespace UI.Shared.Manager.Routes
 {
     public static class AccountRoute
     {

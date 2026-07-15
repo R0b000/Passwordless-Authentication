@@ -1,14 +1,14 @@
 using Microsoft.AspNetCore.Components;
 using Auth.UI.Shared.Components.Timeline;
 using Auth.UI.Shared.Components.Toaster;
-using Auth.UI.Shared.Manager.Controller;
 using Auth.UI.Shared.Model.Security;
+using UI.Shared.Manager.Interface.Auth;
 
 namespace Auth.UI.Components.Pages.Customer.Account.Activity
 {
     public partial class Activity : ComponentBase
     {
-        [Inject] private SecurityController SecurityController { get; set; } = default!;
+        [Inject] private ISecurityManager SecurityManager { get; set; } = default!;
         [Inject] private ToasterService Toaster { get; set; } = default!;
 
         protected ActivityQuery Query { get; set; } = new();
@@ -29,7 +29,7 @@ namespace Auth.UI.Components.Pages.Customer.Account.Activity
 
         protected async Task ApplyFiltersAsync()
         {
-            var result = await SecurityController.GetActivityAsync(Query);
+            var result = await SecurityManager.GetActivityAsync(Query);
             Entries = result.Succeeded ? result.Data ?? new List<ActivityLogEntry>() : new List<ActivityLogEntry>();
         }
 

@@ -1,6 +1,6 @@
 using Auth.UI.Shared.Common;
 
-namespace UI.Shared.Manager.Implementation.Http
+namespace UI.Shared.Manager.Interface.Http
 {
     public interface IHttpServices
     {

@@ -1,10 +1,11 @@
 using Auth.UI.Shared.Common;
-using Auth.UI.Shared.Http;
-using Auth.UI.Shared.Manager.Interface;
 using Auth.UI.Shared.Model.Security;
 using Auth.UI.Shared.Utility;
+using UI.Shared.Manager.Interface.Auth;
+using UI.Shared.Manager.Interface.Http;
+using UI.Shared.Manager.Routes;
 
-namespace Auth.UI.Shared.Manager.Implementation
+namespace UI.Shared.Manager.Implementation.Auth
 {
     public class SecurityManager : ISecurityManager
     {

@@ -1,4 +1,3 @@
-using PasswordlessApi.Api.Models;
 using System.Data;
 using Dapper;
 using API.Shared.Models.Common;

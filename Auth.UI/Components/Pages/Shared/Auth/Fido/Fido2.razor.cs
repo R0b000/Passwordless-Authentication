@@ -1,8 +1,8 @@
-using Auth.UI.Shared.Manager.Controller;
 using Auth.UI.Shared.Model.Auth;
 using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
 using System.Text.Json.Serialization;
+using UI.Shared.Manager.Interface.Auth;
 
 namespace Auth.UI.Components.Pages.Shared.Fido
 {
@@ -10,7 +10,7 @@ namespace Auth.UI.Components.Pages.Shared.Fido
     {
         public enum PasskeyState { Idle, Requesting, Awaiting, Verifying, Success, Error }
 
-        [Inject] private AuthController AuthController { get; set; } = default!;
+        [Inject] private IAuthManager AuthManager { get; set; } = default!;
         [Inject] private NavigationManager NavigationManager { get; set; } = default!;
         [Inject] private IJSRuntime JsRuntime { get; set; } = default!;
 
@@ -76,7 +76,7 @@ namespace Auth.UI.Components.Pages.Shared.Fido
 
             try
             {
-                var result = await AuthController.GetUserByEmailAsync(Email);
+                var result = await AuthManager.GetUserByEmailAsync(Email);
                 if (result.Succeeded && result.Data is not null)
                 {
                     UserId = result.Data.UserId;
@@ -129,7 +129,7 @@ namespace Auth.UI.Components.Pages.Shared.Fido
             StatusDetail = "Contacting the server to prepare your passkey challenge…";
 
             var origin = new Uri(NavigationManager.BaseUri).GetLeftPart(UriPartial.Authority);
-            var result = await AuthController.CreateFido2ChallengeAsync(UserId, origin);
+            var result = await AuthManager.CreateFido2ChallengeAsync(UserId, origin);
             if (!result.Succeeded || result.Data is null)
             {
                 State = PasskeyState.Error;
@@ -175,7 +175,7 @@ namespace Auth.UI.Components.Pages.Shared.Fido
             State = PasskeyState.Verifying;
             StatusDetail = "Verifying your passkey with the server…";
 
-            var result = await AuthController.VerifyFido2AssertionAsync(VerifyModel);
+            var result = await AuthManager.VerifyFido2AssertionAsync(VerifyModel);
             if (result.Succeeded)
             {
                 State = PasskeyState.Success;

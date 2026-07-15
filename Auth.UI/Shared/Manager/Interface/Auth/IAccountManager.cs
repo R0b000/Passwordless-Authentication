@@ -2,7 +2,7 @@ using Auth.UI.Shared.Common;
 using Auth.UI.Shared.Model.Account;
 using Auth.UI.Shared.Model.Auth;
 
-namespace Auth.UI.Shared.Manager.Interface
+namespace UI.Shared.Manager.Interface.Auth
 {
     public interface IAccountManager
     {
