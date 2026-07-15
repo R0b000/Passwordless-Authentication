@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Folder Include="Components\UI\" />
+    <Folder Include="Manager\Interface\" />
+    <Folder Include="Manager\Implementation\" />
+    <Folder Include="Manager\Routes\" />
+    <Folder Include="Models\" />
+    <Folder Include="Utility\" />
+  </ItemGroup>
+
+</Project>

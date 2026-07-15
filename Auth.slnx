@@ -1,4 +1,4 @@
 <Solution>
-  <Project Path="Auth.UI/Auth.UI.csproj" />
-  <Project Path="PasswordlessApi/PasswordlessApi.csproj" />
+  <Project Path="Auth.UI/UI.csproj" />
+  <Project Path="PasswordlessApi/API.csproj" />
 </Solution>

@@ -3,22 +3,23 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.Extensions.Options;
-using PasswordlessApi.Api.Configuration;
-using PasswordlessApi.Api.Middleware;
-using PasswordlessApi.Api.Service.Implementation.Auth;
-using PasswordlessApi.Api.Service.Implementation.Repository;
-using PasswordlessApi.Api.Service.Implementation.Rbac;
-using PasswordlessApi.Api.Service.Implementation.Security;
-using PasswordlessApi.Api.Service.Interface.Auth;
-using PasswordlessApi.Api.Service.Interface.Repository;
-using PasswordlessApi.Api.Service.Interface.Rbac;
-using PasswordlessApi.Api.Service.Interface.Security;
-using PasswordlessApi.Api.Utility.Jwt;
-using PasswordlessApi.Api.Utility.PasswordHash;
 using PasswordlessApi.Api.Authorization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.HttpOverrides;
 using System.Text.Json;
+using API.Shared.Utility.Jwt;
+using API.Shared.Utility.PasswordHash;
+using API.Shared.Middleware;
+using API.Shared.Configuration;
+using API.Shared.Authorization;
+using API.Shared.Service.Implementation.Auth;
+using API.Shared.Service.Implementation.Rbac;
+using API.Shared.Service.Implementation.Repository;
+using API.Shared.Service.Implementation.Security;
+using API.Shared.Service.Interface.Auth;
+using API.Shared.Service.Interface.Rbac;
+using API.Shared.Service.Interface.Repository;
+using API.Shared.Service.Interface.Security;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -106,7 +107,7 @@ builder.Services.AddCors(options =>
     });
 });
 
-builder.Services.AddHttpClient<ILocationResolver, PasswordlessApi.Api.Service.Implementation.Security.IpApiLocationResolver>();
+builder.Services.AddHttpClient<ILocationResolver, IpApiLocationResolver>();
 builder.Services.AddScoped<DapperContext>();
 builder.Services.AddScoped<IDapperRepository, DapperRepository>();
 builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));

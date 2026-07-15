@@ -1,5 +1,5 @@
-using Auth.UI.Components.UI.Toaster;
-using Auth.UI.src.Manager.Controller;
+using Auth.UI.Shared.Components.Toaster;
+using Auth.UI.Shared.Manager.Controller;
 using Microsoft.AspNetCore.Components;
 
 namespace Auth.UI.Components.Pages.Shared.Forgot

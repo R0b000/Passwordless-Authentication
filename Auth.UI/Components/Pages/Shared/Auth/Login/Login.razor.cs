@@ -1,8 +1,8 @@
 using Auth.UI.Components.UI.Modal;
-using Auth.UI.Components.UI.Toaster;
-using Auth.UI.src.Manager.Controller;
-using Auth.UI.src.Model.Auth;
-using Auth.UI.src.Utility;
+using Auth.UI.Shared.Components.Toaster;
+using Auth.UI.Shared.Manager.Controller;
+using Auth.UI.Shared.Model.Auth;
+using Auth.UI.Shared.Utility;
 using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
 using System.Text.Json.Serialization;

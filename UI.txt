@@ -182,6 +182,7 @@ FOLDER STRUCTURE:
       📄 Upload.razor.cs
 📁 Properties/
   📄 launchSettings.json
+  📁 PublishProfiles/
 📁 src/
   📁 Common/
     📄 Response.cs
@@ -208,11 +209,16 @@ FOLDER STRUCTURE:
     📁 Security/
       📄 SecurityModels.cs
   📁 Shared/
+    📄 ToastService.cs
     📁 Http/
-      📄 GenericHttpRepository.cs
+      📄 AccountRoute.cs
+      📄 AuthRoute.cs
       📄 HttpService.cs
-      📄 IHttpService.cs
+      📄 IHttpServices.cs
+      📄 SecurityRoute.cs
   📁 Utility/
+    📄 ITokenHelper.cs
+    📄 TokenHelper.cs
     📄 TokenStore.cs
 
 
@@ -258,9 +264,9 @@ builder.Services.AddScoped(sp =>
     return new HttpClient(handler) { BaseAddress = new Uri(baseUrl) };
 });
 
-builder.Services.AddScoped<IHttpService, HttpService>();
-builder.Services.AddScoped(typeof(GenericHttpRepository<>));
+builder.Services.AddScoped<ITokenHelper, TokenHelper>();
 builder.Services.AddScoped<ITokenStore, TokenStore>();
+builder.Services.AddScoped<IHttpServices, HttpServices>();
 builder.Services.AddScoped<IAuthManager, AuthManager>();
 builder.Services.AddScoped<AuthController>();
 builder.Services.AddScoped<IAccountManager, AccountManager>();
@@ -2888,51 +2894,90 @@ namespace Auth.UI.Components.Pages.Shared.Passkey
         protected string StatusMessage { get; set; } = string.Empty;
         protected string StatusDetail { get; set; } = string.Empty;
         private IJSObjectReference? _webAuthnModule;
+        private Fido2ChallengeResponse? _attestationOptions;
 
         protected override async Task OnAfterRenderAsync(bool firstRender)
         {
             if (firstRender)
             {
                 _webAuthnModule = await JsRuntime.InvokeAsync<IJSObjectReference>("import", "./webauthn.js");
+
+                // Pre-fetch the attestation options so the WebAuthn prompt can run inside the
+                // user gesture that triggers StartRegistrationAsync. Any awaited work between
+                // the click and navigator.credentials.create() causes Firefox/Blazor to drop
+                // document focus/activation, which rejects the ceremony ("page does not have focus").
+                _ = LoadAttestationOptionsAsync();
+            }
+        }
+
+        private async Task LoadAttestationOptionsAsync()
+        {
+            try
+            {
+                var origin = new Uri(NavigationManager.BaseUri).GetLeftPart(UriPartial.Authority);
+                var result = await AuthController.RequestAttestationOptionsAsync(new Fido2AttestationOptionsRequest
+                {
+                    UserId = UserId,
+                    Username = Username,
+                    Origin = origin
+                });
+
+                if (result.Succeeded && result.Data is not null)
+                {
+                    _attestationOptions = result.Data;
+                }
+            }
+            catch
+            {
+                // Non-critical: the click handler falls back to a fresh request.
+                _attestationOptions = null;
             }
         }
 
         protected async Task StartRegistrationAsync()
         {
+            if (_webAuthnModule is null)
+            {
+                State = SetupState.Error;
+                StatusMessage = "The passkey module is still loading. Please try again.";
+                return;
+            }
+
             State = SetupState.Processing;
             StatusDetail = "Contacting server...";
 
             var origin = new Uri(NavigationManager.BaseUri).GetLeftPart(UriPartial.Authority);
-            var optionsResult = await AuthController.RequestAttestationOptionsAsync(new Fido2AttestationOptionsRequest
-            {
-                UserId = UserId,
-                Username = Username,
-                Origin = origin
-            });
 
-            if (!optionsResult.Succeeded || optionsResult.Data == null)
+            // Options are normally pre-fetched; fall back to a synchronous request only if missing.
+            if (_attestationOptions is null)
+            {
+                await LoadAttestationOptionsAsync();
+            }
+
+            if (_attestationOptions is null)
             {
                 State = SetupState.Error;
-                StatusMessage = optionsResult.Message ?? "Failed to get registration options.";
+                StatusMessage = "Failed to get registration options. Please try again.";
                 return;
             }
 
             StatusDetail = "Waiting for device...";
             try
             {
-                // Call JS to create credential
-                var cred = await _webAuthnModule!.InvokeAsync<WebAuthnCredential>(
+                // Call JS to create the credential. With options already loaded there is no
+                // awaited work between this user gesture and navigator.credentials.create().
+                var cred = await _webAuthnModule.InvokeAsync<WebAuthnCredential>(
                     "createCredential",
-                    optionsResult.Data.PublicKeyCredentialCreationOptions,
-                    optionsResult.Data.Challenge);
+                    _attestationOptions.PublicKeyCredentialCreationOptions,
+                    _attestationOptions.Challenge);
 
                 StatusDetail = "Verifying with server...";
                 var verifyResult = await AuthController.RegisterCredentialAsync(new Fido2RegisterRequest
                 {
                     UserId = UserId,
                     Username = Username,
-                    AttestationResponse = JsonSerializer.Serialize(cred.response),
-                    AttestationChallenge = optionsResult.Data.Challenge,
+                    AttestationResponse = JsonSerializer.Serialize(cred),
+                    AttestationChallenge = _attestationOptions.Challenge,
                     Transports = string.Join(",", cred.transports ?? new List<string>()),
                     Origin = origin
                 });
@@ -2943,12 +2988,15 @@ namespace Auth.UI.Components.Pages.Shared.Passkey
                 }
                 else
                 {
+                    _ = LoadAttestationOptionsAsync();
                     State = SetupState.Error;
                     StatusMessage = verifyResult.Message ?? "Registration failed.";
                 }
             }
             catch (Exception ex)
             {
+                // Refresh for the next attempt (the challenge is now consumed/expired).
+                _ = LoadAttestationOptionsAsync();
                 State = SetupState.Error;
                 StatusMessage = $"Device error: {ex.Message}";
             }
@@ -7270,7 +7318,14 @@ FILE: src\Common\Response.cs
 --------------------------------------------------------------------------------
 namespace Auth.UI.src.Common
 {
-    public class Response<T>
+    public interface IResponse<T>
+    {
+        bool Succeeded { get; set; }
+        string? Message { get; set; }
+        T? Data { get; set; }
+    }
+
+    public class Response<T> : IResponse<T>
     {
         public bool Succeeded { get; set; }
         public string? Message { get; set; }
@@ -7313,17 +7368,17 @@ namespace Auth.UI.src.Manager.Controller
             _manager = manager;
         }
 
-        public Task<Response<UserProfile>> GetProfileAsync() => _manager.GetProfileAsync();
-        public Task<Response<UserProfile>> UpdateProfileAsync(UserProfile profile) => _manager.UpdateProfileAsync(profile);
-        public Task<Response<AccountSettings>> GetSettingsAsync() => _manager.GetSettingsAsync();
-        public Task<Response<AccountSettings>> UpdateSettingsAsync(AccountSettings settings) => _manager.UpdateSettingsAsync(settings);
-        public Task<Response<PrivacySettings>> GetPrivacyAsync() => _manager.GetPrivacyAsync();
-        public Task<Response<PrivacySettings>> UpdatePrivacyAsync(PrivacySettings privacy) => _manager.UpdatePrivacyAsync(privacy);
-        public Task<Response<AuthResponse>> RegisterAsync(RegisterRequest request) => _manager.RegisterAsync(request);
-        public Task<Response<bool>> RequestPasswordResetAsync(string email) => _manager.RequestPasswordResetAsync(email);
-        public Task<Response<bool>> ResetPasswordAsync(string token, string newPassword) => _manager.ResetPasswordAsync(token, newPassword);
-        public Task<Response<string>> DownloadDataAsync() => _manager.DownloadDataAsync();
-        public Task<Response<bool>> DeleteAccountAsync() => _manager.DeleteAccountAsync();
+        public Task<IResponse<UserProfile>> GetProfileAsync() => _manager.GetProfileAsync();
+        public Task<IResponse<UserProfile>> UpdateProfileAsync(UserProfile profile) => _manager.UpdateProfileAsync(profile);
+        public Task<IResponse<AccountSettings>> GetSettingsAsync() => _manager.GetSettingsAsync();
+        public Task<IResponse<AccountSettings>> UpdateSettingsAsync(AccountSettings settings) => _manager.UpdateSettingsAsync(settings);
+        public Task<IResponse<PrivacySettings>> GetPrivacyAsync() => _manager.GetPrivacyAsync();
+        public Task<IResponse<PrivacySettings>> UpdatePrivacyAsync(PrivacySettings privacy) => _manager.UpdatePrivacyAsync(privacy);
+        public Task<IResponse<AuthResponse>> RegisterAsync(RegisterRequest request) => _manager.RegisterAsync(request);
+        public Task<IResponse<bool>> RequestPasswordResetAsync(string email) => _manager.RequestPasswordResetAsync(email);
+        public Task<IResponse<bool>> ResetPasswordAsync(string token, string newPassword) => _manager.ResetPasswordAsync(token, newPassword);
+        public Task<IResponse<string>> DownloadDataAsync() => _manager.DownloadDataAsync();
+        public Task<IResponse<bool>> DeleteAccountAsync() => _manager.DeleteAccountAsync();
     }
 }
 
@@ -7346,34 +7401,34 @@ namespace Auth.UI.src.Manager.Controller
             _authManager = authManager;
         }
 
-        public Task<Response<AuthResponse>> RegisterAsync(RegisterRequest request)
+        public Task<IResponse<AuthResponse>> RegisterAsync(RegisterRequest request)
             => _authManager.RegisterAsync(request);
 
-        public Task<Response<AuthResponse>> LoginAsync(LoginRequest request)
+        public Task<IResponse<AuthResponse>> LoginAsync(LoginRequest request)
             => _authManager.LoginAsync(request);
 
-        public Task<Response<AuthResponse>> MeAsync()
+        public Task<IResponse<AuthResponse>> MeAsync()
             => _authManager.GetCurrentUserAsync();
 
-        public Task<Response<AuthResponse>> GetUserByEmailAsync(string email)
+        public Task<IResponse<AuthResponse>> GetUserByEmailAsync(string email)
             => _authManager.GetUserByEmailAsync(email);
 
-        public Task<Response<Fido2ChallengeResponse>> RequestAttestationOptionsAsync(Fido2AttestationOptionsRequest request)
+        public Task<IResponse<Fido2ChallengeResponse>> RequestAttestationOptionsAsync(Fido2AttestationOptionsRequest request)
             => _authManager.RequestAttestationOptionsAsync(request);
 
-        public Task<Response<Fido2VerifyResponse>> RegisterCredentialAsync(Fido2RegisterRequest request)
+        public Task<IResponse<Fido2VerifyResponse>> RegisterCredentialAsync(Fido2RegisterRequest request)
             => _authManager.RegisterCredentialAsync(request);
 
-        public Task<Response<Fido2ChallengeResponse>> CreateFido2ChallengeAsync(int userId, string origin)
+        public Task<IResponse<Fido2ChallengeResponse>> CreateFido2ChallengeAsync(int userId, string origin)
             => _authManager.CreateFido2ChallengeAsync(userId, origin);
 
-        public Task<Response<Fido2VerifyResponse>> VerifyFido2AssertionAsync(Fido2VerifyRequest request)
+        public Task<IResponse<Fido2VerifyResponse>> VerifyFido2AssertionAsync(Fido2VerifyRequest request)
             => _authManager.VerifyFido2AssertionAsync(request);
 
-        public Task<Response<OtpResponse>> RequestOtpAsync(OtpRequest request)
+        public Task<IResponse<OtpResponse>> RequestOtpAsync(OtpRequest request)
             => _authManager.RequestOtpAsync(request);
 
-        public Task<Response<AuthResponse>> VerifyOtpAsync(OtpVerifyRequest request)
+        public Task<IResponse<AuthResponse>> VerifyOtpAsync(OtpVerifyRequest request)
             => _authManager.VerifyOtpAsync(request);
     }
 }
@@ -7397,16 +7452,16 @@ namespace Auth.UI.src.Manager.Controller
             _manager = manager;
         }
 
-        public Task<Response<SecuritySettings>> GetSecurityAsync() => _manager.GetSecurityAsync();
-        public Task<Response<SecuritySettings>> UpdateSecurityAsync(SecuritySettings settings) => _manager.UpdateSecurityAsync(settings);
-        public Task<Response<bool>> ChangePasswordAsync(ChangePasswordRequest request) => _manager.ChangePasswordAsync(request);
-        public Task<Response<SecuritySettings>> EnableTwoFactorAsync() => _manager.EnableTwoFactorAsync();
-        public Task<Response<SecuritySettings>> DisableTwoFactorAsync() => _manager.DisableTwoFactorAsync();
-        public Task<Response<List<SessionInfo>>> GetSessionsAsync() => _manager.GetSessionsAsync();
-        public Task<Response<bool>> RevokeSessionAsync(string id) => _manager.RevokeSessionAsync(id);
-        public Task<Response<bool>> RevokeAllSessionsAsync(bool includingCurrent) => _manager.RevokeAllSessionsAsync(includingCurrent);
-        public Task<Response<List<ActivityLogEntry>>> GetActivityAsync(ActivityQuery query) => _manager.GetActivityAsync(query);
-        public Task<Response<bool>> VerifyDeviceAsync(VerifyDeviceRequest request) => _manager.VerifyDeviceAsync(request);
+        public Task<IResponse<SecuritySettings>> GetSecurityAsync() => _manager.GetSecurityAsync();
+        public Task<IResponse<SecuritySettings>> UpdateSecurityAsync(SecuritySettings settings) => _manager.UpdateSecurityAsync(settings);
+        public Task<IResponse<bool>> ChangePasswordAsync(ChangePasswordRequest request) => _manager.ChangePasswordAsync(request);
+        public Task<IResponse<SecuritySettings>> EnableTwoFactorAsync() => _manager.EnableTwoFactorAsync();
+        public Task<IResponse<SecuritySettings>> DisableTwoFactorAsync() => _manager.DisableTwoFactorAsync();
+        public Task<IResponse<List<SessionInfo>>> GetSessionsAsync() => _manager.GetSessionsAsync();
+        public Task<IResponse<bool>> RevokeSessionAsync(string id) => _manager.RevokeSessionAsync(id);
+        public Task<IResponse<bool>> RevokeAllSessionsAsync(bool includingCurrent) => _manager.RevokeAllSessionsAsync(includingCurrent);
+        public Task<IResponse<List<ActivityLogEntry>>> GetActivityAsync(ActivityQuery query) => _manager.GetActivityAsync(query);
+        public Task<IResponse<bool>> VerifyDeviceAsync(VerifyDeviceRequest request) => _manager.VerifyDeviceAsync(request);
     }
 }
 
@@ -7426,101 +7481,48 @@ namespace Auth.UI.src.Manager.Service.Implementation
 {
     public class AccountManager : IAccountManager
     {
-        private readonly GenericHttpRepository<UserProfile> _profileRepository;
-        private readonly GenericHttpRepository<AccountSettings> _settingsRepository;
-        private readonly GenericHttpRepository<PrivacySettings> _privacyRepository;
-        private readonly GenericHttpRepository<AuthResponse> _authRepository;
-        private readonly GenericHttpRepository<ActionResponse> _actionRepository;
-        private readonly GenericHttpRepository<string> _stringRepository;
+        private readonly IHttpServices _httpService;
         private readonly ITokenStore _tokenStore;
 
-        public AccountManager(
-            GenericHttpRepository<UserProfile> profileRepository,
-            GenericHttpRepository<AccountSettings> settingsRepository,
-            GenericHttpRepository<PrivacySettings> privacyRepository,
-            GenericHttpRepository<AuthResponse> authRepository,
-            GenericHttpRepository<ActionResponse> actionRepository,
-            GenericHttpRepository<string> stringRepository,
-            ITokenStore tokenStore)
+        public AccountManager(IHttpServices httpService, ITokenStore tokenStore)
         {
-            _profileRepository = profileRepository;
-            _settingsRepository = settingsRepository;
-            _privacyRepository = privacyRepository;
-            _authRepository = authRepository;
-            _actionRepository = actionRepository;
-            _stringRepository = stringRepository;
+            _httpService = httpService;
             _tokenStore = tokenStore;
         }
 
-        public async Task<Response<UserProfile>> GetProfileAsync()
+        public async Task<IResponse<UserProfile>> GetProfileAsync()
         {
-            var token = _tokenStore.GetToken();
-            if (string.IsNullOrWhiteSpace(token))
-            {
-                return Response<UserProfile>.Failure("No authentication token present");
-            }
-
-            return await _profileRepository.GetSingleAsync("api/account/profile", token);
+            return await _httpService.GetAsync<UserProfile>(AccountRoute.Profile);
         }
 
-        public async Task<Response<UserProfile>> UpdateProfileAsync(UserProfile profile)
+        public async Task<IResponse<UserProfile>> UpdateProfileAsync(UserProfile profile)
         {
-            var token = _tokenStore.GetToken();
-            if (string.IsNullOrWhiteSpace(token))
-            {
-                return Response<UserProfile>.Failure("No authentication token present");
-            }
-
-            return await _profileRepository.QuerySingleAsync("api/account/profile", profile, token);
+            return await _httpService.PostAsJsonAsync<UserProfile>(AccountRoute.Profile, profile);
         }
 
-        public async Task<Response<AccountSettings>> GetSettingsAsync()
+        public async Task<IResponse<AccountSettings>> GetSettingsAsync()
         {
-            var token = _tokenStore.GetToken();
-            if (string.IsNullOrWhiteSpace(token))
-            {
-                return Response<AccountSettings>.Failure("No authentication token present");
-            }
-
-            return await _settingsRepository.GetSingleAsync("api/account/settings", token);
+            return await _httpService.GetAsync<AccountSettings>(AccountRoute.Settings);
         }
 
-        public async Task<Response<AccountSettings>> UpdateSettingsAsync(AccountSettings settings)
+        public async Task<IResponse<AccountSettings>> UpdateSettingsAsync(AccountSettings settings)
         {
-            var token = _tokenStore.GetToken();
-            if (string.IsNullOrWhiteSpace(token))
-            {
-                return Response<AccountSettings>.Failure("No authentication token present");
-            }
-
-            return await _settingsRepository.QuerySingleAsync("api/account/settings", settings, token);
+            return await _httpService.PostAsJsonAsync<AccountSettings>(AccountRoute.Settings, settings);
         }
 
-        public async Task<Response<PrivacySettings>> GetPrivacyAsync()
+        public async Task<IResponse<PrivacySettings>> GetPrivacyAsync()
         {
-            var token = _tokenStore.GetToken();
-            if (string.IsNullOrWhiteSpace(token))
-            {
-                return Response<PrivacySettings>.Failure("No authentication token present");
-            }
-
-            return await _privacyRepository.GetSingleAsync("api/account/privacy", token);
+            return await _httpService.GetAsync<PrivacySettings>(AccountRoute.Privacy);
         }
 
-        public async Task<Response<PrivacySettings>> UpdatePrivacyAsync(PrivacySettings privacy)
+        public async Task<IResponse<PrivacySettings>> UpdatePrivacyAsync(PrivacySettings privacy)
         {
-            var token = _tokenStore.GetToken();
-            if (string.IsNullOrWhiteSpace(token))
-            {
-                return Response<PrivacySettings>.Failure("No authentication token present");
-            }
-
-            return await _privacyRepository.QuerySingleAsync("api/account/privacy", privacy, token);
+            return await _httpService.PostAsJsonAsync<PrivacySettings>(AccountRoute.Privacy, privacy);
         }
 
-        public async Task<Response<AuthResponse>> RegisterAsync(RegisterRequest request)
+        public async Task<IResponse<AuthResponse>> RegisterAsync(RegisterRequest request)
         {
-            var result = await _authRepository.QuerySingleAsync("api/auth/register", request);
+            var result = await _httpService.PostAsJsonAsync<AuthResponse>(AuthRoute.Register, request);
             if (result.Succeeded && result.Data?.Token is not null)
             {
                 _tokenStore.SetToken(result.Data.Token);
@@ -7529,46 +7531,34 @@ namespace Auth.UI.src.Manager.Service.Implementation
             return result;
         }
 
-        public async Task<Response<bool>> RequestPasswordResetAsync(string email)
+        public async Task<IResponse<bool>> RequestPasswordResetAsync(string email)
         {
-            var token = _tokenStore.GetToken();
-            var result = await _actionRepository.QuerySingleAsync("api/account/password-reset", new { email }, token);
-            return Response<bool>.Success(result?.Succeeded ?? false, result?.Message ?? "Request sent");
+            var result = await _httpService.PostAsJsonAsync<ActionResponse>(AccountRoute.PasswordReset, new { email });
+            return Response<bool>.Success(result.Succeeded, result.Message ?? "Request sent");
         }
 
-        public async Task<Response<bool>> ResetPasswordAsync(string token, string newPassword)
+        public async Task<IResponse<bool>> ResetPasswordAsync(string token, string newPassword)
         {
-            var result = await _actionRepository.QuerySingleAsync("api/account/password-reset/confirm", new { token, newPassword });
-            return Response<bool>.Success(result?.Succeeded ?? false, result?.Message ?? "Password reset");
+            var result = await _httpService.PostAsJsonAsync<ActionResponse>(
+                AccountRoute.PasswordResetConfirm, new { token, newPassword });
+            return Response<bool>.Success(result.Succeeded, result.Message ?? "Password reset");
         }
 
-        public async Task<Response<string>> DownloadDataAsync()
+        public async Task<IResponse<string>> DownloadDataAsync()
         {
-            var token = _tokenStore.GetToken();
-            if (string.IsNullOrWhiteSpace(token))
+            var result = await _httpService.GetAsync<string>(AccountRoute.DataExport);
+            if (!result.Succeeded || result.Data is null)
             {
-                return Response<string>.Failure("No authentication token present");
-            }
-
-            var result = await _stringRepository.GetSingleAsync("api/account/data-export", token);
-            if (result == null)
-            {
-                return Response<string>.Failure("Failed to download data");
+                return Response<string>.Failure(result.Message ?? "Failed to download data");
             }
 
             return Response<string>.Success(result.Data, "Export prepared");
         }
 
-        public async Task<Response<bool>> DeleteAccountAsync()
+        public async Task<IResponse<bool>> DeleteAccountAsync()
         {
-            var token = _tokenStore.GetToken();
-            if (string.IsNullOrWhiteSpace(token))
-            {
-                return Response<bool>.Failure("No authentication token present");
-            }
-
-            var result = await _actionRepository.QuerySingleAsync("api/account", null, token);
-            return Response<bool>.Success(result?.Succeeded ?? false, result?.Message ?? "Account deleted");
+            var result = await _httpService.DeleteAsync<ActionResponse>(AccountRoute.Delete);
+            return Response<bool>.Success(result.Succeeded, result.Message ?? "Account deleted");
         }
     }
 }
@@ -7587,29 +7577,18 @@ namespace Auth.UI.src.Manager.Service.Implementation
 {
     public class AuthManager : IAuthManager
     {
-        private readonly GenericHttpRepository<AuthResponse> _authRepository;
-        private readonly GenericHttpRepository<Fido2ChallengeResponse> _challengeRepository;
-        private readonly GenericHttpRepository<Fido2VerifyResponse> _verifyRepository;
-        private readonly GenericHttpRepository<OtpResponse> _otpRepository;
+        private readonly IHttpServices _httpService;
         private readonly ITokenStore _tokenStore;
 
-        public AuthManager(
-            GenericHttpRepository<AuthResponse> authRepository,
-            GenericHttpRepository<Fido2ChallengeResponse> challengeRepository,
-            GenericHttpRepository<Fido2VerifyResponse> verifyRepository,
-            GenericHttpRepository<OtpResponse> otpRepository,
-            ITokenStore tokenStore)
+        public AuthManager(IHttpServices httpService, ITokenStore tokenStore)
         {
-            _authRepository = authRepository;
-            _challengeRepository = challengeRepository;
-            _verifyRepository = verifyRepository;
-            _otpRepository = otpRepository;
+            _httpService = httpService;
             _tokenStore = tokenStore;
         }
 
-        public async Task<Response<AuthResponse>> RegisterAsync(RegisterRequest request)
+        public async Task<IResponse<AuthResponse>> RegisterAsync(RegisterRequest request)
         {
-            var result = await _authRepository.QuerySingleAsync("api/auth/register", request);
+            var result = await _httpService.PostAsJsonAsync<AuthResponse>(AuthRoute.Register, request);
             if (result.Succeeded && result.Data?.Token is not null)
             {
                 _tokenStore.SetToken(result.Data.Token);
@@ -7618,9 +7597,9 @@ namespace Auth.UI.src.Manager.Service.Implementation
             return result;
         }
 
-        public async Task<Response<AuthResponse>> LoginAsync(LoginRequest request)
+        public async Task<IResponse<AuthResponse>> LoginAsync(LoginRequest request)
         {
-            var result = await _authRepository.QuerySingleAsync("api/auth/login", request);
+            var result = await _httpService.PostAsJsonAsync<AuthResponse>(AuthRoute.Login, request);
             if (result.Succeeded && result.Data?.Token is not null)
             {
                 _tokenStore.SetToken(result.Data.Token);
@@ -7629,47 +7608,35 @@ namespace Auth.UI.src.Manager.Service.Implementation
             return result;
         }
 
-        public async Task<Response<AuthResponse>> GetCurrentUserAsync()
+        public async Task<IResponse<AuthResponse>> GetCurrentUserAsync()
         {
-            var token = _tokenStore.GetToken();
-            if (string.IsNullOrWhiteSpace(token))
-            {
-                return Response<AuthResponse>.Failure("No authentication token present");
-            }
-
-            return await _authRepository.GetSingleAsync("api/auth/me", token);
+            return await _httpService.GetAsync<AuthResponse>(AuthRoute.Me);
         }
 
-        public async Task<Response<AuthResponse>> GetUserByEmailAsync(string email)
+        public async Task<IResponse<AuthResponse>> GetUserByEmailAsync(string email)
         {
-            return await _authRepository.GetSingleAsync($"api/auth/lookup?email={Uri.EscapeDataString(email)}");
+            return await _httpService.GetAsync<AuthResponse>($"{AuthRoute.Lookup}?email={Uri.EscapeDataString(email)}");
         }
 
-        public async Task<Response<Fido2ChallengeResponse>> RequestAttestationOptionsAsync(Fido2AttestationOptionsRequest request)
+        public async Task<IResponse<Fido2ChallengeResponse>> RequestAttestationOptionsAsync(Fido2AttestationOptionsRequest request)
         {
-            var token = _tokenStore.GetToken();
-            var result = await _challengeRepository.QuerySingleAsync("api/auth/fido2/options/register", request, token);
-            return result;
+            return await _httpService.PostAsJsonAsync<Fido2ChallengeResponse>(AuthRoute.Fido2Options, request);
         }
 
-        public async Task<Response<Fido2VerifyResponse>> RegisterCredentialAsync(Fido2RegisterRequest request)
+        public async Task<IResponse<Fido2VerifyResponse>> RegisterCredentialAsync(Fido2RegisterRequest request)
         {
-            var token = _tokenStore.GetToken();
-            var result = await _verifyRepository.QuerySingleAsync("api/auth/fido2/register", request, token);
-            return result;
+            return await _httpService.PostAsJsonAsync<Fido2VerifyResponse>(AuthRoute.Fido2Register, request);
         }
 
-        public async Task<Response<Fido2ChallengeResponse>> CreateFido2ChallengeAsync(int userId, string origin)
+        public async Task<IResponse<Fido2ChallengeResponse>> CreateFido2ChallengeAsync(int userId, string origin)
         {
-            var token = _tokenStore.GetToken();
-            var result = await _challengeRepository.QuerySingleAsync("api/auth/fido2/challenge", new Fido2ChallengeRequest { UserId = userId, Origin = origin }, token);
-            return result;
+            return await _httpService.PostAsJsonAsync<Fido2ChallengeResponse>(
+                AuthRoute.Fido2Challenge, new Fido2ChallengeRequest { UserId = userId, Origin = origin });
         }
 
-        public async Task<Response<Fido2VerifyResponse>> VerifyFido2AssertionAsync(Fido2VerifyRequest request)
+        public async Task<IResponse<Fido2VerifyResponse>> VerifyFido2AssertionAsync(Fido2VerifyRequest request)
         {
-            var token = _tokenStore.GetToken();
-            var result = await _verifyRepository.QuerySingleAsync("api/auth/fido2/verify", request, token);
+            var result = await _httpService.PostAsJsonAsync<Fido2VerifyResponse>(AuthRoute.Fido2Verify, request);
             if (result.Succeeded && result.Data?.Token is not null)
             {
                 _tokenStore.SetToken(result.Data.Token);
@@ -7678,15 +7645,14 @@ namespace Auth.UI.src.Manager.Service.Implementation
             return result;
         }
 
-        public async Task<Response<OtpResponse>> RequestOtpAsync(OtpRequest request)
+        public async Task<IResponse<OtpResponse>> RequestOtpAsync(OtpRequest request)
         {
-            var result = await _otpRepository.QuerySingleAsync("api/auth/otp/request", request);
-            return result;
+            return await _httpService.PostAsJsonAsync<OtpResponse>(AuthRoute.OtpRequest, request);
         }
 
-        public async Task<Response<AuthResponse>> VerifyOtpAsync(OtpVerifyRequest request)
+        public async Task<IResponse<AuthResponse>> VerifyOtpAsync(OtpVerifyRequest request)
         {
-            var result = await _authRepository.QuerySingleAsync("api/auth/otp/verify", request);
+            var result = await _httpService.PostAsJsonAsync<AuthResponse>(AuthRoute.OtpVerify, request);
             if (result.Succeeded && result.Data?.Token is not null)
             {
                 _tokenStore.SetToken(result.Data.Token);
@@ -7711,94 +7677,47 @@ namespace Auth.UI.src.Manager.Service.Implementation
 {
     public class SecurityManager : ISecurityManager
     {
-        private readonly GenericHttpRepository<SecuritySettings> _settingsRepository;
-        private readonly GenericHttpRepository<List<DeviceSessionResponse>> _sessionsRepository;
-        private readonly GenericHttpRepository<ActivityLogResponse> _activityRepository;
-        private readonly GenericHttpRepository<ActionResponse> _actionRepository;
+        private readonly IHttpServices _httpService;
         private readonly ITokenStore _tokenStore;
 
-        public SecurityManager(
-            GenericHttpRepository<SecuritySettings> settingsRepository,
-            GenericHttpRepository<List<DeviceSessionResponse>> sessionsRepository,
-            GenericHttpRepository<ActivityLogResponse> activityRepository,
-            GenericHttpRepository<ActionResponse> actionRepository,
-            ITokenStore tokenStore)
+        public SecurityManager(IHttpServices httpService, ITokenStore tokenStore)
         {
-            _settingsRepository = settingsRepository;
-            _sessionsRepository = sessionsRepository;
-            _activityRepository = activityRepository;
-            _actionRepository = actionRepository;
+            _httpService = httpService;
             _tokenStore = tokenStore;
         }
 
-        public async Task<Response<SecuritySettings>> GetSecurityAsync()
+        public async Task<IResponse<SecuritySettings>> GetSecurityAsync()
         {
-            var token = _tokenStore.GetToken();
-            if (string.IsNullOrWhiteSpace(token))
-            {
-                return Response<SecuritySettings>.Failure("No authentication token present");
-            }
-
-            return await _settingsRepository.GetSingleAsync("api/security/settings", token);
+            return await _httpService.GetAsync<SecuritySettings>(SecurityRoute.Settings);
         }
 
-        public async Task<Response<SecuritySettings>> UpdateSecurityAsync(SecuritySettings settings)
+        public async Task<IResponse<SecuritySettings>> UpdateSecurityAsync(SecuritySettings settings)
         {
-            var token = _tokenStore.GetToken();
-            if (string.IsNullOrWhiteSpace(token))
-            {
-                return Response<SecuritySettings>.Failure("No authentication token present");
-            }
-
-            return await _settingsRepository.QuerySingleAsync("api/security/settings", settings, token);
+            return await _httpService.PostAsJsonAsync<SecuritySettings>(SecurityRoute.Settings, settings);
         }
 
-        public async Task<Response<bool>> ChangePasswordAsync(ChangePasswordRequest request)
+        public async Task<IResponse<bool>> ChangePasswordAsync(ChangePasswordRequest request)
         {
-            var token = _tokenStore.GetToken();
-            if (string.IsNullOrWhiteSpace(token))
-            {
-                return Response<bool>.Failure("No authentication token present");
-            }
-
-            var result = await _actionRepository.QuerySingleAsync("api/security/change-password", request, token);
-            return Response<bool>.Success(result?.Succeeded ?? false, result?.Message ?? "Password changed");
+            var result = await _httpService.PostAsJsonAsync<ActionResponse>(SecurityRoute.ChangePassword, request);
+            return Response<bool>.Success(result.Succeeded, result.Message ?? "Password changed");
         }
 
-        public async Task<Response<SecuritySettings>> EnableTwoFactorAsync()
+        public async Task<IResponse<SecuritySettings>> EnableTwoFactorAsync()
         {
-            var token = _tokenStore.GetToken();
-            if (string.IsNullOrWhiteSpace(token))
-            {
-                return Response<SecuritySettings>.Failure("No authentication token present");
-            }
-
-            return await _settingsRepository.QuerySingleAsync("api/security/2fa/enable", null, token);
+            return await _httpService.PostAsJsonAsync<SecuritySettings>(SecurityRoute.Enable2FA, null!);
         }
 
-        public async Task<Response<SecuritySettings>> DisableTwoFactorAsync()
+        public async Task<IResponse<SecuritySettings>> DisableTwoFactorAsync()
         {
-            var token = _tokenStore.GetToken();
-            if (string.IsNullOrWhiteSpace(token))
-            {
-                return Response<SecuritySettings>.Failure("No authentication token present");
-            }
-
-            return await _settingsRepository.QuerySingleAsync("api/security/2fa/disable", null, token);
+            return await _httpService.PostAsJsonAsync<SecuritySettings>(SecurityRoute.Disable2FA, null!);
         }
 
-        public async Task<Response<List<SessionInfo>>> GetSessionsAsync()
+        public async Task<IResponse<List<SessionInfo>>> GetSessionsAsync()
         {
-            var token = _tokenStore.GetToken();
-            if (string.IsNullOrWhiteSpace(token))
+            var result = await _httpService.GetAsync<List<DeviceSessionResponse>>(SecurityRoute.Devices);
+            if (!result.Succeeded || result.Data is null)
             {
-                return Response<List<SessionInfo>>.Failure("No authentication token present");
-            }
-
-            var result = await _sessionsRepository.GetSingleAsync("api/auth/devices", token);
-            if (result == null || result.Data == null)
-            {
-                return Response<List<SessionInfo>>.Failure("Failed to load sessions");
+                return Response<List<SessionInfo>>.Failure(result.Message ?? "Failed to load sessions");
             }
 
             var sessions = result.Data.Select<DeviceSessionResponse, SessionInfo>(s => new SessionInfo
@@ -7816,43 +7735,26 @@ namespace Auth.UI.src.Manager.Service.Implementation
             return Response<List<SessionInfo>>.Success(sessions);
         }
 
-        public async Task<Response<bool>> RevokeSessionAsync(string id)
+        public async Task<IResponse<bool>> RevokeSessionAsync(string id)
         {
-            var token = _tokenStore.GetToken();
-            if (string.IsNullOrWhiteSpace(token))
-            {
-                return Response<bool>.Failure("No authentication token present");
-            }
-
             if (!int.TryParse(id, out var sessionId))
             {
                 return Response<bool>.Failure("Invalid session ID");
             }
 
-            var result = await _actionRepository.QuerySingleAsync($"api/auth/devices/{sessionId}", null, token);
-            return Response<bool>.Success(result?.Succeeded ?? false, result?.Message ?? "Session revoked");
+            var result = await _httpService.DeleteAsync<ActionResponse>($"{SecurityRoute.Devices}/{sessionId}");
+            return Response<bool>.Success(result.Succeeded, result.Message ?? "Session revoked");
         }
 
-        public async Task<Response<bool>> RevokeAllSessionsAsync(bool includingCurrent)
+        public async Task<IResponse<bool>> RevokeAllSessionsAsync(bool includingCurrent)
         {
-            var token = _tokenStore.GetToken();
-            if (string.IsNullOrWhiteSpace(token))
-            {
-                return Response<bool>.Failure("No authentication token present");
-            }
-
-            var result = await _actionRepository.QuerySingleAsync("api/auth/devices/logout-all", new { includingCurrent }, token);
-            return Response<bool>.Success(result?.Succeeded ?? false, result?.Message ?? "Sessions revoked");
+            var result = await _httpService.PostAsJsonAsync<ActionResponse>(
+                SecurityRoute.DevicesRevokeAll, new { includingCurrent });
+            return Response<bool>.Success(result.Succeeded, result.Message ?? "Sessions revoked");
         }
 
-        public async Task<Response<List<ActivityLogEntry>>> GetActivityAsync(ActivityQuery query)
+        public async Task<IResponse<List<ActivityLogEntry>>> GetActivityAsync(ActivityQuery query)
         {
-            var token = _tokenStore.GetToken();
-            if (string.IsNullOrWhiteSpace(token))
-            {
-                return Response<List<ActivityLogEntry>>.Failure("No authentication token present");
-            }
-
             var queryParams = new Dictionary<string, string?>
             {
                 ["from"] = query.From?.ToString("o"),
@@ -7865,25 +7767,19 @@ namespace Auth.UI.src.Manager.Service.Implementation
                 .Where(kv => !string.IsNullOrEmpty(kv.Value))
                 .Select(kv => $"{kv.Key}={Uri.EscapeDataString(kv.Value!)}"));
 
-            var result = await _activityRepository.GetSingleAsync($"api/security/activity?{queryString}", token);
-            if (result == null)
+            var result = await _httpService.GetAsync<ActivityLogResponse>($"{SecurityRoute.Activity}?{queryString}");
+            if (!result.Succeeded || result.Data is null)
             {
-                return Response<List<ActivityLogEntry>>.Failure("Failed to load activity");
+                return Response<List<ActivityLogEntry>>.Failure(result.Message ?? "Failed to load activity");
             }
 
             return Response<List<ActivityLogEntry>>.Success(result.Data.Entries);
         }
 
-        public async Task<Response<bool>> VerifyDeviceAsync(VerifyDeviceRequest request)
+        public async Task<IResponse<bool>> VerifyDeviceAsync(VerifyDeviceRequest request)
         {
-            var token = _tokenStore.GetToken();
-            if (string.IsNullOrWhiteSpace(token))
-            {
-                return Response<bool>.Failure("No authentication token present");
-            }
-
-            var result = await _actionRepository.QuerySingleAsync("api/security/device/verify", request, token);
-            return Response<bool>.Success(result?.Succeeded ?? false, result?.Message ?? "Device verified");
+            var result = await _httpService.PostAsJsonAsync<ActionResponse>(SecurityRoute.VerifyDevice, request);
+            return Response<bool>.Success(result.Succeeded, result.Message ?? "Device verified");
         }
 
         private static string ParseDeviceType(string? userAgent)
@@ -7931,17 +7827,17 @@ namespace Auth.UI.src.Manager.Service.Interface
 {
     public interface IAccountManager
     {
-        Task<Response<UserProfile>> GetProfileAsync();
-        Task<Response<UserProfile>> UpdateProfileAsync(UserProfile profile);
-        Task<Response<AccountSettings>> GetSettingsAsync();
-        Task<Response<AccountSettings>> UpdateSettingsAsync(AccountSettings settings);
-        Task<Response<PrivacySettings>> GetPrivacyAsync();
-        Task<Response<PrivacySettings>> UpdatePrivacyAsync(PrivacySettings privacy);
-        Task<Response<AuthResponse>> RegisterAsync(RegisterRequest request);
-        Task<Response<bool>> RequestPasswordResetAsync(string email);
-        Task<Response<bool>> ResetPasswordAsync(string token, string newPassword);
-        Task<Response<string>> DownloadDataAsync();
-        Task<Response<bool>> DeleteAccountAsync();
+        Task<IResponse<UserProfile>> GetProfileAsync();
+        Task<IResponse<UserProfile>> UpdateProfileAsync(UserProfile profile);
+        Task<IResponse<AccountSettings>> GetSettingsAsync();
+        Task<IResponse<AccountSettings>> UpdateSettingsAsync(AccountSettings settings);
+        Task<IResponse<PrivacySettings>> GetPrivacyAsync();
+        Task<IResponse<PrivacySettings>> UpdatePrivacyAsync(PrivacySettings privacy);
+        Task<IResponse<AuthResponse>> RegisterAsync(RegisterRequest request);
+        Task<IResponse<bool>> RequestPasswordResetAsync(string email);
+        Task<IResponse<bool>> ResetPasswordAsync(string token, string newPassword);
+        Task<IResponse<string>> DownloadDataAsync();
+        Task<IResponse<bool>> DeleteAccountAsync();
     }
 }
 
@@ -7956,16 +7852,16 @@ namespace Auth.UI.src.Manager.Service.Interface
 {
     public interface IAuthManager
     {
-        Task<Response<AuthResponse>> RegisterAsync(RegisterRequest request);
-        Task<Response<AuthResponse>> LoginAsync(LoginRequest request);
-        Task<Response<AuthResponse>> GetCurrentUserAsync();
-        Task<Response<AuthResponse>> GetUserByEmailAsync(string email);
-        Task<Response<Fido2ChallengeResponse>> RequestAttestationOptionsAsync(Fido2AttestationOptionsRequest request);
-        Task<Response<Fido2VerifyResponse>> RegisterCredentialAsync(Fido2RegisterRequest request);
-        Task<Response<Fido2ChallengeResponse>> CreateFido2ChallengeAsync(int userId, string origin);
-        Task<Response<Fido2VerifyResponse>> VerifyFido2AssertionAsync(Fido2VerifyRequest request);
-        Task<Response<OtpResponse>> RequestOtpAsync(OtpRequest request);
-        Task<Response<AuthResponse>> VerifyOtpAsync(OtpVerifyRequest request);
+        Task<IResponse<AuthResponse>> RegisterAsync(RegisterRequest request);
+        Task<IResponse<AuthResponse>> LoginAsync(LoginRequest request);
+        Task<IResponse<AuthResponse>> GetCurrentUserAsync();
+        Task<IResponse<AuthResponse>> GetUserByEmailAsync(string email);
+        Task<IResponse<Fido2ChallengeResponse>> RequestAttestationOptionsAsync(Fido2AttestationOptionsRequest request);
+        Task<IResponse<Fido2VerifyResponse>> RegisterCredentialAsync(Fido2RegisterRequest request);
+        Task<IResponse<Fido2ChallengeResponse>> CreateFido2ChallengeAsync(int userId, string origin);
+        Task<IResponse<Fido2VerifyResponse>> VerifyFido2AssertionAsync(Fido2VerifyRequest request);
+        Task<IResponse<OtpResponse>> RequestOtpAsync(OtpRequest request);
+        Task<IResponse<AuthResponse>> VerifyOtpAsync(OtpVerifyRequest request);
     }
 }
 
@@ -7980,16 +7876,16 @@ namespace Auth.UI.src.Manager.Service.Interface
 {
     public interface ISecurityManager
     {
-        Task<Response<SecuritySettings>> GetSecurityAsync();
-        Task<Response<SecuritySettings>> UpdateSecurityAsync(SecuritySettings settings);
-        Task<Response<bool>> ChangePasswordAsync(ChangePasswordRequest request);
-        Task<Response<SecuritySettings>> EnableTwoFactorAsync();
-        Task<Response<SecuritySettings>> DisableTwoFactorAsync();
-        Task<Response<List<SessionInfo>>> GetSessionsAsync();
-        Task<Response<bool>> RevokeSessionAsync(string id);
-        Task<Response<bool>> RevokeAllSessionsAsync(bool includingCurrent);
-        Task<Response<List<ActivityLogEntry>>> GetActivityAsync(ActivityQuery query);
-        Task<Response<bool>> VerifyDeviceAsync(VerifyDeviceRequest request);
+        Task<IResponse<SecuritySettings>> GetSecurityAsync();
+        Task<IResponse<SecuritySettings>> UpdateSecurityAsync(SecuritySettings settings);
+        Task<IResponse<bool>> ChangePasswordAsync(ChangePasswordRequest request);
+        Task<IResponse<SecuritySettings>> EnableTwoFactorAsync();
+        Task<IResponse<SecuritySettings>> DisableTwoFactorAsync();
+        Task<IResponse<List<SessionInfo>>> GetSessionsAsync();
+        Task<IResponse<bool>> RevokeSessionAsync(string id);
+        Task<IResponse<bool>> RevokeAllSessionsAsync(bool includingCurrent);
+        Task<IResponse<List<ActivityLogEntry>>> GetActivityAsync(ActivityQuery query);
+        Task<IResponse<bool>> VerifyDeviceAsync(VerifyDeviceRequest request);
     }
 }
 
@@ -8273,53 +8169,70 @@ namespace Auth.UI.src.Model.Security
 
 
 --------------------------------------------------------------------------------
-FILE: src\Shared\Http\GenericHttpRepository.cs
+FILE: src\Shared\ToastService.cs
 --------------------------------------------------------------------------------
-using Auth.UI.src.Common;
-using Auth.UI.src.Shared.Http;
+namespace Auth.UI.src.Shared
+{
+    public enum ToastType { Success, Warning, Danger, Info }
 
+    public class Toast
+    {
+        public Guid Id { get; init; } = Guid.NewGuid();
+        public string Message { get; init; } = string.Empty;
+        public ToastType Type { get; init; } = ToastType.Warning;
+        public int DurationMs { get; init; } = 4000;
+
+        public Toast(ToastType type, string message)
+        {
+            Type = type;
+            Message = message;
+        }
+    }
+
+    public class ToastService
+    {
+        public void Notify(Toast toast)
+        {
+        }
+    }
+}
+
+
+--------------------------------------------------------------------------------
+FILE: src\Shared\Http\AccountRoute.cs
+--------------------------------------------------------------------------------
 namespace Auth.UI.src.Shared.Http
 {
-    public class GenericHttpRepository<T> where T : class
+    public static class AccountRoute
     {
-        private readonly IHttpService _httpService;
+        public const string Profile = "/api/account/profile";
+        public const string Settings = "/api/account/settings";
+        public const string Privacy = "/api/account/privacy";
+        public const string PasswordReset = "/api/account/password-reset";
+        public const string PasswordResetConfirm = "/api/account/password-reset/confirm";
+        public const string DataExport = "/api/account/data-export";
+        public const string Delete = "/api/account";
+    }
+}
 
-        public GenericHttpRepository(IHttpService httpService)
-        {
-            _httpService = httpService;
-        }
 
-        public async Task<Response<T>> QuerySingleAsync(string endpoint, object request, string? bearerToken = null)
-        {
-            var result = await _httpService.PostAsync<object, Response<T>>(endpoint, request, bearerToken);
-            if (!result.Succeeded)
-            {
-                return Response<T>.Failure(result.Error ?? "Request failed or returned no data");
-            }
-
-            if (result.Data is null)
-            {
-                return Response<T>.Failure(result.Error ?? "Request failed or returned no data");
-            }
-
-            return result.Data;
-        }
-
-        public async Task<Response<T>> GetSingleAsync(string endpoint, string? bearerToken = null)
-        {
-            var result = await _httpService.GetAsync<T>(endpoint, bearerToken);
-            if (!result.Succeeded)
-            {
-                return Response<T>.Failure(result.Error ?? "Request failed or returned no data");
-            }
-
-            if (result.Data is null)
-            {
-                return Response<T>.Failure(result.Error ?? "Request failed or returned no data");
-            }
-
-            return Response<T>.Success(result.Data);
-        }
+--------------------------------------------------------------------------------
+FILE: src\Shared\Http\AuthRoute.cs
+--------------------------------------------------------------------------------
+namespace Auth.UI.src.Shared.Http
+{
+    public static class AuthRoute
+    {
+        public const string Login = "/api/auth/login";
+        public const string Register = "/api/auth/register";
+        public const string Me = "/api/auth/me";
+        public const string Lookup = "/api/auth/lookup";
+        public const string Fido2Options = "/api/auth/fido2/options/register";
+        public const string Fido2Register = "/api/auth/fido2/register";
+        public const string Fido2Challenge = "/api/auth/fido2/challenge";
+        public const string Fido2Verify = "/api/auth/fido2/verify";
+        public const string OtpRequest = "/api/auth/otp/request";
+        public const string OtpVerify = "/api/auth/otp/verify";
     }
 }
 
@@ -8327,137 +8240,212 @@ namespace Auth.UI.src.Shared.Http
 --------------------------------------------------------------------------------
 FILE: src\Shared\Http\HttpService.cs
 --------------------------------------------------------------------------------
-using System.Collections.Generic;
+using Auth.UI.src.Common;
+using Auth.UI.src.Shared;
+using Auth.UI.src.Utility;
+using Microsoft.AspNetCore.Components;
 using System.Net.Http.Headers;
-using System.Net.Http.Json;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Auth.UI.src.Shared.Http
 {
-    public class HttpService : IHttpService
+    public class HttpServices : IHttpServices
     {
-        private readonly HttpClient _httpClient;
-
-        public HttpService(HttpClient httpClient)
+        private readonly HttpClient _httpClient = new();
+        private readonly IHttpClientFactory _httpClientFactory;
+        private readonly ToastService _toastService;
+        private readonly ITokenHelper _tokenHelper;
+        private readonly NavigationManager _navigationManager;
+        public HttpServices(IHttpClientFactory httpClientFactory, ToastService toastService, ITokenHelper tokenHelper, NavigationManager navigationManager)
         {
-            _httpClient = httpClient;
+            _httpClientFactory = httpClientFactory;
+            _httpClient = _httpClientFactory.CreateClient("ApiGateway");
+            _httpClient.Timeout= TimeSpan.FromMinutes(20);
+            _toastService = toastService;
+            _tokenHelper = tokenHelper;
+            _navigationManager = navigationManager;
         }
 
-        public async Task<HttpResult<T>> GetAsync<T>(string url, string? bearerToken = null)
+        public async Task<IResponse<T>> GetAsync<T>(string url)
         {
-            using var request = new HttpRequestMessage(HttpMethod.Get, url);
-            ApplyBearer(request, bearerToken);
-
-            using var response = await _httpClient.SendAsync(request);
-            if (!response.IsSuccessStatusCode)
-            {
-                return new HttpResult<T> { Succeeded = false, StatusCode = (int)response.StatusCode, Error = await ReadErrorAsync(response) };
-            }
-
-            var data = await response.Content.ReadFromJsonAsync<T>();
-            return new HttpResult<T> { Succeeded = true, StatusCode = (int)response.StatusCode, Data = data };
-        }
-
-        public async Task<HttpResult<TResponse>> PostAsync<TRequest, TResponse>(string url, TRequest body, string? bearerToken = null)
-        {
-            using var request = new HttpRequestMessage(HttpMethod.Post, url);
-            ApplyBearer(request, bearerToken);
-
-            if (body is not null)
-            {
-                request.Content = JsonContent.Create(body);
-            }
-
-            using var response = await _httpClient.SendAsync(request);
-            if (!response.IsSuccessStatusCode)
-            {
-                return new HttpResult<TResponse> { Succeeded = false, StatusCode = (int)response.StatusCode, Error = await ReadErrorAsync(response) };
-            }
-
-            var data = await response.Content.ReadFromJsonAsync<TResponse>();
-            return new HttpResult<TResponse> { Succeeded = true, StatusCode = (int)response.StatusCode, Data = data };
-        }
-
-        private static async Task<string> ReadErrorAsync(HttpResponseMessage response)
-        {
-            var body = await response.Content.ReadAsStringAsync();
-            if (string.IsNullOrWhiteSpace(body))
-            {
-                return $"Request failed with status {(int)response.StatusCode}.";
-            }
-
             try
             {
-                using var doc = JsonDocument.Parse(body);
-                var root = doc.RootElement;
-
-                if (root.TryGetProperty("errors", out var errorsEl) && errorsEl.ValueKind == JsonValueKind.Object)
+                await SetHeader();
+                var response = await _httpClient.GetAsync(url);
+                var responseAsString = await response.Content.ReadAsStringAsync();
+                if (!response.IsSuccessStatusCode)
                 {
-                    var messages = new List<string>();
-                    foreach (var prop in errorsEl.EnumerateObject())
+                    if (((int)response.StatusCode) == 401)
                     {
-                        if (prop.Value.ValueKind == JsonValueKind.Array)
-                        {
-                            foreach (var item in prop.Value.EnumerateArray())
-                            {
-                                if (item.ValueKind == JsonValueKind.String)
-                                {
-                                    messages.Add(item.GetString()!);
-                                }
-                            }
-                        }
+                        _navigationManager.NavigateTo("/login", true);
                     }
-
-                    if (messages.Count > 0)
+                    else
                     {
-                        return string.Join(" ", messages);
+                        HandleErrorResponse(response);
                     }
                 }
-
-                foreach (var key in new[] { "message", "Message", "title", "Title", "detail", "Detail" })
+                var responseObject = JsonSerializer.Deserialize<Response<T>>(responseAsString, new JsonSerializerOptions
                 {
-                    if (root.TryGetProperty(key, out var el) && el.ValueKind == JsonValueKind.String)
-                    {
-                        return el.GetString()!;
-                    }
-                }
+                    PropertyNameCaseInsensitive = true,
+                    ReferenceHandler = ReferenceHandler.Preserve
+                });
+                return responseObject!;
             }
-            catch
+            catch (Exception ex)
             {
-                // Fall through to returning the raw body.
+                _toastService.Notify(new(ToastType.Warning, ex.Message));
+                throw new ApplicationException(ex.Message);
             }
-
-            return body.Length > 300 ? body[..300] : body;
+        }
+        public async Task<IResponse<T>> PostAsJsonAsync<T>(string url, object Data)
+        {
+            try
+            {
+                await SetHeader();
+                var response = await _httpClient.PostAsJsonAsync(url, Data);
+                var responseAsString = await response.Content.ReadAsStringAsync();
+                if (!response.IsSuccessStatusCode)
+                {
+                    if (((int)response.StatusCode) == 401)
+                    {
+                        _navigationManager.NavigateTo("/login", true);
+                    }
+                    else
+                    {
+                        HandleErrorResponse(response);
+                    }
+                }
+                var responseObject = JsonSerializer.Deserialize<Response<T>>(responseAsString, new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true,
+                    ReferenceHandler = ReferenceHandler.Preserve
+                });
+                return responseObject!;
+            }
+            catch (Exception ex)
+            {
+                _toastService.Notify(new(ToastType.Warning, ex.Message));
+                throw new ApplicationException(ex.Message);
+            }
+        }
+        public async Task<IResponse<T>> DeleteAsync<T>(string url)
+        {
+            try
+            {
+                await SetHeader();
+                var response = await _httpClient.DeleteAsync(url);
+                var responseAsString = await response.Content.ReadAsStringAsync();
+                if (!response.IsSuccessStatusCode)
+                {
+                    if (((int)response.StatusCode) == 401)
+                    {
+                        _navigationManager.NavigateTo("/login", true);
+                    }
+                    else
+                    {
+                        HandleErrorResponse(response);
+                    }
+                }
+                var responseObject = JsonSerializer.Deserialize<Response<T>>(responseAsString, new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true,
+                    ReferenceHandler = ReferenceHandler.Preserve
+                });
+                return responseObject!;
+            }
+            catch (Exception ex)
+            {
+                _toastService.Notify(new(ToastType.Warning, ex.Message));
+                throw new ApplicationException(ex.Message);
+            }
         }
 
-        private static void ApplyBearer(HttpRequestMessage request, string? bearerToken)
+        private void HandleErrorResponse(HttpResponseMessage response)
         {
-            if (!string.IsNullOrWhiteSpace(bearerToken))
+            string message = response.StatusCode switch
             {
-                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", bearerToken);
-            }
+                System.Net.HttpStatusCode.BadRequest => "Bad request. Please check your input and try again.",
+                System.Net.HttpStatusCode.Unauthorized => "Unauthorized. Please check your credentials.",
+                System.Net.HttpStatusCode.Forbidden => "Forbidden. You do not have permission to access this resource.",
+                System.Net.HttpStatusCode.NotFound => "Resource not found. Please check the URL and try again.",
+                System.Net.HttpStatusCode.InternalServerError => "Internal server error. Please try again later.",
+                _ => "An error occurred. Please try again."
+            };
+            throw new ApplicationException(message);
+        }
+        public async Task SetHeader()
+        {
+            var token = (await _tokenHelper.GetToken()).ToString();
+            _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
         }
     }
 }
 
 
 --------------------------------------------------------------------------------
-FILE: src\Shared\Http\IHttpService.cs
+FILE: src\Shared\Http\IHttpServices.cs
+--------------------------------------------------------------------------------
+using Auth.UI.src.Common;
+
+namespace Auth.UI.src.Shared.Http
+{
+    public interface IHttpServices
+    {
+        Task<IResponse<T>> GetAsync<T>(string url);
+        Task<IResponse<T>> PostAsJsonAsync<T>(string url, object Data);
+        Task<IResponse<T>> DeleteAsync<T>(string url);
+    }
+}
+
+
+--------------------------------------------------------------------------------
+FILE: src\Shared\Http\SecurityRoute.cs
 --------------------------------------------------------------------------------
 namespace Auth.UI.src.Shared.Http
 {
-    public class HttpResult<T>
+    public static class SecurityRoute
     {
-        public T? Data { get; init; }
-        public bool Succeeded { get; init; }
-        public string? Error { get; init; }
-        public int StatusCode { get; init; }
+        public const string Settings = "/api/security/settings";
+        public const string ChangePassword = "/api/security/change-password";
+        public const string Enable2FA = "/api/security/2fa/enable";
+        public const string Disable2FA = "/api/security/2fa/disable";
+        public const string Activity = "/api/security/activity";
+        public const string VerifyDevice = "/api/security/device/verify";
+        public const string Devices = "/api/auth/devices";
+        public const string DevicesRevokeAll = "/api/auth/devices/logout-all";
     }
+}
 
-    public interface IHttpService
+
+--------------------------------------------------------------------------------
+FILE: src\Utility\ITokenHelper.cs
+--------------------------------------------------------------------------------
+namespace Auth.UI.src.Utility
+{
+    public interface ITokenHelper
     {
-        Task<HttpResult<T>> GetAsync<T>(string url, string? bearerToken = null);
-        Task<HttpResult<TResponse>> PostAsync<TRequest, TResponse>(string url, TRequest body, string? bearerToken = null);
+        Task<object> GetToken();
+    }
+}
+
+
+--------------------------------------------------------------------------------
+FILE: src\Utility\TokenHelper.cs
+--------------------------------------------------------------------------------
+namespace Auth.UI.src.Utility
+{
+    public class TokenHelper : ITokenHelper
+    {
+        private readonly ITokenStore _tokenStore;
+        public TokenHelper(ITokenStore tokenStore)
+        {
+            _tokenStore = tokenStore;
+        }
+        public Task<object> GetToken()
+        {
+            return Task.FromResult<object>(_tokenStore.GetToken() ?? string.Empty);
+        }
     }
 }
 

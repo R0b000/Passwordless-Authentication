@@ -1,15 +1,13 @@
-using Auth.UI.Components.UI.Menu;
-using Auth.UI.src.Manager.Controller;
-using Auth.UI.src.Model.Account;
-using Auth.UI.src.Utility;
+using Auth.UI.Shared.Components.Menu;
+using Auth.UI.Shared.Model.Account;
+using Auth.UI.Shared.Utility;
 using Microsoft.AspNetCore.Components;
-using System.Collections.Generic;
 
 namespace Auth.UI.Components.Layout
 {
     public partial class AccountLayout : LayoutComponentBase
     {
-        [Inject] private AccountController AccountController { get; set; } = default!;
+        [Inject] private IAccountManager AccountController { get; set; } = default!;
         [Inject] private NavigationManager Navigation { get; set; } = default!;
         [Inject] private ITokenStore TokenStore { get; set; } = default!;
 

@@ -1,5 +1,5 @@
-using Auth.UI.src.Manager.Controller;
-using Auth.UI.src.Model.Auth;
+using Auth.UI.Shared.Manager.Controller;
+using Auth.UI.Shared.Model.Auth;
 using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
 using System.Text.Json.Serialization;

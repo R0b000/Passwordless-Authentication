@@ -1,5 +1,5 @@
-using Auth.UI.src.Manager.Controller;
-using Auth.UI.src.Model.Auth;
+using Auth.UI.Shared.Manager.Controller;
+using Auth.UI.Shared.Model.Auth;
 using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
 
@@ -153,6 +153,60 @@ namespace Auth.UI.Components.Pages.Shared.Passkey
 
         protected void HideOtp() => OtpRequested = false;
 
+        //protected async Task StartAssertionAsync(string? authenticatorAttachment = null)
+        //{
+        //    if (ResolvedUserId <= 0)
+        //    {
+        //        State = PasskeyState.Error;
+        //        StatusDetail = "Account resolution required to continue. Please go back and enter your email.";
+        //        return;
+        //    }
+
+        //    State = PasskeyState.Requesting;
+        //    StatusDetail = "Contacting the server to prepare your passkey challenge…";
+
+        //    var origin = new Uri(NavigationManager.BaseUri).GetLeftPart(UriPartial.Authority);
+        //    var result = await AuthController.CreateFido2ChallengeAsync(ResolvedUserId, origin);
+        //    if (!result.Succeeded || result.Data is null)
+        //    {
+        //        State = PasskeyState.Error;
+        //        StatusDetail = result.Message ?? "Unable to start passkey sign-in. Please try again.";
+        //        return;
+        //    }
+
+        //    AssertionOptions = result.Data.PublicKeyCredentialCreationOptions;
+        //    VerifyModel = new Fido2VerifyRequest { UserId = ResolvedUserId };
+
+        //    State = PasskeyState.Awaiting;
+        //    StatusDetail = authenticatorAttachment == "cross-platform"
+        //        ? "Insert your security key and tap it when it blinks."
+        //        : "Use your fingerprint, face, or screen lock on this device.";
+
+        //    try
+        //    {
+        //        var cred = await _webAuthnModule!.InvokeAsync<WebAuthnAssertion>(
+        //            "getCredential",
+        //            result.Data.PublicKeyCredentialCreationOptions,
+        //            result.Data.Challenge,
+        //            new { authenticatorAttachment = authenticatorAttachment, userVerification = "required" });
+
+        //        VerifyModel.Challenge = cred.challenge;
+        //        VerifyModel.CredentialId = cred.id;
+        //        VerifyModel.ClientDataJson = cred.response.clientDataJSON;
+        //        VerifyModel.AuthenticatorData = cred.response.authenticatorData;
+        //        VerifyModel.Signature = cred.response.signature;
+        //        VerifyModel.UserId = ResolvedUserId;
+        //        VerifyModel.Origin = new Uri(NavigationManager.BaseUri).GetLeftPart(UriPartial.Authority);
+
+        //        await VerifyAsync();
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        State = PasskeyState.Error;
+        //        StatusDetail = await MapErrorAsync(ex);
+        //    }
+        //}
+
         protected async Task StartAssertionAsync(string? authenticatorAttachment = null)
         {
             if (ResolvedUserId <= 0)
@@ -164,26 +218,31 @@ namespace Auth.UI.Components.Pages.Shared.Passkey
 
             State = PasskeyState.Requesting;
             StatusDetail = "Contacting the server to prepare your passkey challenge…";
-
             var origin = new Uri(NavigationManager.BaseUri).GetLeftPart(UriPartial.Authority);
-            var result = await AuthController.CreateFido2ChallengeAsync(ResolvedUserId, origin);
-            if (!result.Succeeded || result.Data is null)
-            {
-                State = PasskeyState.Error;
-                StatusDetail = result.Message ?? "Unable to start passkey sign-in. Please try again.";
-                return;
-            }
-
-            AssertionOptions = result.Data.PublicKeyCredentialCreationOptions;
-            VerifyModel = new Fido2VerifyRequest { UserId = ResolvedUserId };
-
-            State = PasskeyState.Awaiting;
-            StatusDetail = authenticatorAttachment == "cross-platform"
-                ? "Insert your security key and tap it when it blinks."
-                : "Use your fingerprint, face, or screen lock on this device.";
 
             try
             {
+                var result = await AuthController.CreateFido2ChallengeAsync(ResolvedUserId, origin);
+
+                if (!result.Succeeded || result.Data is null)
+                {
+                    State = PasskeyState.Error;
+                    // FIX: Show the REAL error from the server
+                    var errorMessage = !string.IsNullOrWhiteSpace(result.Message)
+                        ? result.Message
+                        : "Unable to start passkey sign-in. Please try again.";
+                    StatusDetail = errorMessage;
+                    Console.WriteLine($"[FIDO2] CreateChallenge failed: {errorMessage}");
+                    return;
+                }
+
+                AssertionOptions = result.Data.PublicKeyCredentialCreationOptions;
+                VerifyModel = new Fido2VerifyRequest { UserId = ResolvedUserId };
+                State = PasskeyState.Awaiting;
+                StatusDetail = authenticatorAttachment == "cross-platform"
+                    ? "Insert your security key and tap it when it blinks."
+                    : "Use your fingerprint, face, or screen lock on this device.";
+
                 var cred = await _webAuthnModule!.InvokeAsync<WebAuthnAssertion>(
                     "getCredential",
                     result.Data.PublicKeyCredentialCreationOptions,
@@ -196,7 +255,7 @@ namespace Auth.UI.Components.Pages.Shared.Passkey
                 VerifyModel.AuthenticatorData = cred.response.authenticatorData;
                 VerifyModel.Signature = cred.response.signature;
                 VerifyModel.UserId = ResolvedUserId;
-                VerifyModel.Origin = new Uri(NavigationManager.BaseUri).GetLeftPart(UriPartial.Authority);
+                VerifyModel.Origin = origin;
 
                 await VerifyAsync();
             }
@@ -204,6 +263,7 @@ namespace Auth.UI.Components.Pages.Shared.Passkey
             {
                 State = PasskeyState.Error;
                 StatusDetail = await MapErrorAsync(ex);
+                Console.WriteLine($"[FIDO2] Exception: {ex}");
             }
         }
 

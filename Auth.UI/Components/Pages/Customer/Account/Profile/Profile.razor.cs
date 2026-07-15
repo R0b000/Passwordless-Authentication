@@ -1,7 +1,7 @@
-using Auth.UI.Components.UI.Toaster;
-using Auth.UI.src.Manager.Controller;
-using Auth.UI.src.Model.Account;
-using Auth.UI.src.Utility;
+using Auth.UI.Shared.Components.Toaster;
+using Auth.UI.Shared.Manager.Controller;
+using Auth.UI.Shared.Model.Account;
+using Auth.UI.Shared.Utility;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Forms;
 
