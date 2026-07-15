@@ -1,133 +1,141 @@
 using Auth.UI.src.Common;
+using Auth.UI.src.Shared;
 using Auth.UI.src.Utility;
+using Microsoft.AspNetCore.Components;
 using System.Net.Http.Headers;
-using System.Net.Http.Json;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Auth.UI.src.Shared.Http
 {
-    public class HttpService : IHttpService
+    public class HttpServices : IHttpServices
     {
-        private readonly HttpClient _httpClient;
-        private readonly ITokenStore _tokenStore;
-        private readonly JsonSerializerOptions _jsonOptions = new() { PropertyNameCaseInsensitive = true };
-
-        public HttpService(HttpClient httpClient, ITokenStore tokenStore)
+        private readonly HttpClient _httpClient = new();
+        private readonly IHttpClientFactory _httpClientFactory;
+        private readonly ToastService _toastService;
+        private readonly ITokenHelper _tokenHelper;
+        private readonly NavigationManager _navigationManager;
+        public HttpServices(IHttpClientFactory httpClientFactory, ToastService toastService, ITokenHelper tokenHelper, NavigationManager navigationManager)
         {
-            _httpClient = httpClient;
-            _tokenStore = tokenStore;
+            _httpClientFactory = httpClientFactory;
+            _httpClient = _httpClientFactory.CreateClient("ApiGateway");
+            _httpClient.Timeout= TimeSpan.FromMinutes(20);
+            _toastService = toastService;
+            _tokenHelper = tokenHelper;
+            _navigationManager = navigationManager;
         }
 
-        public async Task<Response<T>> GetAsync<T>(string url)
+        public async Task<IResponse<T>> GetAsync<T>(string url)
         {
-            using var request = new HttpRequestMessage(HttpMethod.Get, url);
-            ApplyBearer(request);
-            return await SendAndParseAsync<T>(request);
-        }
-
-        public async Task<Response<TResponse>> PostAsync<TRequest, TResponse>(string url, TRequest body)
-        {
-            using var request = new HttpRequestMessage(HttpMethod.Post, url);
-            ApplyBearer(request);
-
-            if (body is not null)
-            {
-                request.Content = JsonContent.Create(body, options: _jsonOptions);
-            }
-
-            return await SendAndParseAsync<TResponse>(request);
-        }
-
-        public async Task<Response<T>> DeleteAsync<T>(string url)
-        {
-            using var request = new HttpRequestMessage(HttpMethod.Delete, url);
-            ApplyBearer(request);
-            return await SendAndParseAsync<T>(request);
-        }
-
-        private async Task<Response<T>> SendAndParseAsync<T>(HttpRequestMessage request)
-        {
-            using var response = await _httpClient.SendAsync(request);
-            var content = await response.Content.ReadAsStringAsync();
-
-            if (!response.IsSuccessStatusCode)
-            {
-                return Response<T>.Failure(ParseErrorMessage(content) ?? $"HTTP {(int)response.StatusCode}");
-            }
-
-            if (string.IsNullOrWhiteSpace(content))
-            {
-                return Response<T>.Failure("Empty server response");
-            }
-
             try
             {
-                using var doc = JsonDocument.Parse(content);
-                var root = doc.RootElement;
-
-                // The API consistently returns a Response<T> envelope ({ succeeded, message, data })
-                // for wrapped results and action results. Raw domain models (and JSON arrays)
-                // are returned unwrapped. Detect the envelope by the presence of a "succeeded"
-                // or "data" property.
-                var isEnvelope = root.ValueKind == JsonValueKind.Object &&
-                                 (root.TryGetProperty("succeeded", out _) || root.TryGetProperty("data", out _));
-
-                if (isEnvelope)
+                await SetHeader();
+                var response = await _httpClient.GetAsync(url);
+                var responseAsString = await response.Content.ReadAsStringAsync();
+                if (!response.IsSuccessStatusCode)
                 {
-                    var wrapped = JsonSerializer.Deserialize<Response<T>>(content, _jsonOptions);
-                    if (wrapped is not null)
+                    if (((int)response.StatusCode) == 401)
                     {
-                        return wrapped;
+                        _navigationManager.NavigateTo("/login", true);
+                    }
+                    else
+                    {
+                        HandleErrorResponse(response);
                     }
                 }
-
-                // Unwrapped payload: the body IS the T instance.
-                var raw = JsonSerializer.Deserialize<T>(content, _jsonOptions);
-                if (raw is not null)
+                var responseObject = JsonSerializer.Deserialize<Response<T>>(responseAsString, new JsonSerializerOptions
                 {
-                    var message = root.ValueKind == JsonValueKind.Object && root.TryGetProperty("message", out var messageEl)
-                        ? messageEl.GetString()
-                        : null;
-                    return Response<T>.Success(raw, message);
-                }
-
-                return Response<T>.Failure("Failed to parse server response");
+                    PropertyNameCaseInsensitive = true,
+                    ReferenceHandler = ReferenceHandler.Preserve
+                });
+                return responseObject!;
             }
-            catch
+            catch (Exception ex)
             {
-                return Response<T>.Failure("Failed to parse server response");
+                _toastService.Notify(new(ToastType.Warning, ex.Message));
+                throw new ApplicationException(ex.Message);
             }
         }
-
-        private static string? ParseErrorMessage(string content)
+        public async Task<IResponse<T>> PostAsJsonAsync<T>(string url, object Data)
         {
-            if (string.IsNullOrWhiteSpace(content)) return null;
             try
             {
-                using var doc = JsonDocument.Parse(content);
-                if (doc.RootElement.ValueKind == JsonValueKind.Object)
+                await SetHeader();
+                var response = await _httpClient.PostAsJsonAsync(url, Data);
+                var responseAsString = await response.Content.ReadAsStringAsync();
+                if (!response.IsSuccessStatusCode)
                 {
-                    foreach (var key in new[] { "message", "title", "detail" })
+                    if (((int)response.StatusCode) == 401)
                     {
-                        if (doc.RootElement.TryGetProperty(key, out var el) && el.ValueKind == JsonValueKind.String)
-                        {
-                            return el.GetString();
-                        }
+                        _navigationManager.NavigateTo("/login", true);
+                    }
+                    else
+                    {
+                        HandleErrorResponse(response);
                     }
                 }
+                var responseObject = JsonSerializer.Deserialize<Response<T>>(responseAsString, new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true,
+                    ReferenceHandler = ReferenceHandler.Preserve
+                });
+                return responseObject!;
             }
-            catch { }
-
-            return content.Length > 200 ? content[..200] : content;
+            catch (Exception ex)
+            {
+                _toastService.Notify(new(ToastType.Warning, ex.Message));
+                throw new ApplicationException(ex.Message);
+            }
+        }
+        public async Task<IResponse<T>> DeleteAsync<T>(string url)
+        {
+            try
+            {
+                await SetHeader();
+                var response = await _httpClient.DeleteAsync(url);
+                var responseAsString = await response.Content.ReadAsStringAsync();
+                if (!response.IsSuccessStatusCode)
+                {
+                    if (((int)response.StatusCode) == 401)
+                    {
+                        _navigationManager.NavigateTo("/login", true);
+                    }
+                    else
+                    {
+                        HandleErrorResponse(response);
+                    }
+                }
+                var responseObject = JsonSerializer.Deserialize<Response<T>>(responseAsString, new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true,
+                    ReferenceHandler = ReferenceHandler.Preserve
+                });
+                return responseObject!;
+            }
+            catch (Exception ex)
+            {
+                _toastService.Notify(new(ToastType.Warning, ex.Message));
+                throw new ApplicationException(ex.Message);
+            }
         }
 
-        private void ApplyBearer(HttpRequestMessage request)
+        private void HandleErrorResponse(HttpResponseMessage response)
         {
-            var token = _tokenStore.GetToken();
-            if (!string.IsNullOrWhiteSpace(token))
+            string message = response.StatusCode switch
             {
-                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-            }
+                System.Net.HttpStatusCode.BadRequest => "Bad request. Please check your input and try again.",
+                System.Net.HttpStatusCode.Unauthorized => "Unauthorized. Please check your credentials.",
+                System.Net.HttpStatusCode.Forbidden => "Forbidden. You do not have permission to access this resource.",
+                System.Net.HttpStatusCode.NotFound => "Resource not found. Please check the URL and try again.",
+                System.Net.HttpStatusCode.InternalServerError => "Internal server error. Please try again later.",
+                _ => "An error occurred. Please try again."
+            };
+            throw new ApplicationException(message);
+        }
+        public async Task SetHeader()
+        {
+            var token = (await _tokenHelper.GetToken()).ToString();
+            _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
         }
     }
 }

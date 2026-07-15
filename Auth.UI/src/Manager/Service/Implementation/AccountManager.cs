@@ -10,48 +10,48 @@ namespace Auth.UI.src.Manager.Service.Implementation
 {
     public class AccountManager : IAccountManager
     {
-        private readonly IHttpService _httpService;
+        private readonly IHttpServices _httpService;
         private readonly ITokenStore _tokenStore;
 
-        public AccountManager(IHttpService httpService, ITokenStore tokenStore)
+        public AccountManager(IHttpServices httpService, ITokenStore tokenStore)
         {
             _httpService = httpService;
             _tokenStore = tokenStore;
         }
 
-        public async Task<Response<UserProfile>> GetProfileAsync()
+        public async Task<IResponse<UserProfile>> GetProfileAsync()
         {
             return await _httpService.GetAsync<UserProfile>(AccountRoute.Profile);
         }
 
-        public async Task<Response<UserProfile>> UpdateProfileAsync(UserProfile profile)
+        public async Task<IResponse<UserProfile>> UpdateProfileAsync(UserProfile profile)
         {
-            return await _httpService.PostAsync<UserProfile, UserProfile>(AccountRoute.Profile, profile);
+            return await _httpService.PostAsJsonAsync<UserProfile>(AccountRoute.Profile, profile);
         }
 
-        public async Task<Response<AccountSettings>> GetSettingsAsync()
+        public async Task<IResponse<AccountSettings>> GetSettingsAsync()
         {
             return await _httpService.GetAsync<AccountSettings>(AccountRoute.Settings);
         }
 
-        public async Task<Response<AccountSettings>> UpdateSettingsAsync(AccountSettings settings)
+        public async Task<IResponse<AccountSettings>> UpdateSettingsAsync(AccountSettings settings)
         {
-            return await _httpService.PostAsync<AccountSettings, AccountSettings>(AccountRoute.Settings, settings);
+            return await _httpService.PostAsJsonAsync<AccountSettings>(AccountRoute.Settings, settings);
         }
 
-        public async Task<Response<PrivacySettings>> GetPrivacyAsync()
+        public async Task<IResponse<PrivacySettings>> GetPrivacyAsync()
         {
             return await _httpService.GetAsync<PrivacySettings>(AccountRoute.Privacy);
         }
 
-        public async Task<Response<PrivacySettings>> UpdatePrivacyAsync(PrivacySettings privacy)
+        public async Task<IResponse<PrivacySettings>> UpdatePrivacyAsync(PrivacySettings privacy)
         {
-            return await _httpService.PostAsync<PrivacySettings, PrivacySettings>(AccountRoute.Privacy, privacy);
+            return await _httpService.PostAsJsonAsync<PrivacySettings>(AccountRoute.Privacy, privacy);
         }
 
-        public async Task<Response<AuthResponse>> RegisterAsync(RegisterRequest request)
+        public async Task<IResponse<AuthResponse>> RegisterAsync(RegisterRequest request)
         {
-            var result = await _httpService.PostAsync<RegisterRequest, AuthResponse>(AuthRoute.Register, request);
+            var result = await _httpService.PostAsJsonAsync<AuthResponse>(AuthRoute.Register, request);
             if (result.Succeeded && result.Data?.Token is not null)
             {
                 _tokenStore.SetToken(result.Data.Token);
@@ -60,20 +60,20 @@ namespace Auth.UI.src.Manager.Service.Implementation
             return result;
         }
 
-        public async Task<Response<bool>> RequestPasswordResetAsync(string email)
+        public async Task<IResponse<bool>> RequestPasswordResetAsync(string email)
         {
-            var result = await _httpService.PostAsync<object, ActionResponse>(AccountRoute.PasswordReset, new { email });
+            var result = await _httpService.PostAsJsonAsync<ActionResponse>(AccountRoute.PasswordReset, new { email });
             return Response<bool>.Success(result.Succeeded, result.Message ?? "Request sent");
         }
 
-        public async Task<Response<bool>> ResetPasswordAsync(string token, string newPassword)
+        public async Task<IResponse<bool>> ResetPasswordAsync(string token, string newPassword)
         {
-            var result = await _httpService.PostAsync<object, ActionResponse>(
+            var result = await _httpService.PostAsJsonAsync<ActionResponse>(
                 AccountRoute.PasswordResetConfirm, new { token, newPassword });
             return Response<bool>.Success(result.Succeeded, result.Message ?? "Password reset");
         }
 
-        public async Task<Response<string>> DownloadDataAsync()
+        public async Task<IResponse<string>> DownloadDataAsync()
         {
             var result = await _httpService.GetAsync<string>(AccountRoute.DataExport);
             if (!result.Succeeded || result.Data is null)
@@ -84,7 +84,7 @@ namespace Auth.UI.src.Manager.Service.Implementation
             return Response<string>.Success(result.Data, "Export prepared");
         }
 
-        public async Task<Response<bool>> DeleteAccountAsync()
+        public async Task<IResponse<bool>> DeleteAccountAsync()
         {
             var result = await _httpService.DeleteAsync<ActionResponse>(AccountRoute.Delete);
             return Response<bool>.Success(result.Succeeded, result.Message ?? "Account deleted");

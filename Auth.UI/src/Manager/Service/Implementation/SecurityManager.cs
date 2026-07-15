@@ -8,42 +8,42 @@ namespace Auth.UI.src.Manager.Service.Implementation
 {
     public class SecurityManager : ISecurityManager
     {
-        private readonly IHttpService _httpService;
+        private readonly IHttpServices _httpService;
         private readonly ITokenStore _tokenStore;
 
-        public SecurityManager(IHttpService httpService, ITokenStore tokenStore)
+        public SecurityManager(IHttpServices httpService, ITokenStore tokenStore)
         {
             _httpService = httpService;
             _tokenStore = tokenStore;
         }
 
-        public async Task<Response<SecuritySettings>> GetSecurityAsync()
+        public async Task<IResponse<SecuritySettings>> GetSecurityAsync()
         {
             return await _httpService.GetAsync<SecuritySettings>(SecurityRoute.Settings);
         }
 
-        public async Task<Response<SecuritySettings>> UpdateSecurityAsync(SecuritySettings settings)
+        public async Task<IResponse<SecuritySettings>> UpdateSecurityAsync(SecuritySettings settings)
         {
-            return await _httpService.PostAsync<SecuritySettings, SecuritySettings>(SecurityRoute.Settings, settings);
+            return await _httpService.PostAsJsonAsync<SecuritySettings>(SecurityRoute.Settings, settings);
         }
 
-        public async Task<Response<bool>> ChangePasswordAsync(ChangePasswordRequest request)
+        public async Task<IResponse<bool>> ChangePasswordAsync(ChangePasswordRequest request)
         {
-            var result = await _httpService.PostAsync<ChangePasswordRequest, ActionResponse>(SecurityRoute.ChangePassword, request);
+            var result = await _httpService.PostAsJsonAsync<ActionResponse>(SecurityRoute.ChangePassword, request);
             return Response<bool>.Success(result.Succeeded, result.Message ?? "Password changed");
         }
 
-        public async Task<Response<SecuritySettings>> EnableTwoFactorAsync()
+        public async Task<IResponse<SecuritySettings>> EnableTwoFactorAsync()
         {
-            return await _httpService.PostAsync<object, SecuritySettings>(SecurityRoute.Enable2FA, null!);
+            return await _httpService.PostAsJsonAsync<SecuritySettings>(SecurityRoute.Enable2FA, null!);
         }
 
-        public async Task<Response<SecuritySettings>> DisableTwoFactorAsync()
+        public async Task<IResponse<SecuritySettings>> DisableTwoFactorAsync()
         {
-            return await _httpService.PostAsync<object, SecuritySettings>(SecurityRoute.Disable2FA, null!);
+            return await _httpService.PostAsJsonAsync<SecuritySettings>(SecurityRoute.Disable2FA, null!);
         }
 
-        public async Task<Response<List<SessionInfo>>> GetSessionsAsync()
+        public async Task<IResponse<List<SessionInfo>>> GetSessionsAsync()
         {
             var result = await _httpService.GetAsync<List<DeviceSessionResponse>>(SecurityRoute.Devices);
             if (!result.Succeeded || result.Data is null)
@@ -66,7 +66,7 @@ namespace Auth.UI.src.Manager.Service.Implementation
             return Response<List<SessionInfo>>.Success(sessions);
         }
 
-        public async Task<Response<bool>> RevokeSessionAsync(string id)
+        public async Task<IResponse<bool>> RevokeSessionAsync(string id)
         {
             if (!int.TryParse(id, out var sessionId))
             {
@@ -77,14 +77,14 @@ namespace Auth.UI.src.Manager.Service.Implementation
             return Response<bool>.Success(result.Succeeded, result.Message ?? "Session revoked");
         }
 
-        public async Task<Response<bool>> RevokeAllSessionsAsync(bool includingCurrent)
+        public async Task<IResponse<bool>> RevokeAllSessionsAsync(bool includingCurrent)
         {
-            var result = await _httpService.PostAsync<object, ActionResponse>(
+            var result = await _httpService.PostAsJsonAsync<ActionResponse>(
                 SecurityRoute.DevicesRevokeAll, new { includingCurrent });
             return Response<bool>.Success(result.Succeeded, result.Message ?? "Sessions revoked");
         }
 
-        public async Task<Response<List<ActivityLogEntry>>> GetActivityAsync(ActivityQuery query)
+        public async Task<IResponse<List<ActivityLogEntry>>> GetActivityAsync(ActivityQuery query)
         {
             var queryParams = new Dictionary<string, string?>
             {
@@ -107,9 +107,9 @@ namespace Auth.UI.src.Manager.Service.Implementation
             return Response<List<ActivityLogEntry>>.Success(result.Data.Entries);
         }
 
-        public async Task<Response<bool>> VerifyDeviceAsync(VerifyDeviceRequest request)
+        public async Task<IResponse<bool>> VerifyDeviceAsync(VerifyDeviceRequest request)
         {
-            var result = await _httpService.PostAsync<VerifyDeviceRequest, ActionResponse>(SecurityRoute.VerifyDevice, request);
+            var result = await _httpService.PostAsJsonAsync<ActionResponse>(SecurityRoute.VerifyDevice, request);
             return Response<bool>.Success(result.Succeeded, result.Message ?? "Device verified");
         }
 

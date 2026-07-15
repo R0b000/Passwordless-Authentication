@@ -5,15 +5,15 @@ namespace Auth.UI.src.Manager.Service.Interface
 {
     public interface ISecurityManager
     {
-        Task<Response<SecuritySettings>> GetSecurityAsync();
-        Task<Response<SecuritySettings>> UpdateSecurityAsync(SecuritySettings settings);
-        Task<Response<bool>> ChangePasswordAsync(ChangePasswordRequest request);
-        Task<Response<SecuritySettings>> EnableTwoFactorAsync();
-        Task<Response<SecuritySettings>> DisableTwoFactorAsync();
-        Task<Response<List<SessionInfo>>> GetSessionsAsync();
-        Task<Response<bool>> RevokeSessionAsync(string id);
-        Task<Response<bool>> RevokeAllSessionsAsync(bool includingCurrent);
-        Task<Response<List<ActivityLogEntry>>> GetActivityAsync(ActivityQuery query);
-        Task<Response<bool>> VerifyDeviceAsync(VerifyDeviceRequest request);
+        Task<IResponse<SecuritySettings>> GetSecurityAsync();
+        Task<IResponse<SecuritySettings>> UpdateSecurityAsync(SecuritySettings settings);
+        Task<IResponse<bool>> ChangePasswordAsync(ChangePasswordRequest request);
+        Task<IResponse<SecuritySettings>> EnableTwoFactorAsync();
+        Task<IResponse<SecuritySettings>> DisableTwoFactorAsync();
+        Task<IResponse<List<SessionInfo>>> GetSessionsAsync();
+        Task<IResponse<bool>> RevokeSessionAsync(string id);
+        Task<IResponse<bool>> RevokeAllSessionsAsync(bool includingCurrent);
+        Task<IResponse<List<ActivityLogEntry>>> GetActivityAsync(ActivityQuery query);
+        Task<IResponse<bool>> VerifyDeviceAsync(VerifyDeviceRequest request);
     }
 }

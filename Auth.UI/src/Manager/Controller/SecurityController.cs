@@ -13,15 +13,15 @@ namespace Auth.UI.src.Manager.Controller
             _manager = manager;
         }
 
-        public Task<Response<SecuritySettings>> GetSecurityAsync() => _manager.GetSecurityAsync();
-        public Task<Response<SecuritySettings>> UpdateSecurityAsync(SecuritySettings settings) => _manager.UpdateSecurityAsync(settings);
-        public Task<Response<bool>> ChangePasswordAsync(ChangePasswordRequest request) => _manager.ChangePasswordAsync(request);
-        public Task<Response<SecuritySettings>> EnableTwoFactorAsync() => _manager.EnableTwoFactorAsync();
-        public Task<Response<SecuritySettings>> DisableTwoFactorAsync() => _manager.DisableTwoFactorAsync();
-        public Task<Response<List<SessionInfo>>> GetSessionsAsync() => _manager.GetSessionsAsync();
-        public Task<Response<bool>> RevokeSessionAsync(string id) => _manager.RevokeSessionAsync(id);
-        public Task<Response<bool>> RevokeAllSessionsAsync(bool includingCurrent) => _manager.RevokeAllSessionsAsync(includingCurrent);
-        public Task<Response<List<ActivityLogEntry>>> GetActivityAsync(ActivityQuery query) => _manager.GetActivityAsync(query);
-        public Task<Response<bool>> VerifyDeviceAsync(VerifyDeviceRequest request) => _manager.VerifyDeviceAsync(request);
+        public Task<IResponse<SecuritySettings>> GetSecurityAsync() => _manager.GetSecurityAsync();
+        public Task<IResponse<SecuritySettings>> UpdateSecurityAsync(SecuritySettings settings) => _manager.UpdateSecurityAsync(settings);
+        public Task<IResponse<bool>> ChangePasswordAsync(ChangePasswordRequest request) => _manager.ChangePasswordAsync(request);
+        public Task<IResponse<SecuritySettings>> EnableTwoFactorAsync() => _manager.EnableTwoFactorAsync();
+        public Task<IResponse<SecuritySettings>> DisableTwoFactorAsync() => _manager.DisableTwoFactorAsync();
+        public Task<IResponse<List<SessionInfo>>> GetSessionsAsync() => _manager.GetSessionsAsync();
+        public Task<IResponse<bool>> RevokeSessionAsync(string id) => _manager.RevokeSessionAsync(id);
+        public Task<IResponse<bool>> RevokeAllSessionsAsync(bool includingCurrent) => _manager.RevokeAllSessionsAsync(includingCurrent);
+        public Task<IResponse<List<ActivityLogEntry>>> GetActivityAsync(ActivityQuery query) => _manager.GetActivityAsync(query);
+        public Task<IResponse<bool>> VerifyDeviceAsync(VerifyDeviceRequest request) => _manager.VerifyDeviceAsync(request);
     }
 }

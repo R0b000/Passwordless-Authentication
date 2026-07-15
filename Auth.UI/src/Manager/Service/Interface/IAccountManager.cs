@@ -6,16 +6,16 @@ namespace Auth.UI.src.Manager.Service.Interface
 {
     public interface IAccountManager
     {
-        Task<Response<UserProfile>> GetProfileAsync();
-        Task<Response<UserProfile>> UpdateProfileAsync(UserProfile profile);
-        Task<Response<AccountSettings>> GetSettingsAsync();
-        Task<Response<AccountSettings>> UpdateSettingsAsync(AccountSettings settings);
-        Task<Response<PrivacySettings>> GetPrivacyAsync();
-        Task<Response<PrivacySettings>> UpdatePrivacyAsync(PrivacySettings privacy);
-        Task<Response<AuthResponse>> RegisterAsync(RegisterRequest request);
-        Task<Response<bool>> RequestPasswordResetAsync(string email);
-        Task<Response<bool>> ResetPasswordAsync(string token, string newPassword);
-        Task<Response<string>> DownloadDataAsync();
-        Task<Response<bool>> DeleteAccountAsync();
+        Task<IResponse<UserProfile>> GetProfileAsync();
+        Task<IResponse<UserProfile>> UpdateProfileAsync(UserProfile profile);
+        Task<IResponse<AccountSettings>> GetSettingsAsync();
+        Task<IResponse<AccountSettings>> UpdateSettingsAsync(AccountSettings settings);
+        Task<IResponse<PrivacySettings>> GetPrivacyAsync();
+        Task<IResponse<PrivacySettings>> UpdatePrivacyAsync(PrivacySettings privacy);
+        Task<IResponse<AuthResponse>> RegisterAsync(RegisterRequest request);
+        Task<IResponse<bool>> RequestPasswordResetAsync(string email);
+        Task<IResponse<bool>> ResetPasswordAsync(string token, string newPassword);
+        Task<IResponse<string>> DownloadDataAsync();
+        Task<IResponse<bool>> DeleteAccountAsync();
     }
 }

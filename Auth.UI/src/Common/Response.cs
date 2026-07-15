@@ -1,6 +1,13 @@
 namespace Auth.UI.src.Common
 {
-    public class Response<T>
+    public interface IResponse<T>
+    {
+        bool Succeeded { get; set; }
+        string? Message { get; set; }
+        T? Data { get; set; }
+    }
+
+    public class Response<T> : IResponse<T>
     {
         public bool Succeeded { get; set; }
         public string? Message { get; set; }

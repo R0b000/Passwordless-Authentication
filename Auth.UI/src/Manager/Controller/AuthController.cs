@@ -13,34 +13,34 @@ namespace Auth.UI.src.Manager.Controller
             _authManager = authManager;
         }
 
-        public Task<Response<AuthResponse>> RegisterAsync(RegisterRequest request)
+        public Task<IResponse<AuthResponse>> RegisterAsync(RegisterRequest request)
             => _authManager.RegisterAsync(request);
 
-        public Task<Response<AuthResponse>> LoginAsync(LoginRequest request)
+        public Task<IResponse<AuthResponse>> LoginAsync(LoginRequest request)
             => _authManager.LoginAsync(request);
 
-        public Task<Response<AuthResponse>> MeAsync()
+        public Task<IResponse<AuthResponse>> MeAsync()
             => _authManager.GetCurrentUserAsync();
 
-        public Task<Response<AuthResponse>> GetUserByEmailAsync(string email)
+        public Task<IResponse<AuthResponse>> GetUserByEmailAsync(string email)
             => _authManager.GetUserByEmailAsync(email);
 
-        public Task<Response<Fido2ChallengeResponse>> RequestAttestationOptionsAsync(Fido2AttestationOptionsRequest request)
+        public Task<IResponse<Fido2ChallengeResponse>> RequestAttestationOptionsAsync(Fido2AttestationOptionsRequest request)
             => _authManager.RequestAttestationOptionsAsync(request);
 
-        public Task<Response<Fido2VerifyResponse>> RegisterCredentialAsync(Fido2RegisterRequest request)
+        public Task<IResponse<Fido2VerifyResponse>> RegisterCredentialAsync(Fido2RegisterRequest request)
             => _authManager.RegisterCredentialAsync(request);
 
-        public Task<Response<Fido2ChallengeResponse>> CreateFido2ChallengeAsync(int userId, string origin)
+        public Task<IResponse<Fido2ChallengeResponse>> CreateFido2ChallengeAsync(int userId, string origin)
             => _authManager.CreateFido2ChallengeAsync(userId, origin);
 
-        public Task<Response<Fido2VerifyResponse>> VerifyFido2AssertionAsync(Fido2VerifyRequest request)
+        public Task<IResponse<Fido2VerifyResponse>> VerifyFido2AssertionAsync(Fido2VerifyRequest request)
             => _authManager.VerifyFido2AssertionAsync(request);
 
-        public Task<Response<OtpResponse>> RequestOtpAsync(OtpRequest request)
+        public Task<IResponse<OtpResponse>> RequestOtpAsync(OtpRequest request)
             => _authManager.RequestOtpAsync(request);
 
-        public Task<Response<AuthResponse>> VerifyOtpAsync(OtpVerifyRequest request)
+        public Task<IResponse<AuthResponse>> VerifyOtpAsync(OtpVerifyRequest request)
             => _authManager.VerifyOtpAsync(request);
     }
 }

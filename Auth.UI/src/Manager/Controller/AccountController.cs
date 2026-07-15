@@ -14,16 +14,16 @@ namespace Auth.UI.src.Manager.Controller
             _manager = manager;
         }
 
-        public Task<Response<UserProfile>> GetProfileAsync() => _manager.GetProfileAsync();
-        public Task<Response<UserProfile>> UpdateProfileAsync(UserProfile profile) => _manager.UpdateProfileAsync(profile);
-        public Task<Response<AccountSettings>> GetSettingsAsync() => _manager.GetSettingsAsync();
-        public Task<Response<AccountSettings>> UpdateSettingsAsync(AccountSettings settings) => _manager.UpdateSettingsAsync(settings);
-        public Task<Response<PrivacySettings>> GetPrivacyAsync() => _manager.GetPrivacyAsync();
-        public Task<Response<PrivacySettings>> UpdatePrivacyAsync(PrivacySettings privacy) => _manager.UpdatePrivacyAsync(privacy);
-        public Task<Response<AuthResponse>> RegisterAsync(RegisterRequest request) => _manager.RegisterAsync(request);
-        public Task<Response<bool>> RequestPasswordResetAsync(string email) => _manager.RequestPasswordResetAsync(email);
-        public Task<Response<bool>> ResetPasswordAsync(string token, string newPassword) => _manager.ResetPasswordAsync(token, newPassword);
-        public Task<Response<string>> DownloadDataAsync() => _manager.DownloadDataAsync();
-        public Task<Response<bool>> DeleteAccountAsync() => _manager.DeleteAccountAsync();
+        public Task<IResponse<UserProfile>> GetProfileAsync() => _manager.GetProfileAsync();
+        public Task<IResponse<UserProfile>> UpdateProfileAsync(UserProfile profile) => _manager.UpdateProfileAsync(profile);
+        public Task<IResponse<AccountSettings>> GetSettingsAsync() => _manager.GetSettingsAsync();
+        public Task<IResponse<AccountSettings>> UpdateSettingsAsync(AccountSettings settings) => _manager.UpdateSettingsAsync(settings);
+        public Task<IResponse<PrivacySettings>> GetPrivacyAsync() => _manager.GetPrivacyAsync();
+        public Task<IResponse<PrivacySettings>> UpdatePrivacyAsync(PrivacySettings privacy) => _manager.UpdatePrivacyAsync(privacy);
+        public Task<IResponse<AuthResponse>> RegisterAsync(RegisterRequest request) => _manager.RegisterAsync(request);
+        public Task<IResponse<bool>> RequestPasswordResetAsync(string email) => _manager.RequestPasswordResetAsync(email);
+        public Task<IResponse<bool>> ResetPasswordAsync(string token, string newPassword) => _manager.ResetPasswordAsync(token, newPassword);
+        public Task<IResponse<string>> DownloadDataAsync() => _manager.DownloadDataAsync();
+        public Task<IResponse<bool>> DeleteAccountAsync() => _manager.DeleteAccountAsync();
     }
 }
