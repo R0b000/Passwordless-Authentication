@@ -100,7 +100,7 @@ namespace API.Shared.Service.Implementation.Auth
 
             var user = userResult.Data;
 
-            var isConsumed = await _dapperRepository.QuerySingleAsync<bool>(
+            var isConsumed = (await _dapperRepository.QuerySingleAsync<bool>(
                 ProcedureName,
                 new
                 {
@@ -109,7 +109,7 @@ namespace API.Shared.Service.Implementation.Auth
                     UserId = user.Id,
                     Otp = request.Otp,
                     Now = DateTime.UtcNow
-                });
+                })).Data;
 
             if (!isConsumed)
             {

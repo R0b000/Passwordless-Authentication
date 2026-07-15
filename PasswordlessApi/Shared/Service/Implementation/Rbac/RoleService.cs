@@ -17,9 +17,9 @@ namespace API.Shared.Service.Implementation.Rbac
 
         public async Task<Role?> CreateRoleAsync(string name, string? description)
         {
-            var id = await _dapperRepository.ExecuteAsync(
+            var id = (await _dapperRepository.ExecuteAsync(
                 DbConstants.Procedures.Rbac,
-                new { RoleAction = DbConstants.RbacActions.CreateRole, Name = name, Description = description });
+                new { RoleAction = DbConstants.RbacActions.CreateRole, Name = name, Description = description })).Data;
 
             if (id <= 0) return null;
 
@@ -28,30 +28,30 @@ namespace API.Shared.Service.Implementation.Rbac
 
         public async Task<IEnumerable<Role>> GetAllRolesAsync()
         {
-            return await _dapperRepository.QueryAsync<Role>(
+            return (await _dapperRepository.QueryAsync<Role>(
                 DbConstants.Procedures.Rbac,
-                new { RoleAction = DbConstants.RbacActions.GetAllRoles });
+                new { RoleAction = DbConstants.RbacActions.GetAllRoles })).Data ?? Enumerable.Empty<Role>();
         }
 
         public async Task<Role?> GetRoleByNameAsync(string name)
         {
-            return await _dapperRepository.QueryFirstAsync<Role>(
+            return (await _dapperRepository.QueryFirstAsync<Role>(
                 DbConstants.Procedures.Rbac,
-                new { RoleAction = DbConstants.RbacActions.GetRoleByName, Name = name });
+                new { RoleAction = DbConstants.RbacActions.GetRoleByName, Name = name })).Data;
         }
 
         public async Task<Role?> GetRoleByIdAsync(int roleId)
         {
-            return await _dapperRepository.QueryFirstAsync<Role>(
+            return (await _dapperRepository.QueryFirstAsync<Role>(
                 DbConstants.Procedures.Rbac,
-                new { RoleAction = DbConstants.RbacActions.GetRoleById, RoleId = roleId });
+                new { RoleAction = DbConstants.RbacActions.GetRoleById, RoleId = roleId })).Data;
         }
 
         public async Task<RoleDto?> GetRoleWithPermissionsAsync(int roleId)
         {
-            using var result = await _dapperRepository.QueryMultipleAsync(
+            using var result = (await _dapperRepository.QueryMultipleAsync(
                 DbConstants.Procedures.Rbac,
-                new { RoleAction = DbConstants.RbacActions.GetRoleWithPermissions, RoleId = roleId });
+                new { RoleAction = DbConstants.RbacActions.GetRoleWithPermissions, RoleId = roleId })).Data!;
 
             try
             {
@@ -78,27 +78,27 @@ namespace API.Shared.Service.Implementation.Rbac
 
         public async Task<bool> AssignPermissionToRoleAsync(int roleId, int permissionId)
         {
-            var result = await _dapperRepository.QuerySingleAsync<bool>(
+            var result = (await _dapperRepository.QuerySingleAsync<bool>(
                 DbConstants.Procedures.Rbac,
-                new { RoleAction = DbConstants.RbacActions.AssignPermissionToRole, RoleId = roleId, PermissionId = permissionId });
+                new { RoleAction = DbConstants.RbacActions.AssignPermissionToRole, RoleId = roleId, PermissionId = permissionId })).Data;
 
             return result;
         }
 
         public async Task<bool> RemovePermissionFromRoleAsync(int roleId, int permissionId)
         {
-            var result = await _dapperRepository.QuerySingleAsync<bool>(
+            var result = (await _dapperRepository.QuerySingleAsync<bool>(
                 DbConstants.Procedures.Rbac,
-                new { RoleAction = DbConstants.RbacActions.RemovePermissionFromRole, RoleId = roleId, PermissionId = permissionId });
+                new { RoleAction = DbConstants.RbacActions.RemovePermissionFromRole, RoleId = roleId, PermissionId = permissionId })).Data;
 
             return result;
         }
 
         public async Task<bool> DeleteRoleAsync(int roleId)
         {
-            var result = await _dapperRepository.QuerySingleAsync<bool>(
+            var result = (await _dapperRepository.QuerySingleAsync<bool>(
                 DbConstants.Procedures.Rbac,
-                new { RoleAction = DbConstants.RbacActions.DeleteRole, RoleId = roleId });
+                new { RoleAction = DbConstants.RbacActions.DeleteRole, RoleId = roleId })).Data;
 
             return result;
         }

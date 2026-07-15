@@ -49,15 +49,7 @@ namespace API.Shared.Middleware
             var originDirectives = cspSources.Length > 0 ? string.Join(" ", cspSources) : "'self'";
 
             // IMPORTANT: Swagger UI requires 'unsafe-inline' and 'unsafe-eval' to function!
-            return $@"
-                default-src 'self';
-                script-src 'self' 'unsafe-inline' 'unsafe-eval' {originDirectives};
-                style-src 'self' 'unsafe-inline';
-                img-src 'self' data: https:;
-                font-src 'self' data:;
-                connect-src 'self' {originDirectives};
-                frame-ancestors 'none';
-            ";
+            return $"default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' {originDirectives}; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' {originDirectives}; frame-ancestors 'none';";
         }
     }
 }
