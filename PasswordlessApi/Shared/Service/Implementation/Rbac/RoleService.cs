@@ -19,7 +19,7 @@ namespace API.Shared.Service.Implementation.Rbac
         {
             var id = (await _dapperRepository.ExecuteAsync(
                 DbConstants.Procedures.Rbac,
-                new { RoleAction = DbConstants.RbacActions.CreateRole, Name = name, Description = description })).Data;
+                new { RoleAction = DbConstants.RbacActions.CreateRole, Name = name, Description = description }));
 
             if (id <= 0) return null;
 
@@ -30,28 +30,28 @@ namespace API.Shared.Service.Implementation.Rbac
         {
             return (await _dapperRepository.QueryAsync<Role>(
                 DbConstants.Procedures.Rbac,
-                new { RoleAction = DbConstants.RbacActions.GetAllRoles })).Data ?? Enumerable.Empty<Role>();
+                new { RoleAction = DbConstants.RbacActions.GetAllRoles })) ?? Enumerable.Empty<Role>();
         }
 
         public async Task<Role?> GetRoleByNameAsync(string name)
         {
             return (await _dapperRepository.QueryFirstAsync<Role>(
                 DbConstants.Procedures.Rbac,
-                new { RoleAction = DbConstants.RbacActions.GetRoleByName, Name = name })).Data;
+                new { RoleAction = DbConstants.RbacActions.GetRoleByName, Name = name }));
         }
 
         public async Task<Role?> GetRoleByIdAsync(int roleId)
         {
             return (await _dapperRepository.QueryFirstAsync<Role>(
                 DbConstants.Procedures.Rbac,
-                new { RoleAction = DbConstants.RbacActions.GetRoleById, RoleId = roleId })).Data;
+                new { RoleAction = DbConstants.RbacActions.GetRoleById, RoleId = roleId }));
         }
 
         public async Task<RoleDto?> GetRoleWithPermissionsAsync(int roleId)
         {
             using var result = (await _dapperRepository.QueryMultipleAsync(
                 DbConstants.Procedures.Rbac,
-                new { RoleAction = DbConstants.RbacActions.GetRoleWithPermissions, RoleId = roleId })).Data!;
+                new { RoleAction = DbConstants.RbacActions.GetRoleWithPermissions, RoleId = roleId }))!;
 
             try
             {
@@ -80,7 +80,7 @@ namespace API.Shared.Service.Implementation.Rbac
         {
             var result = (await _dapperRepository.QuerySingleAsync<bool>(
                 DbConstants.Procedures.Rbac,
-                new { RoleAction = DbConstants.RbacActions.AssignPermissionToRole, RoleId = roleId, PermissionId = permissionId })).Data;
+                new { RoleAction = DbConstants.RbacActions.AssignPermissionToRole, RoleId = roleId, PermissionId = permissionId }));
 
             return result;
         }
@@ -89,7 +89,7 @@ namespace API.Shared.Service.Implementation.Rbac
         {
             var result = (await _dapperRepository.QuerySingleAsync<bool>(
                 DbConstants.Procedures.Rbac,
-                new { RoleAction = DbConstants.RbacActions.RemovePermissionFromRole, RoleId = roleId, PermissionId = permissionId })).Data;
+                new { RoleAction = DbConstants.RbacActions.RemovePermissionFromRole, RoleId = roleId, PermissionId = permissionId }));
 
             return result;
         }
@@ -98,7 +98,7 @@ namespace API.Shared.Service.Implementation.Rbac
         {
             var result = (await _dapperRepository.QuerySingleAsync<bool>(
                 DbConstants.Procedures.Rbac,
-                new { RoleAction = DbConstants.RbacActions.DeleteRole, RoleId = roleId })).Data;
+                new { RoleAction = DbConstants.RbacActions.DeleteRole, RoleId = roleId }));
 
             return result;
         }

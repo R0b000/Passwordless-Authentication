@@ -109,7 +109,7 @@ namespace API.Shared.Service.Implementation.Auth
                     UserId = user.Id,
                     Otp = request.Otp,
                     Now = DateTime.UtcNow
-                })).Data;
+                }));
 
             if (!isConsumed)
             {

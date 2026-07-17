@@ -73,7 +73,7 @@ namespace API.Shared.Service.Implementation.Auth
 
             if (userIdResult == null || !userIdResult.Succeeded || userIdResult.Data == null)
             {
-                return new AuthResponse { Message = "Registration failed" };
+                return new AuthResponse { Message = "Registration failed"};
             }
 
             var token = _jwtHelper.GenerateToken(userIdResult.Data.UserId, request.Username);

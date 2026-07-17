@@ -138,7 +138,7 @@ namespace API.Shared.Service.Implementation.Auth
 
             var stored = (await _dapperRepository.QueryFirstAsync<AuthChallenge>(
                 DbConstants.Procedures.Users,
-                new { AuthType = DbConstants.AuthTypes.Fido, FIDOOperation = DbConstants.FidoOperations.GetUserChallenge, UserId = request.UserId, Challenge = request.AttestationChallenge })).Data;
+                new { AuthType = DbConstants.AuthTypes.Fido, FIDOOperation = DbConstants.FidoOperations.GetUserChallenge, UserId = request.UserId, Challenge = request.AttestationChallenge }));
 
             if (stored == null)
             {
@@ -183,7 +183,7 @@ namespace API.Shared.Service.Implementation.Auth
                 {
                     var existing = (await _dapperRepository.QueryAsync<UserCredential>(
                         DbConstants.Procedures.Users,
-                        new { AuthType = DbConstants.AuthTypes.Fido, FIDOOperation = DbConstants.FidoOperations.GetCredential, CredentialId = Convert.ToBase64String(args.CredentialId) })).Data!;
+                        new { AuthType = DbConstants.AuthTypes.Fido, FIDOOperation = DbConstants.FidoOperations.GetCredential, CredentialId = Convert.ToBase64String(args.CredentialId) }))!;
                     return !existing.Any();
                 }
             };
@@ -236,7 +236,7 @@ namespace API.Shared.Service.Implementation.Auth
 
             var credentials = (await _dapperRepository.QueryAsync<UserCredential>(
                 DbConstants.Procedures.Users,
-                new { AuthType = DbConstants.AuthTypes.Fido, FIDOOperation = DbConstants.FidoOperations.GetCredentialsByUserId, UserId = userId })).Data!.ToList();
+                new { AuthType = DbConstants.AuthTypes.Fido, FIDOOperation = DbConstants.FidoOperations.GetCredentialsByUserId, UserId = userId }))!.ToList();
 
             if (!credentials.Any())
                 throw new InvalidOperationException("No FIDO2 credentials found for user");
@@ -289,7 +289,7 @@ namespace API.Shared.Service.Implementation.Auth
 
             var credential = (await _dapperRepository.QueryFirstAsync<UserCredential>(
                 DbConstants.Procedures.Users,
-                new { AuthType = DbConstants.AuthTypes.Fido, FIDOOperation = DbConstants.FidoOperations.GetCredential, CredentialId = credentialIdBase64 })).Data;
+                new { AuthType = DbConstants.AuthTypes.Fido, FIDOOperation = DbConstants.FidoOperations.GetCredential, CredentialId = credentialIdBase64 }));
 
             if (credential == null)
             {
@@ -298,7 +298,7 @@ namespace API.Shared.Service.Implementation.Auth
 
             var storedChallenge = (await _dapperRepository.QueryFirstAsync<AuthChallenge>(
                 DbConstants.Procedures.Users,
-                new { AuthType = DbConstants.AuthTypes.Fido, FIDOOperation = DbConstants.FidoOperations.GetUserChallenge, UserId = request.UserId, Challenge = request.Challenge })).Data;
+                new { AuthType = DbConstants.AuthTypes.Fido, FIDOOperation = DbConstants.FidoOperations.GetUserChallenge, UserId = request.UserId, Challenge = request.Challenge }));
 
             if (storedChallenge == null)
             {
@@ -318,7 +318,7 @@ namespace API.Shared.Service.Implementation.Auth
 
             var userCredentials = (await _dapperRepository.QueryAsync<UserCredential>(
                 DbConstants.Procedures.Users,
-                new { AuthType = DbConstants.AuthTypes.Fido, FIDOOperation = DbConstants.FidoOperations.GetCredentialsByUserId, UserId = credential.UserId })).Data!.ToList();
+                new { AuthType = DbConstants.AuthTypes.Fido, FIDOOperation = DbConstants.FidoOperations.GetCredentialsByUserId, UserId = credential.UserId }))!.ToList();
 
             var allowedCredentials = userCredentials.Select(c =>
             {
@@ -367,7 +367,7 @@ namespace API.Shared.Service.Implementation.Auth
                     var credentialIdBase64Callback = Convert.ToBase64String(args.CredentialId);
                     var dbCredential = (await _dapperRepository.QueryFirstAsync<UserCredential>(
                         DbConstants.Procedures.Users,
-                        new { AuthType = DbConstants.AuthTypes.Fido, FIDOOperation = DbConstants.FidoOperations.GetCredential, CredentialId = credentialIdBase64Callback })).Data;
+                        new { AuthType = DbConstants.AuthTypes.Fido, FIDOOperation = DbConstants.FidoOperations.GetCredential, CredentialId = credentialIdBase64Callback }));
                     return dbCredential != null && dbCredential.UserId == claimedUserId;
                 }
             };
@@ -403,7 +403,7 @@ namespace API.Shared.Service.Implementation.Auth
 
                 var user = (await _dapperRepository.QueryFirstAsync<User>(
                     DbConstants.Procedures.Users,
-                    new { AuthType = DbConstants.AuthTypes.Login, UserId = credential.UserId })).Data;
+                    new { AuthType = DbConstants.AuthTypes.Login, UserId = credential.UserId }));
 
                 var username = user?.Username ?? credential.UserId.ToString();
                 var token = _jwtHelper.GenerateToken(credential.UserId, username);

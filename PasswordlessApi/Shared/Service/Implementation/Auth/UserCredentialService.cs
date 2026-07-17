@@ -20,7 +20,7 @@ namespace API.Shared.Service.Implementation.Auth
                 ProcedureName,
                 new { AuthType = "FIDO", FIDOOperation = "GetCredentialsByUserId", UserId = userId });
 
-            return credentials.Data!.ToList();
+            return credentials!.ToList();
         }
 
         public async Task<bool> HasCredentialsAsync(int userId)
