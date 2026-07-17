@@ -22,82 +22,224 @@ namespace UI.Shared.Manager.Implementation.Auth
 
         public async Task<IResponse<UserProfile>> GetProfileAsync()
         {
-            var result = await _httpService.GetAsync<UserProfile>(AccountRoute.Profile);
-            if (result.Succeeded)
+            try
             {
-                return Response<UserProfile>.Success(result.Data!, "Profile retrieved");
-
+                var result = await _httpService.GetAsync<UserProfile>(AccountRoute.Profile);
+                if (result.Succeeded && result.Data is not null)
+                {
+                    return Response<UserProfile>.Success(result.Data, "Profile retrieved");
+                }
+                else
+                {
+                    return Response<UserProfile>.Fail(result.Messages ?? "Failed to retrieve profile");
+                }
             }
-            else
+            catch (Exception ex)
             {
-                return Response<UserProfile>.Fail(result.Messages ?? "Failed to retrieve profile");
+                return Response<UserProfile>.Fail($"An error occurred while retrieving the profile: {ex.Message}");
             }
         }
 
         public async Task<IResponse<UserProfile>> UpdateProfileAsync(UserProfile profile)
         {
-            return await _httpService.PostAsJsonAsync<UserProfile>(AccountRoute.Profile, profile);
+            try
+            {
+                var result = await _httpService.PostAsJsonAsync<UserProfile>(AccountRoute.Profile, profile);
+                if (result.Succeeded && result.Data is not null)
+                {
+                    return Response<UserProfile>.Success(result.Data, "Profile updated");
+                }
+                else
+                {
+                    return Response<UserProfile>.Fail(result.Messages ?? "Failed to update profile");
+                }
+            }
+            catch (Exception ex)
+            {
+                return Response<UserProfile>.Fail($"An error occurred while updating the profile: {ex.Message}");
+            }
         }
 
         public async Task<IResponse<AccountSettings>> GetSettingsAsync()
         {
-            return await _httpService.GetAsync<AccountSettings>(AccountRoute.Settings);
+            try
+            {
+                var result = await _httpService.GetAsync<AccountSettings>(AccountRoute.Settings);
+                if (result.Succeeded && result.Data is not null)
+                {
+                    return Response<AccountSettings>.Success(result.Data, "Settings retrieved");
+                }
+                else
+                {
+                    return Response<AccountSettings>.Fail(result.Messages ?? "Failed to retrieve settings");
+                }
+            }
+            catch (Exception ex)
+            {
+                return Response<AccountSettings>.Fail($"An error occurred while retrieving the settings: {ex.Message}");
+            }
         }
 
         public async Task<IResponse<AccountSettings>> UpdateSettingsAsync(AccountSettings settings)
         {
-            return await _httpService.PostAsJsonAsync<AccountSettings>(AccountRoute.Settings, settings);
+            try
+            {
+                var result = await _httpService.PostAsJsonAsync<AccountSettings>(AccountRoute.Settings, settings);
+                if (result.Succeeded && result.Data is not null)
+                {
+                    return Response<AccountSettings>.Success(result.Data, "Settings updated");
+                }
+                else
+                {
+                    return Response<AccountSettings>.Fail(result.Messages ?? "Failed to update settings");
+                }
+            }
+            catch (Exception ex)
+            {
+                return Response<AccountSettings>.Fail($"An error occurred while updating the settings: {ex.Message}");
+            }
         }
 
         public async Task<IResponse<PrivacySettings>> GetPrivacyAsync()
         {
-            return await _httpService.GetAsync<PrivacySettings>(AccountRoute.Privacy);
+            try
+            {
+                var result = await _httpService.GetAsync<PrivacySettings>(AccountRoute.Privacy);
+                if (result.Succeeded && result.Data is not null)
+                {
+                    return Response<PrivacySettings>.Success(result.Data, "Privacy settings retrieved");
+                }
+                else
+                {
+                    return Response<PrivacySettings>.Fail(result.Messages ?? "Failed to retrieve privacy settings");
+                }
+            }
+            catch (Exception ex)
+            {
+                return Response<PrivacySettings>.Fail($"An error occurred while retrieving the privacy settings: {ex.Message}");
+            }
         }
 
         public async Task<IResponse<PrivacySettings>> UpdatePrivacyAsync(PrivacySettings privacy)
         {
-            return await _httpService.PostAsJsonAsync<PrivacySettings>(AccountRoute.Privacy, privacy);
+            try
+            {
+                var result = await _httpService.PostAsJsonAsync<PrivacySettings>(AccountRoute.Privacy, privacy);
+                if (result.Succeeded && result.Data is not null)
+                {
+                    return Response<PrivacySettings>.Success(result.Data, "Privacy settings updated");
+                }
+                else
+                {
+                    return Response<PrivacySettings>.Fail(result.Messages ?? "Failed to update privacy settings");
+                }
+            }
+            catch (Exception ex)
+            {
+                return Response<PrivacySettings>.Fail($"An error occurred while updating the privacy settings: {ex.Message}");
+            }
         }
 
         public async Task<IResponse<AuthResponse>> RegisterAsync(RegisterRequest request)
         {
-            var result = await _httpService.PostAsJsonAsync<AuthResponse>(AuthRoute.Register, request);
-            if (result.Succeeded && result.Data?.Token is not null)
+            try
             {
-                _tokenStore.SetToken(result.Data.Token);
+                var result = await _httpService.PostAsJsonAsync<AuthResponse>(AuthRoute.Register, request);
+                if (result.Succeeded && result.Data?.Token is not null)
+                {
+                    _tokenStore.SetToken(result.Data.Token);
+                    return Response<AuthResponse>.Success(result.Data, "Registration successful");
+                }
+                else
+                {
+                    return Response<AuthResponse>.Fail(result.Messages ?? "Registration failed");
+                }
             }
-
-            return result;
+            catch (Exception ex)
+            {
+                return Response<AuthResponse>.Fail($"An error occurred during registration: {ex.Message}");
+            }
         }
 
         public async Task<IResponse<bool>> RequestPasswordResetAsync(string email)
         {
-            var result = await _httpService.PostAsJsonAsync<ActionResponse>(AccountRoute.PasswordReset, new { email });
-            return Response<bool>.Success(result.Succeeded, result.Messages ?? "Request sent");
+            try
+            {
+                var result = await _httpService.PostAsJsonAsync<ActionResponse>(AccountRoute.PasswordReset, new { email });
+                if (result.Succeeded)
+                {
+                    return Response<bool>.Success(true, result.Messages ?? "Request sent");
+                }
+                else
+                {
+                    return Response<bool>.Fail(result.Messages ?? "Failed to request password reset");
+                }
+            }
+            catch (Exception ex)
+            {
+                return Response<bool>.Fail($"An error occurred while requesting the password reset: {ex.Message}");
+            }
         }
 
         public async Task<IResponse<bool>> ResetPasswordAsync(string token, string newPassword)
         {
-            var result = await _httpService.PostAsJsonAsync<ActionResponse>(
-                AccountRoute.PasswordResetConfirm, new { token, newPassword });
-            return Response<bool>.Success(result.Succeeded, result.Messages ?? "Password reset");
+            try
+            {
+                var result = await _httpService.PostAsJsonAsync<ActionResponse>(
+                    AccountRoute.PasswordResetConfirm, new { token, newPassword });
+                if (result.Succeeded)
+                {
+                    return Response<bool>.Success(true, result.Messages ?? "Password reset");
+                }
+                else
+                {
+                    return Response<bool>.Fail(result.Messages ?? "Failed to reset password");
+                }
+            }
+            catch (Exception ex)
+            {
+                return Response<bool>.Fail($"An error occurred while resetting the password: {ex.Message}");
+            }
         }
 
         public async Task<IResponse<string>> DownloadDataAsync()
         {
-            var result = await _httpService.GetAsync<string>(AccountRoute.DataExport);
-            if (!result.Succeeded || result.Data is null)
+            try
             {
-                return Response<string>.Fail(result.Messages ?? "Failed to download data");
+                var result = await _httpService.GetAsync<string>(AccountRoute.DataExport);
+                if (result.Succeeded && result.Data is not null)
+                {
+                    return Response<string>.Success(result.Data, "Export prepared");
+                }
+                else
+                {
+                    return Response<string>.Fail(result.Messages ?? "Failed to download data");
+                }
             }
-
-            return Response<string>.Success(result.Data, "Export prepared");
+            catch (Exception ex)
+            {
+                return Response<string>.Fail($"An error occurred while downloading the data: {ex.Message}");
+            }
         }
 
         public async Task<IResponse<bool>> DeleteAccountAsync()
         {
-            var result = await _httpService.DeleteAsync<ActionResponse>(AccountRoute.Delete);
-            return Response<bool>.Success(result.Succeeded, result.Messages ?? "Account deleted");
+            try
+            {
+                var result = await _httpService.DeleteAsync<ActionResponse>(AccountRoute.Delete);
+                if (result.Succeeded)
+                {
+                    return Response<bool>.Success(true, result.Messages ?? "Account deleted");
+                }
+                else
+                {
+                    return Response<bool>.Fail(result.Messages ?? "Failed to delete account");
+                }
+            }
+            catch (Exception ex)
+            {
+                return Response<bool>.Fail($"An error occurred while deleting the account: {ex.Message}");
+            }
         }
     }
 }
