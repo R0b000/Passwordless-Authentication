@@ -1,4 +1,4 @@
-using Auth.UI.Shared.Common;
+using Shared.Wrapper;
 using Auth.UI.Shared.Model.Security;
 using Auth.UI.Shared.Utility;
 using UI.Shared.Manager.Interface.Auth;
@@ -31,7 +31,7 @@ namespace UI.Shared.Manager.Implementation.Auth
         public async Task<IResponse<bool>> ChangePasswordAsync(ChangePasswordRequest request)
         {
             var result = await _httpService.PostAsJsonAsync<ActionResponse>(SecurityRoute.ChangePassword, request);
-            return Response<bool>.Success(result.Succeeded, result.Message ?? "Password changed");
+            return Response<bool>.Success(result.Succeeded, result.Messages ?? "Password changed");
         }
 
         public async Task<IResponse<SecuritySettings>> EnableTwoFactorAsync()
@@ -49,7 +49,7 @@ namespace UI.Shared.Manager.Implementation.Auth
             var result = await _httpService.GetAsync<List<DeviceSessionResponse>>(SecurityRoute.Devices);
             if (!result.Succeeded || result.Data is null)
             {
-                return Response<List<SessionInfo>>.Failure(result.Message ?? "Failed to load sessions");
+                return Response<List<SessionInfo>>.Fail(result.Messages ?? "Failed to load sessions");
             }
 
             var sessions = result.Data.Select<DeviceSessionResponse, SessionInfo>(s => new SessionInfo
@@ -71,18 +71,18 @@ namespace UI.Shared.Manager.Implementation.Auth
         {
             if (!int.TryParse(id, out var sessionId))
             {
-                return Response<bool>.Failure("Invalid session ID");
+                return Response<bool>.Fail("Invalid session ID");
             }
 
             var result = await _httpService.DeleteAsync<ActionResponse>($"{SecurityRoute.Devices}/{sessionId}");
-            return Response<bool>.Success(result.Succeeded, result.Message ?? "Session revoked");
+            return Response<bool>.Success(result.Succeeded, result.Messages ?? "Session revoked");
         }
 
         public async Task<IResponse<bool>> RevokeAllSessionsAsync(bool includingCurrent)
         {
             var result = await _httpService.PostAsJsonAsync<ActionResponse>(
                 SecurityRoute.DevicesRevokeAll, new { includingCurrent });
-            return Response<bool>.Success(result.Succeeded, result.Message ?? "Sessions revoked");
+            return Response<bool>.Success(result.Succeeded, result.Messages ?? "Sessions revoked");
         }
 
         public async Task<IResponse<List<ActivityLogEntry>>> GetActivityAsync(ActivityQuery query)
@@ -102,7 +102,7 @@ namespace UI.Shared.Manager.Implementation.Auth
             var result = await _httpService.GetAsync<ActivityLogResponse>($"{SecurityRoute.Activity}?{queryString}");
             if (!result.Succeeded || result.Data is null)
             {
-                return Response<List<ActivityLogEntry>>.Failure(result.Message ?? "Failed to load activity");
+                return Response<List<ActivityLogEntry>>.Fail(result.Messages ?? "Failed to load activity");
             }
 
             return Response<List<ActivityLogEntry>>.Success(result.Data.Entries);
@@ -111,7 +111,7 @@ namespace UI.Shared.Manager.Implementation.Auth
         public async Task<IResponse<bool>> VerifyDeviceAsync(VerifyDeviceRequest request)
         {
             var result = await _httpService.PostAsJsonAsync<ActionResponse>(SecurityRoute.VerifyDevice, request);
-            return Response<bool>.Success(result.Succeeded, result.Message ?? "Device verified");
+            return Response<bool>.Success(result.Succeeded, result.Messages ?? "Device verified");
         }
 
         private static string ParseDeviceType(string? userAgent)

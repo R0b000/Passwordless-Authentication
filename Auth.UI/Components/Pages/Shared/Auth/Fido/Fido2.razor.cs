@@ -89,7 +89,7 @@ namespace Auth.UI.Components.Pages.Shared.Fido
                 else
                 {
                     State = PasskeyState.Idle;
-                    StatusMessage = result.Message ?? "No account found with this email address.";
+                    StatusMessage = result.Messages ?? "No account found with this email address.";
                     Succeeded = false;
                 }
             }
@@ -133,7 +133,7 @@ namespace Auth.UI.Components.Pages.Shared.Fido
             if (!result.Succeeded || result.Data is null)
             {
                 State = PasskeyState.Error;
-                StatusDetail = result.Message ?? "Unable to start passkey sign-in. Please try again.";
+                StatusDetail = result.Messages ?? "Unable to start passkey sign-in. Please try again.";
                 return;
             }
 
@@ -185,7 +185,7 @@ namespace Auth.UI.Components.Pages.Shared.Fido
             }
 
             State = PasskeyState.Error;
-            StatusDetail = result.Data?.Message ?? result.Message ?? "The passkey could not be verified. Please try again.";
+            StatusDetail = result.Data?.Message ?? result.Messages ?? "The passkey could not be verified. Please try again.";
         }
 
         private async Task<string> MapErrorAsync(Exception ex)

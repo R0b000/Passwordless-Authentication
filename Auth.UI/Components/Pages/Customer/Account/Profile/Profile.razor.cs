@@ -57,7 +57,7 @@ namespace Auth.UI.Components.Pages.Customer.Account.Profile
             if (Model is null) return;
             var result = await AccountManager.UpdateProfileAsync(Model);
             Succeeded = result.Succeeded;
-            StatusMessage = result.Message ?? string.Empty;
+            StatusMessage = result.Messages ?? string.Empty;
             EditMode = !result.Succeeded;
             if (result.Succeeded) Toaster.ShowSuccess("Profile updated");
             else Toaster.ShowDanger(StatusMessage);

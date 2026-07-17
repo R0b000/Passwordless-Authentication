@@ -65,7 +65,7 @@ namespace Auth.UI.Components.Pages.Shared.Login
 
             var result = await AuthManager.RegisterAsync(RegisterModel);
             Succeeded = result.Succeeded;
-            StatusMessage = result.Data?.Message ?? result.Message ?? "Registration failed";
+            StatusMessage = result.Data?.Message ?? result.Messages ?? "Registration failed";
 
             if (result.Succeeded && result.Data is not null)
             {
@@ -81,7 +81,7 @@ namespace Auth.UI.Components.Pages.Shared.Login
 
             var result = await AuthManager.LoginAsync(LoginModel);
             Succeeded = result.Succeeded;
-            StatusMessage = result.Data?.Message ?? result.Message ?? "Login failed";
+            StatusMessage = result.Data?.Message ?? result.Messages ?? "Login failed";
 
             if (result.Succeeded)
             {

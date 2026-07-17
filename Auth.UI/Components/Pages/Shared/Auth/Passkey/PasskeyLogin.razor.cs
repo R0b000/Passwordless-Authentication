@@ -94,7 +94,7 @@ namespace Auth.UI.Components.Pages.Shared.Passkey
                 else
                 {
                     State = PasskeyState.Idle;
-                    StatusMessage = result.Message ?? "No account found with this email address.";
+                    StatusMessage = result.Messages ?? "No account found with this email address.";
                     Succeeded = false;
                 }
             }
@@ -132,7 +132,7 @@ namespace Auth.UI.Components.Pages.Shared.Passkey
             else
             {
                 Succeeded = false;
-                StatusMessage = response.Message ?? "Failed to request OTP";
+                StatusMessage = response.Messages ?? "Failed to request OTP";
             }
         }
 
@@ -148,7 +148,7 @@ namespace Auth.UI.Components.Pages.Shared.Passkey
             }
 
             Succeeded = false;
-            StatusMessage = response.Message ?? "Failed to verify OTP";
+            StatusMessage = response.Messages ?? "Failed to verify OTP";
         }
 
         protected void HideOtp() => OtpRequested = false;
@@ -170,7 +170,7 @@ namespace Auth.UI.Components.Pages.Shared.Passkey
         //    if (!result.Succeeded || result.Data is null)
         //    {
         //        State = PasskeyState.Error;
-        //        StatusDetail = result.Message ?? "Unable to start passkey sign-in. Please try again.";
+        //        StatusDetail = result.Messages ?? "Unable to start passkey sign-in. Please try again.";
         //        return;
         //    }
 
@@ -228,8 +228,8 @@ namespace Auth.UI.Components.Pages.Shared.Passkey
                 {
                     State = PasskeyState.Error;
                     // FIX: Show the REAL error from the server
-                    var errorMessage = !string.IsNullOrWhiteSpace(result.Message)
-                        ? result.Message
+                    var errorMessage = !string.IsNullOrWhiteSpace(result.Messages)
+                        ? result.Messages
                         : "Unable to start passkey sign-in. Please try again.";
                     StatusDetail = errorMessage;
                     Console.WriteLine($"[FIDO2] CreateChallenge failed: {errorMessage}");
@@ -283,7 +283,7 @@ namespace Auth.UI.Components.Pages.Shared.Passkey
             }
 
             State = PasskeyState.Error;
-            StatusDetail = result.Data?.Message ?? result.Message ?? "The passkey could not be verified. Please try again.";
+            StatusDetail = result.Data?.Message ?? result.Messages ?? "The passkey could not be verified. Please try again.";
         }
 
         private async Task<string> MapErrorAsync(Exception ex)

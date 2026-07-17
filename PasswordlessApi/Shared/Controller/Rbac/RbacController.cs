@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Authorization;
 using API.Shared.Models.Common;
 using API.Shared.Models.DTOs.Rbac;
 using API.Shared.Service.Interface.Rbac;
+using Shared.Wrapper;
+using WrapperResponse = Shared.Wrapper.Response;
 
 namespace API.Shared.Controller.Rbac
 {
@@ -30,7 +32,7 @@ namespace API.Shared.Controller.Rbac
             var role = await _roleService.CreateRoleAsync(request.Name, request.Description);
             if (role == null)
             {
-                return BadRequest(new MessageResponse { Message = "Role already exists or creation failed" });
+                return BadRequest(WrapperResponse.Fail("Role already exists or creation failed"));
             }
 
             if (request.PermissionNames != null && request.PermissionNames.Any())
@@ -87,7 +89,7 @@ namespace API.Shared.Controller.Rbac
             var roleDto = await _roleService.GetRoleWithPermissionsAsync(roleId);
             if (roleDto == null)
             {
-                return NotFound(new MessageResponse { Message = "Role not found" });
+                return NotFound(WrapperResponse.Fail("Role not found"));
             }
 
             return Ok(roleDto);
@@ -95,54 +97,54 @@ namespace API.Shared.Controller.Rbac
 
         [HttpPost("roles/permissions")]
         [Authorize(Policy = "ManageRoles")]
-        public async Task<ActionResult<MessageResponse>> AssignPermission([FromBody] AssignPermissionRequest request)
+        public async Task<ActionResult<IResponse>> AssignPermission([FromBody] AssignPermissionRequest request)
         {
             var assigned = await _roleService.AssignPermissionToRoleAsync(request.RoleId, request.PermissionId);
             if (!assigned)
             {
-                return BadRequest(new MessageResponse { Message = "Failed to assign permission" });
+                return BadRequest(WrapperResponse.Fail("Failed to assign permission"));
             }
 
-            return Ok(new MessageResponse { Message = "Permission assigned successfully" });
+            return Ok(WrapperResponse.Success("Permission assigned successfully"));
         }
 
         [HttpDelete("roles/permissions")]
         [Authorize(Policy = "ManageRoles")]
-        public async Task<ActionResult<MessageResponse>> RemovePermission([FromBody] AssignPermissionRequest request)
+        public async Task<ActionResult<IResponse>> RemovePermission([FromBody] AssignPermissionRequest request)
         {
             var removed = await _roleService.RemovePermissionFromRoleAsync(request.RoleId, request.PermissionId);
             if (!removed)
             {
-                return BadRequest(new MessageResponse { Message = "Failed to remove permission" });
+                return BadRequest(WrapperResponse.Fail("Failed to remove permission"));
             }
 
-            return Ok(new MessageResponse { Message = "Permission removed successfully" });
+            return Ok(WrapperResponse.Success("Permission removed successfully"));
         }
 
         [HttpPost("users/roles")]
         [Authorize(Policy = "ManageUsers")]
-        public async Task<ActionResult<MessageResponse>> AssignRoleToUser([FromBody] AssignRoleRequest request)
+        public async Task<ActionResult<IResponse>> AssignRoleToUser([FromBody] AssignRoleRequest request)
         {
             var assigned = await _userRoleService.AssignRoleToUserAsync(request.UserId, request.RoleId);
             if (!assigned)
             {
-                return BadRequest(new MessageResponse { Message = "Failed to assign role to user" });
+                return BadRequest(WrapperResponse.Fail("Failed to assign role to user"));
             }
 
-            return Ok(new MessageResponse { Message = "Role assigned to user successfully" });
+            return Ok(WrapperResponse.Success("Role assigned to user successfully"));
         }
 
         [HttpDelete("users/roles")]
         [Authorize(Policy = "ManageUsers")]
-        public async Task<ActionResult<MessageResponse>> RemoveRoleFromUser([FromBody] AssignRoleRequest request)
+        public async Task<ActionResult<IResponse>> RemoveRoleFromUser([FromBody] AssignRoleRequest request)
         {
             var removed = await _userRoleService.RemoveRoleFromUserAsync(request.UserId, request.RoleId);
             if (!removed)
             {
-                return BadRequest(new MessageResponse { Message = "Failed to remove role from user" });
+                return BadRequest(WrapperResponse.Fail("Failed to remove role from user"));
             }
 
-            return Ok(new MessageResponse { Message = "Role removed from user successfully" });
+            return Ok(WrapperResponse.Success("Role removed from user successfully"));
         }
 
         [HttpGet("users/{userId}/roles")]

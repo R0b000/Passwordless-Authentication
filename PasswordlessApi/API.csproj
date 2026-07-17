@@ -18,6 +18,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Shared\Shared.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Folder Include="Models\RequestModels\" />
     <Folder Include="Models\ResponseModels\" />
     <Folder Include="Controllers\" />

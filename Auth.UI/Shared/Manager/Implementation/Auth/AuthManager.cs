@@ -1,4 +1,4 @@
-using Auth.UI.Shared.Common;
+using Shared.Wrapper;
 using Auth.UI.Shared.Model.Auth;
 using Auth.UI.Shared.Utility;
 using UI.Shared.Manager.Interface.Auth;

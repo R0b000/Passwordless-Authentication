@@ -6,6 +6,7 @@ using API.Shared.Models.RequestModel.Security;
 using API.Shared.Models.ResponseModel.Account;
 using API.Shared.Models.ResponseModel.Auth;
 using API.Shared.Models.ResponseModel.Security;
+using Shared.Wrapper;
 
 namespace API.Shared.Service.Interface.Auth
 {
@@ -33,16 +34,16 @@ namespace API.Shared.Service.Interface.Auth
         Task<PrivacySettingsResponse> GetPrivacySettingsAsync(int userId);
         Task<PrivacySettingsResponse> UpdatePrivacySettingsAsync(int userId, UpdatePrivacyRequest request);
         Task RequestPasswordResetAsync(string email);
-        Task<MessageResponse> ResetPasswordAsync(string token, string newPassword);
+        Task<IResponse> ResetPasswordAsync(string token, string newPassword);
         Task<string> GetUserDataExportAsync(int userId);
-        Task<MessageResponse> DeleteAccountAsync(int userId);
+        Task<IResponse> DeleteAccountAsync(int userId);
 
         Task<SecuritySettingsResponse> GetSecuritySettingsAsync(int userId);
         Task<SecuritySettingsResponse> UpdateSecuritySettingsAsync(int userId, SecuritySettingsResponse request);
-        Task<MessageResponse> ChangePasswordAsync(int userId, ChangePasswordRequest request);
+        Task<IResponse> ChangePasswordAsync(int userId, ChangePasswordRequest request);
         Task<SecuritySettingsResponse> EnableTwoFactorAsync(int userId);
         Task<SecuritySettingsResponse> DisableTwoFactorAsync(int userId);
         Task<ActivityLogResponse> GetActivityLogsAsync(int userId, ActivityQueryRequest query);
-        Task<MessageResponse> VerifyDeviceAsync(int userId, VerifyDeviceRequest request);
+        Task<IResponse> VerifyDeviceAsync(int userId, VerifyDeviceRequest request);
     }
 }

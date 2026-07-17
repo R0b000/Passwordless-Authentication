@@ -64,7 +64,7 @@ namespace Auth.UI.Components.Pages.Shared.Register
 
             var result = await AccountManager.RegisterAsync(Model);
             Succeeded = result.Succeeded;
-            StatusMessage = result.Message ?? string.Empty;
+            StatusMessage = result.Messages ?? string.Empty;
 
             if (result.Succeeded)
             {

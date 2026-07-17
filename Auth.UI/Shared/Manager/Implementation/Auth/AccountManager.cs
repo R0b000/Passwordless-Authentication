@@ -1,4 +1,4 @@
-using Auth.UI.Shared.Common;
+using Shared.Wrapper;
 using Auth.UI.Shared.Model.Account;
 using Auth.UI.Shared.Model.Auth;
 using Auth.UI.Shared.Model.Security;
@@ -64,14 +64,14 @@ namespace UI.Shared.Manager.Implementation.Auth
         public async Task<IResponse<bool>> RequestPasswordResetAsync(string email)
         {
             var result = await _httpService.PostAsJsonAsync<ActionResponse>(AccountRoute.PasswordReset, new { email });
-            return Response<bool>.Success(result.Succeeded, result.Message ?? "Request sent");
+            return Response<bool>.Success(result.Succeeded, result.Messages ?? "Request sent");
         }
 
         public async Task<IResponse<bool>> ResetPasswordAsync(string token, string newPassword)
         {
             var result = await _httpService.PostAsJsonAsync<ActionResponse>(
                 AccountRoute.PasswordResetConfirm, new { token, newPassword });
-            return Response<bool>.Success(result.Succeeded, result.Message ?? "Password reset");
+            return Response<bool>.Success(result.Succeeded, result.Messages ?? "Password reset");
         }
 
         public async Task<IResponse<string>> DownloadDataAsync()
@@ -79,7 +79,7 @@ namespace UI.Shared.Manager.Implementation.Auth
             var result = await _httpService.GetAsync<string>(AccountRoute.DataExport);
             if (!result.Succeeded || result.Data is null)
             {
-                return Response<string>.Failure(result.Message ?? "Failed to download data");
+                return Response<string>.Fail(result.Messages ?? "Failed to download data");
             }
 
             return Response<string>.Success(result.Data, "Export prepared");
@@ -88,7 +88,7 @@ namespace UI.Shared.Manager.Implementation.Auth
         public async Task<IResponse<bool>> DeleteAccountAsync()
         {
             var result = await _httpService.DeleteAsync<ActionResponse>(AccountRoute.Delete);
-            return Response<bool>.Success(result.Succeeded, result.Message ?? "Account deleted");
+            return Response<bool>.Success(result.Succeeded, result.Messages ?? "Account deleted");
         }
     }
 }

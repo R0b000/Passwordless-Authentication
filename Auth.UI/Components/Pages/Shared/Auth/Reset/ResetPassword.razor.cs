@@ -37,7 +37,7 @@ namespace Auth.UI.Components.Pages.Shared.Reset
 
             var result = await AccountManager.ResetPasswordAsync(Token, NewPassword);
             Succeeded = result.Succeeded;
-            StatusMessage = result.Message ?? string.Empty;
+            StatusMessage = result.Messages ?? string.Empty;
 
             if (result.Succeeded)
             {

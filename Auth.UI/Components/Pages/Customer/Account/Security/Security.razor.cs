@@ -27,7 +27,7 @@ namespace Auth.UI.Components.Pages.Customer.Account.Security
         {
             var result = await SecurityManager.ChangePasswordAsync(Pw);
             Succeeded = result.Succeeded;
-            StatusMessage = result.Message ?? string.Empty;
+            StatusMessage = result.Messages ?? string.Empty;
             if (result.Succeeded)
             {
                 Pw = new ChangePasswordRequest();
@@ -52,7 +52,7 @@ namespace Auth.UI.Components.Pages.Customer.Account.Security
             }
             else
             {
-                Toaster.ShowDanger(result.Message ?? "Could not update 2FA");
+                Toaster.ShowDanger(result.Messages ?? "Could not update 2FA");
             }
         }
 
@@ -60,7 +60,7 @@ namespace Auth.UI.Components.Pages.Customer.Account.Security
         {
             var result = await SecurityManager.UpdateSecurityAsync(Settings);
             Succeeded = result.Succeeded;
-            StatusMessage = result.Message ?? string.Empty;
+            StatusMessage = result.Messages ?? string.Empty;
             if (result.Succeeded) Toaster.ShowSuccess("2FA settings saved");
             else Toaster.ShowDanger(StatusMessage);
         }
@@ -75,7 +75,7 @@ namespace Auth.UI.Components.Pages.Customer.Account.Security
             }
             else
             {
-                Toaster.ShowDanger(result.Message ?? "Could not disable 2FA");
+                Toaster.ShowDanger(result.Messages ?? "Could not disable 2FA");
             }
         }
 
@@ -83,7 +83,7 @@ namespace Auth.UI.Components.Pages.Customer.Account.Security
         {
             var result = await SecurityManager.UpdateSecurityAsync(Settings);
             Succeeded = result.Succeeded;
-            StatusMessage = result.Message ?? string.Empty;
+            StatusMessage = result.Messages ?? string.Empty;
             if (result.Succeeded) Toaster.ShowSuccess("Security alerts saved");
             else Toaster.ShowDanger(StatusMessage);
         }

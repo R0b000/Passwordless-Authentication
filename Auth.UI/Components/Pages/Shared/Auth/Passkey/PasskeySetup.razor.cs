@@ -119,7 +119,7 @@ namespace Auth.UI.Components.Pages.Shared.Passkey
                 {
                     _ = LoadAttestationOptionsAsync();
                     State = SetupState.Error;
-                    StatusMessage = verifyResult.Message ?? "Registration failed.";
+                    StatusMessage = verifyResult.Messages ?? "Registration failed.";
                 }
             }
             catch (Exception ex)

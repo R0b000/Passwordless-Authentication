@@ -30,7 +30,7 @@ namespace Auth.UI.Components.Pages.Shared.VerifyDevice
             });
 
             Succeeded = result.Succeeded;
-            StatusMessage = result.Message ?? string.Empty;
+            StatusMessage = result.Messages ?? string.Empty;
 
             if (result.Succeeded)
             {

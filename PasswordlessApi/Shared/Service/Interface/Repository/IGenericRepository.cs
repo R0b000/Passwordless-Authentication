@@ -1,6 +1,7 @@
 using System.Data;
 using Dapper;
 using API.Shared.Models.Common;
+using Shared.Wrapper;
 
 namespace API.Shared.Service.Interface.Repository
 {

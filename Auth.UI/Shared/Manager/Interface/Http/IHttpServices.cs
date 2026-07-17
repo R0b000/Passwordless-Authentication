@@ -1,4 +1,4 @@
-using Auth.UI.Shared.Common;
+using Shared.Wrapper;
 
 namespace UI.Shared.Manager.Interface.Http
 {

@@ -33,21 +33,21 @@ namespace Auth.UI.Components.Pages.Customer.Account.Sessions
         protected async Task RevokeAsync(string id)
         {
             var result = await SecurityManager.RevokeSessionAsync(id);
-            Toaster.Show(result.Message ?? "Done", result.Succeeded ? ToastType.Success : ToastType.Danger);
+            Toaster.Show(result.Messages ?? "Done", result.Succeeded ? ToastType.Success : ToastType.Danger);
             await ReloadAsync();
         }
 
         protected async Task RevokeOthersAsync()
         {
             var result = await SecurityManager.RevokeAllSessionsAsync(false);
-            Toaster.Show(result.Message ?? "Done", result.Succeeded ? ToastType.Success : ToastType.Danger);
+            Toaster.Show(result.Messages ?? "Done", result.Succeeded ? ToastType.Success : ToastType.Danger);
             await ReloadAsync();
         }
 
         protected async Task RevokeAllAsync()
         {
             var result = await SecurityManager.RevokeAllSessionsAsync(true);
-            Toaster.Show(result.Message ?? "Done", result.Succeeded ? ToastType.Success : ToastType.Danger);
+            Toaster.Show(result.Messages ?? "Done", result.Succeeded ? ToastType.Success : ToastType.Danger);
             await ReloadAsync();
         }
     }

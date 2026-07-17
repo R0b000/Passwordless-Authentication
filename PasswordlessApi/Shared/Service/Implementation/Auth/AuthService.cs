@@ -9,7 +9,6 @@ using API.Shared.Utility.Jwt;
 using API.Shared.Utility.PasswordHash;
 using API.Shared.Utility.TokenHash;
 using API.Shared.Configuration;
-using API.Shared.Models.Common;
 using API.Shared.Models.Entities;
 using API.Shared.Models.RequestModel.Account;
 using API.Shared.Models.RequestModel.Auth;
@@ -21,6 +20,7 @@ using API.Shared.Service.Interface.Auth;
 using API.Shared.Service.Interface.Rbac;
 using API.Shared.Service.Interface.Repository;
 using API.Shared.Service.Interface.Security;
+using Shared.Wrapper;
 
 namespace API.Shared.Service.Implementation.Auth
 {
@@ -117,7 +117,7 @@ namespace API.Shared.Service.Implementation.Auth
 
             if (result == null || !result.Succeeded || result.Data == null || result.Data.UserId <= 0)
             {
-                return Response<AuthResponse>.Failure("Invalid username or password");
+                return Response<AuthResponse>.Fail("Invalid username or password");
             }
 
             var user = await _authRepository.QuerySingleAsync<User>(
@@ -126,12 +126,12 @@ namespace API.Shared.Service.Implementation.Auth
 
             if (user == null || !user.Succeeded || user.Data == null || string.IsNullOrEmpty(user.Data.PasswordHash))
             {
-                return Response<AuthResponse>.Failure("Invalid username or password");
+                return Response<AuthResponse>.Fail("Invalid username or password");
             }
 
             if (!_passwordHash.VerifyPassword(request.Password, user.Data.PasswordHash))
             {
-                return Response<AuthResponse>.Failure("Invalid username or password");
+                return Response<AuthResponse>.Fail("Invalid username or password");
             }
 
             bool hasFido2 = await HasFido2CredentialsAsync(user.Data.Id);
@@ -693,7 +693,7 @@ namespace API.Shared.Service.Implementation.Auth
             await _auditLogService.LogAsync(user.Id, "PasswordResetRequested", "User", user.Id.ToString(), null, "Password reset requested");
         }
 
-        public async Task<MessageResponse> ResetPasswordAsync(string token, string newPassword)
+        public async Task<IResponse> ResetPasswordAsync(string token, string newPassword)
         {
             var passwordHash = _passwordHash.HashPassword(newPassword);
             var result = await _authRepository.ExecuteAsync(
@@ -708,10 +708,10 @@ namespace API.Shared.Service.Implementation.Auth
 
             if (result.Succeeded && result.Data > 0)
             {
-                return MessageResponse.Success("Password has been reset successfully");
+                return Response.Success("Password has been reset successfully");
             }
 
-            return MessageResponse.Failure("Invalid or expired reset token");
+            return Response.Fail("Invalid or expired reset token");
         }
 
         public async Task<string> GetUserDataExportAsync(int userId)
@@ -720,7 +720,7 @@ namespace API.Shared.Service.Implementation.Auth
             return $"data-export/user-{userId}.json";
         }
 
-        public async Task<MessageResponse> DeleteAccountAsync(int userId)
+        public async Task<IResponse> DeleteAccountAsync(int userId)
         {
             using var scope = new TransactionScope(TransactionScopeOption.Required, TransactionScopeAsyncFlowOption.Enabled);
 
@@ -737,10 +737,10 @@ namespace API.Shared.Service.Implementation.Auth
             {
                 await _auditLogService.LogAsync(userId, "AccountDeleted", "User", userId.ToString());
                 scope.Complete();
-                return MessageResponse.Success("Account scheduled for deletion");
+                return Response.Success("Account scheduled for deletion");
             }
 
-            return MessageResponse.Failure("Failed to delete account");
+            return Response.Fail("Failed to delete account");
         }
 
         public async Task<SecuritySettingsResponse> GetSecuritySettingsAsync(int userId)
@@ -779,22 +779,22 @@ namespace API.Shared.Service.Implementation.Auth
             return request;
         }
 
-        public async Task<MessageResponse> ChangePasswordAsync(int userId, ChangePasswordRequest request)
+        public async Task<IResponse> ChangePasswordAsync(int userId, ChangePasswordRequest request)
         {
             var user = await _authRepository.QuerySingleAsync<User>(ProcedureName, new { AuthType = DbConstants.AuthTypes.Login, UserId = userId });
             if (user?.Succeeded != true || user.Data == null)
             {
-                return MessageResponse.Failure("User not found");
+                return Response.Fail("User not found");
             }
 
             if (!_passwordHash.VerifyPassword(request.CurrentPassword, user.Data.PasswordHash ?? string.Empty))
             {
-                return MessageResponse.Failure("Current password is incorrect");
+                return Response.Fail("Current password is incorrect");
             }
 
             if (request.NewPassword != request.ConfirmPassword)
             {
-                return MessageResponse.Failure("New password and confirmation do not match");
+                return Response.Fail("New password and confirmation do not match");
             }
 
             var newPasswordHash = _passwordHash.HashPassword(request.NewPassword);
@@ -811,10 +811,10 @@ namespace API.Shared.Service.Implementation.Auth
             if (result.Succeeded && result.Data > 0)
             {
                 await _auditLogService.LogAsync(userId, "PasswordChanged", "User", userId.ToString());
-                return MessageResponse.Success("Password changed successfully");
+                return Response.Success("Password changed successfully");
             }
 
-            return MessageResponse.Failure("Failed to change password");
+            return Response.Fail("Failed to change password");
         }
 
         public async Task<SecuritySettingsResponse> EnableTwoFactorAsync(int userId)
@@ -892,16 +892,16 @@ namespace API.Shared.Service.Implementation.Auth
             return new ActivityLogResponse { Entries = entries };
         }
 
-        public async Task<MessageResponse> VerifyDeviceAsync(int userId, VerifyDeviceRequest request)
+        public async Task<IResponse> VerifyDeviceAsync(int userId, VerifyDeviceRequest request)
         {
             if (string.IsNullOrWhiteSpace(request.Code))
             {
-                return MessageResponse.Failure("Enter the verification code");
+                return Response.Fail("Enter the verification code");
             }
 
             await _auditLogService.LogAsync(userId, "DeviceVerified", "User", userId.ToString(), null, request.TrustDevice ? "Device verified and trusted" : "Device verified");
 
-            return MessageResponse.Success(request.TrustDevice ? "Device verified and trusted" : "Device verified");
+            return Response.Success(request.TrustDevice ? "Device verified and trusted" : "Device verified");
         }
 
         private async Task EnforceConcurrentSessionLimitAsync(int userId)

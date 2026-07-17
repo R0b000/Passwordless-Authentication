@@ -24,7 +24,7 @@ namespace Auth.UI.Components.Pages.Shared.Forgot
 
             var result = await AccountManager.RequestPasswordResetAsync(Email);
             Succeeded = result.Succeeded;
-            StatusMessage = result.Message ?? string.Empty;
+            StatusMessage = result.Messages ?? string.Empty;
             if (result.Succeeded) Toaster.ShowSuccess(StatusMessage);
             else Toaster.ShowDanger(StatusMessage);
         }

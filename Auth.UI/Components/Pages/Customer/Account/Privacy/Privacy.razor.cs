@@ -27,7 +27,7 @@ namespace Auth.UI.Components.Pages.Customer.Account.Privacy
         {
             var result = await AccountManager.UpdatePrivacyAsync(Settings);
             Succeeded = result.Succeeded;
-            StatusMessage = result.Message ?? string.Empty;
+            StatusMessage = result.Messages ?? string.Empty;
             if (result.Succeeded) Toaster.ShowSuccess("Privacy preferences updated");
             else Toaster.ShowDanger(StatusMessage);
         }
@@ -38,7 +38,7 @@ namespace Auth.UI.Components.Pages.Customer.Account.Privacy
             if (result.Succeeded)
                 Toaster.ShowSuccess("Your data export is being prepared (demo)");
             else
-                Toaster.ShowDanger(result.Message ?? "Download failed");
+                Toaster.ShowDanger(result.Messages ?? "Download failed");
         }
 
         protected async Task OpenDelete() => await _confirm.ShowAsync();
@@ -47,7 +47,7 @@ namespace Auth.UI.Components.Pages.Customer.Account.Privacy
         {
             var result = await AccountManager.DeleteAccountAsync();
             if (result.Succeeded) Toaster.ShowSuccess("Account scheduled for deletion (demo)");
-            else Toaster.ShowDanger(result.Message ?? "Deletion failed");
+            else Toaster.ShowDanger(result.Messages ?? "Deletion failed");
         }
     }
 }

@@ -25,7 +25,7 @@ namespace Auth.UI.Components.Pages.Customer.Account.Settings
             if (Settings is null) return;
             var result = await AccountManager.UpdateSettingsAsync(Settings);
             Succeeded = result.Succeeded;
-            StatusMessage = result.Message ?? string.Empty;
+            StatusMessage = result.Messages ?? string.Empty;
             if (result.Succeeded) Toaster.ShowSuccess("Settings saved");
             else Toaster.ShowDanger(StatusMessage);
         }

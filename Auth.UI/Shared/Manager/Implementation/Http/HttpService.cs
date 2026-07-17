@@ -1,4 +1,4 @@
-using Auth.UI.Shared.Common;
+using Shared.Wrapper;
 using Auth.UI.Shared.Model.Toast;
 using Auth.UI.Shared.Utility;
 using Microsoft.AspNetCore.Components;
