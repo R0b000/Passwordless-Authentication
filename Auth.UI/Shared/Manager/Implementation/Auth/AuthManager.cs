@@ -31,13 +31,22 @@ namespace UI.Shared.Manager.Implementation.Auth
 
         public async Task<IResponse<AuthResponse>> LoginAsync(LoginRequest request)
         {
-            var result = await _httpService.PostAsJsonAsync<AuthResponse>(AuthRoute.Login, request);
-            if (result.Succeeded && result.Data?.Token is not null)
+            try
             {
-                _tokenStore.SetToken(result.Data.Token);
+                var result = await _httpService.PostAsJsonAsync<AuthResponse>(AuthRoute.Login, request);
+                if (result.Succeeded && result.Data?.Token is not null)
+                {
+                    _tokenStore.SetToken(result.Data.Token);
+                    return Response<AuthResponse>.Success(result.Data, "Login successful");
+                } else
+                {
+                    return Response<AuthResponse>.Fail(result.Messages ?? "Login failed");
+                }
+            } catch (Exception ex)
+            {
+                // Handle the exception (e.g., log it, rethrow it, or return a failure response)
+                return Response<AuthResponse>.Fail($"An error occurred during login: {ex.Message}");
             }
-
-            return result;
         }
 
         public async Task<IResponse<AuthResponse>> GetCurrentUserAsync()

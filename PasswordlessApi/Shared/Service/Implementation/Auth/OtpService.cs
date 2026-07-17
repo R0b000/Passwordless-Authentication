@@ -9,6 +9,7 @@ using API.Shared.Models.ResponseModel.Auth;
 using API.Shared.Service.Interface.Auth;
 using API.Shared.Service.Interface.Rbac;
 using API.Shared.Service.Interface.Repository;
+using Shared.Wrapper;
 
 namespace API.Shared.Service.Implementation.Auth
 {
@@ -41,7 +42,7 @@ namespace API.Shared.Service.Implementation.Auth
             _logger = logger;
         }
 
-        public async Task<OtpResponse> RequestOtpAsync(OtpRequest request)
+        public async Task<IResponse<OtpResponse>> RequestOtpAsync(OtpRequest request)
         {
             var userResult = await _userRepository.QuerySingleAsync(
                 ProcedureName,
@@ -49,14 +50,14 @@ namespace API.Shared.Service.Implementation.Auth
 
             if (userResult == null || !userResult.Succeeded || userResult.Data == null)
             {
-                return new OtpResponse { Success = false, Message = "User not found" };
+                return Response<OtpResponse>.Fail("User not found");
             }
 
             var user = userResult.Data;
 
             if (string.IsNullOrEmpty(user.Email))
             {
-                return new OtpResponse { Success = false, Message = "User does not have an email configured" };
+                return Response<OtpResponse>.Fail("User does not have an email configured");
             }
 
             var otp = GenerateSecureOtp.GenerateSecureOtpCode();
@@ -84,10 +85,10 @@ namespace API.Shared.Service.Implementation.Auth
                 _logger.LogInformation("DEV OTP for {Email}: {Otp}", user.Email, otp);
             }
 
-            return response;
+            return Response<OtpResponse>.Success(response);
         }
 
-        public async Task<AuthResponse> VerifyOtpAsync(OtpVerifyRequest request)
+        public async Task<IResponse<AuthResponse>> VerifyOtpAsync(OtpVerifyRequest request)
         {
             var userResult = await _userRepository.QuerySingleAsync(
                 ProcedureName,
@@ -95,7 +96,7 @@ namespace API.Shared.Service.Implementation.Auth
 
             if (userResult == null || !userResult.Succeeded || userResult.Data == null)
             {
-                return new AuthResponse { Message = "User not found" };
+                return Response<AuthResponse>.Fail("User not found");
             }
 
             var user = userResult.Data;
@@ -113,7 +114,7 @@ namespace API.Shared.Service.Implementation.Auth
 
             if (!isConsumed)
             {
-                return new AuthResponse { Message = "Invalid or expired OTP" };
+                return Response<AuthResponse>.Fail("Invalid or expired OTP");
             }
 
             var token = _jwtHelper.GenerateToken(user.Id, user.Username);
@@ -121,9 +122,9 @@ namespace API.Shared.Service.Implementation.Auth
 
             await AssignDefaultRoleIfMissingAsync(user.Id);
 
-            var userWithRoles = await _userRoleService.GetUserWithRolesAndPermissionsAsync(user.Id);
+            var userWithRoles = (await _userRoleService.GetUserWithRolesAndPermissionsAsync(user.Id)).Data;
 
-            return new AuthResponse
+            return Response<AuthResponse>.Success(new AuthResponse
             {
                 UserId = user.Id,
                 Username = user.Username,
@@ -134,7 +135,7 @@ namespace API.Shared.Service.Implementation.Auth
                 RequiresFido2 = false,
                 Role = userWithRoles?.Role,
                 Permissions = userWithRoles?.Permissions ?? new List<string>()
-            };
+            });
         }
 
         private async Task<string> CreateRefreshTokenAsync(int userId)
@@ -160,7 +161,7 @@ namespace API.Shared.Service.Implementation.Auth
 
         private async Task AssignDefaultRoleIfMissingAsync(int userId)
         {
-            var userRoles = await _userRoleService.GetUserRoleNamesAsync(userId);
+            var userRoles = (await _userRoleService.GetUserRoleNamesAsync(userId)).Data ?? new List<string>();
             if (!userRoles.Any())
             {
                 var user = await _userRepository.QuerySingleAsync(
@@ -171,10 +172,10 @@ namespace API.Shared.Service.Implementation.Auth
                 {
                     var roleName = user.Data.Username.Equals("admin", StringComparison.OrdinalIgnoreCase) ? "Admin" : "User";
 
-                    var role = await _roleService.GetRoleByNameAsync(roleName);
+                    var role = (await _roleService.GetRoleByNameAsync(roleName)).Data;
                     if (role == null)
                     {
-                        role = await _roleService.CreateRoleAsync(roleName, $"Default {roleName} role");
+                        role = (await _roleService.CreateRoleAsync(roleName, $"Default {roleName} role")).Data;
                     }
 
                     if (role != null)

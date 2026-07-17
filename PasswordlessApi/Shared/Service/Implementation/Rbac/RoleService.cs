@@ -3,6 +3,7 @@ using API.Shared.Models.Entities;
 using API.Shared.Models.DTOs.Rbac;
 using API.Shared.Service.Interface.Rbac;
 using API.Shared.Service.Interface.Repository;
+using Shared.Wrapper;
 
 namespace API.Shared.Service.Implementation.Rbac
 {
@@ -15,39 +16,51 @@ namespace API.Shared.Service.Implementation.Rbac
             _dapperRepository = dapperRepository;
         }
 
-        public async Task<Role?> CreateRoleAsync(string name, string? description)
+        public async Task<IResponse<Role?>> CreateRoleAsync(string name, string? description)
         {
             var id = (await _dapperRepository.ExecuteAsync(
                 DbConstants.Procedures.Rbac,
                 new { RoleAction = DbConstants.RbacActions.CreateRole, Name = name, Description = description }));
 
-            if (id <= 0) return null;
+            if (id <= 0) return Response<Role?>.Fail("Failed to create role");
 
-            return await GetRoleByNameAsync(name);
+            return Response<Role?>.Success((await GetRoleByNameAsync(name)).Data);
         }
 
-        public async Task<IEnumerable<Role>> GetAllRolesAsync()
+        public async Task<IResponse<IEnumerable<Role>>> GetAllRolesAsync()
         {
-            return (await _dapperRepository.QueryAsync<Role>(
+            var result = (await _dapperRepository.QueryAsync<Role>(
                 DbConstants.Procedures.Rbac,
-                new { RoleAction = DbConstants.RbacActions.GetAllRoles })) ?? Enumerable.Empty<Role>();
+                new { RoleAction = DbConstants.RbacActions.GetAllRoles }));
+
+            return Response<IEnumerable<Role>>.Success(result ?? Enumerable.Empty<Role>());
         }
 
-        public async Task<Role?> GetRoleByNameAsync(string name)
+        public async Task<IResponse<Role?>> GetRoleByNameAsync(string name)
         {
-            return (await _dapperRepository.QueryFirstAsync<Role>(
+            var result = (await _dapperRepository.QueryFirstAsync<Role>(
                 DbConstants.Procedures.Rbac,
                 new { RoleAction = DbConstants.RbacActions.GetRoleByName, Name = name }));
+
+            if (result == null)
+                return Response<Role?>.Fail("Role not found");
+
+            return Response<Role?>.Success(result);
         }
 
-        public async Task<Role?> GetRoleByIdAsync(int roleId)
+        public async Task<IResponse<Role?>> GetRoleByIdAsync(int roleId)
         {
-            return (await _dapperRepository.QueryFirstAsync<Role>(
+            var result = (await _dapperRepository.QueryFirstAsync<Role>(
                 DbConstants.Procedures.Rbac,
                 new { RoleAction = DbConstants.RbacActions.GetRoleById, RoleId = roleId }));
+
+            if (result == null)
+                return Response<Role?>.Fail("Role not found");
+
+            return Response<Role?>.Success(result);
         }
 
-        public async Task<RoleDto?> GetRoleWithPermissionsAsync(int roleId)
+        public async Task<IResponse<RoleDto?>> GetRoleWithPermissionsAsync(int roleId)
         {
             using var result = (await _dapperRepository.QueryMultipleAsync(
                 DbConstants.Procedures.Rbac,
@@ -56,7 +69,7 @@ namespace API.Shared.Service.Implementation.Rbac
             try
             {
                 var role = await result.ReadFirstOrDefaultAsync<Role>();
-                if (role == null) return null;
+                if (role == null) return Response<RoleDto?>.Fail("Role not found");
 
                 var permissions = await result.ReadAsync<Permission>();
                 var roleDto = new RoleDto
@@ -68,45 +81,45 @@ namespace API.Shared.Service.Implementation.Rbac
                     Permissions = permissions.Select(p => p.Name).ToList()
                 };
 
-                return roleDto;
+                return Response<RoleDto?>.Success(roleDto);
             }
-            catch
+            catch (Exception ex)
             {
-                return null;
+                return Response<RoleDto?>.Fail(ex.Message);
             }
         }
 
-        public async Task<bool> AssignPermissionToRoleAsync(int roleId, int permissionId)
+        public async Task<IResponse<bool>> AssignPermissionToRoleAsync(int roleId, int permissionId)
         {
             var result = (await _dapperRepository.QuerySingleAsync<bool>(
                 DbConstants.Procedures.Rbac,
                 new { RoleAction = DbConstants.RbacActions.AssignPermissionToRole, RoleId = roleId, PermissionId = permissionId }));
 
-            return result;
+            return Response<bool>.Success(result);
         }
 
-        public async Task<bool> RemovePermissionFromRoleAsync(int roleId, int permissionId)
+        public async Task<IResponse<bool>> RemovePermissionFromRoleAsync(int roleId, int permissionId)
         {
             var result = (await _dapperRepository.QuerySingleAsync<bool>(
                 DbConstants.Procedures.Rbac,
                 new { RoleAction = DbConstants.RbacActions.RemovePermissionFromRole, RoleId = roleId, PermissionId = permissionId }));
 
-            return result;
+            return Response<bool>.Success(result);
         }
 
-        public async Task<bool> DeleteRoleAsync(int roleId)
+        public async Task<IResponse<bool>> DeleteRoleAsync(int roleId)
         {
             var result = (await _dapperRepository.QuerySingleAsync<bool>(
                 DbConstants.Procedures.Rbac,
                 new { RoleAction = DbConstants.RbacActions.DeleteRole, RoleId = roleId }));
 
-            return result;
+            return Response<bool>.Success(result);
         }
 
-        public async Task<bool> IsSystemRoleAsync(int roleId)
+        public async Task<IResponse<bool>> IsSystemRoleAsync(int roleId)
         {
-            var role = await GetRoleByIdAsync(roleId);
-            return role?.IsSystemRole ?? false;
+            var role = (await GetRoleByIdAsync(roleId)).Data;
+            return Response<bool>.Success(role?.IsSystemRole ?? false);
         }
     }
 }

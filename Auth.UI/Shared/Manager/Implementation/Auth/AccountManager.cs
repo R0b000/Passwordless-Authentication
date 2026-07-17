@@ -22,7 +22,16 @@ namespace UI.Shared.Manager.Implementation.Auth
 
         public async Task<IResponse<UserProfile>> GetProfileAsync()
         {
-            return await _httpService.GetAsync<UserProfile>(AccountRoute.Profile);
+            var result = await _httpService.GetAsync<UserProfile>(AccountRoute.Profile);
+            if (result.Succeeded)
+            {
+                return Response<UserProfile>.Success(result.Data!, "Profile retrieved");
+
+            }
+            else
+            {
+                return Response<UserProfile>.Fail(result.Messages ?? "Failed to retrieve profile");
+            }
         }
 
         public async Task<IResponse<UserProfile>> UpdateProfileAsync(UserProfile profile)

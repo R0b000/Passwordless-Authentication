@@ -2,6 +2,7 @@ using API.Shared.Common;
 using API.Shared.Models.Entities;
 using API.Shared.Service.Interface.Repository;
 using API.Shared.Service.Interface.Security;
+using Shared.Wrapper;
 
 namespace API.Shared.Service.Implementation.Security
 {
@@ -14,7 +15,7 @@ namespace API.Shared.Service.Implementation.Security
             _authRepository = authRepository;
         }
 
-        public async Task LogAsync(int? userId, string action, string? entityType = null, string? entityId = null, 
+        public async Task<IResponse> LogAsync(int? userId, string action, string? entityType = null, string? entityId = null,
             string? oldValue = null, string? newValue = null, string? ipAddress = null, string? userAgent = null)
         {
             await _authRepository.ExecuteAsync(
@@ -32,9 +33,11 @@ namespace API.Shared.Service.Implementation.Security
                     IpAddress = ipAddress,
                     UserAgent = userAgent
                 });
+
+            return Response.Success();
         }
 
-        public async Task<List<AuditLog>> GetUserAuditLogsAsync(int userId, int limit = 50)
+        public async Task<IResponse<List<AuditLog>>> GetUserAuditLogsAsync(int userId, int limit = 50)
         {
             var result = await _authRepository.QueryAsync<AuditLog>(
                 DbConstants.Procedures.Users,
@@ -45,9 +48,11 @@ namespace API.Shared.Service.Implementation.Security
                     UserId = userId
                 });
 
-            return result?.Succeeded == true && result.Data != null
+            var logs = result?.Succeeded == true && result.Data != null
                 ? result.Data.Take(limit).ToList()
                 : new List<AuditLog>();
+
+            return Response<List<AuditLog>>.Success(logs);
         }
     }
 }

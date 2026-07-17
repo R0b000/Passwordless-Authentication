@@ -4,6 +4,7 @@ using API.Shared.Common;
 using API.Shared.Models.Entities;
 using API.Shared.Service.Interface.Rbac;
 using API.Shared.Service.Interface.Repository;
+using Shared.Wrapper;
 
 namespace API.Shared.Service.Implementation.Rbac
 {
@@ -18,46 +19,52 @@ namespace API.Shared.Service.Implementation.Rbac
             _httpContextAccessor = httpContextAccessor;
         }
 
-        public async Task<bool> AssignRoleToUserAsync(int userId, int roleId)
+        public async Task<IResponse<bool>> AssignRoleToUserAsync(int userId, int roleId)
         {
             var result = (await _dapperRepository.QuerySingleAsync<bool>(
                 DbConstants.Procedures.Rbac,
                 new { UserRoleAction = DbConstants.RbacActions.AssignRoleToUser, UserId = userId, RoleId = roleId }));
 
-            return result;
+            return Response<bool>.Success(result);
         }
 
-        public async Task<bool> RemoveRoleFromUserAsync(int userId, int roleId)
+        public async Task<IResponse<bool>> RemoveRoleFromUserAsync(int userId, int roleId)
         {
             var result = (await _dapperRepository.QuerySingleAsync<bool>(
                 DbConstants.Procedures.Rbac,
                 new { UserRoleAction = DbConstants.RbacActions.RemoveRoleFromUser, UserId = userId, RoleId = roleId }));
 
-            return result;
+            return Response<bool>.Success(result);
         }
 
-        public async Task<IEnumerable<UserRole>> GetUserRolesAsync(int userId)
+        public async Task<IResponse<IEnumerable<UserRole>>> GetUserRolesAsync(int userId)
         {
-            return (await _dapperRepository.QueryAsync<UserRole>(
+            var result = (await _dapperRepository.QueryAsync<UserRole>(
                 DbConstants.Procedures.Rbac,
-                new { UserRoleAction = DbConstants.RbacActions.GetUserRoles, UserId = userId })) ?? Enumerable.Empty<UserRole>();
+                new { UserRoleAction = DbConstants.RbacActions.GetUserRoles, UserId = userId }));
+
+            return Response<IEnumerable<UserRole>>.Success(result ?? Enumerable.Empty<UserRole>());
         }
 
-        public async Task<IEnumerable<string>> GetUserRoleNamesAsync(int userId)
+        public async Task<IResponse<IEnumerable<string>>> GetUserRoleNamesAsync(int userId)
         {
-            return (await _dapperRepository.QueryAsync<string>(
+            var result = (await _dapperRepository.QueryAsync<string>(
                 DbConstants.Procedures.Rbac,
-                new { UserRoleAction = DbConstants.RbacActions.GetUserRoleNames, UserId = userId })) ?? Enumerable.Empty<string>();
+                new { UserRoleAction = DbConstants.RbacActions.GetUserRoleNames, UserId = userId }));
+
+            return Response<IEnumerable<string>>.Success(result ?? Enumerable.Empty<string>());
         }
 
-        public async Task<IEnumerable<string>> GetUserPermissionNamesAsync(int userId)
+        public async Task<IResponse<IEnumerable<string>>> GetUserPermissionNamesAsync(int userId)
         {
-            return (await _dapperRepository.QueryAsync<string>(
+            var result = (await _dapperRepository.QueryAsync<string>(
                 DbConstants.Procedures.Rbac,
-                new { UserRoleAction = DbConstants.RbacActions.GetUserPermissionNames, UserId = userId })) ?? Enumerable.Empty<string>();
+                new { UserRoleAction = DbConstants.RbacActions.GetUserPermissionNames, UserId = userId }));
+
+            return Response<IEnumerable<string>>.Success(result ?? Enumerable.Empty<string>());
         }
 
-        public async Task<User?> GetUserWithRolesAndPermissionsAsync(int userId)
+        public async Task<IResponse<User?>> GetUserWithRolesAndPermissionsAsync(int userId)
         {
             using var result = (await _dapperRepository.QueryMultipleAsync(
                 DbConstants.Procedures.Rbac,
@@ -66,7 +73,7 @@ namespace API.Shared.Service.Implementation.Rbac
             try
             {
                 var user = await result.ReadFirstOrDefaultAsync<User>();
-                if (user == null) return null;
+                if (user == null) return Response<User?>.Fail("User not found");
 
                 var roleNames = await result.ReadAsync<string>();
                 var permissions = await result.ReadAsync<string>();
@@ -74,44 +81,48 @@ namespace API.Shared.Service.Implementation.Rbac
                 user.Role = roleNames.FirstOrDefault();
                 user.Permissions = permissions.ToList();
 
-                return user;
+                return Response<User?>.Success(user);
             }
-            catch
+            catch (Exception ex)
             {
-                return null;
+                return Response<User?>.Fail(ex.Message);
             }
         }
 
-        public async Task<bool> HasPermissionAsync(int userId, string permissionName)
+        public async Task<IResponse<bool>> HasPermissionAsync(int userId, string permissionName)
         {
             var result = (await _dapperRepository.QuerySingleAsync<bool>(
                 DbConstants.Procedures.Rbac,
                 new { UserRoleAction = DbConstants.RbacActions.HasPermission, UserId = userId, PermissionName = permissionName }));
 
-            return result;
+            return Response<bool>.Success(result);
         }
 
-        public async Task<bool> IsInRoleAsync(int userId, string roleName)
+        public async Task<IResponse<bool>> IsInRoleAsync(int userId, string roleName)
         {
             var result = (await _dapperRepository.QuerySingleAsync<bool>(
                 DbConstants.Procedures.Rbac,
                 new { UserRoleAction = DbConstants.RbacActions.IsInRole, UserId = userId, RoleName = roleName }));
 
-            return result;
+            return Response<bool>.Success(result);
         }
 
-        public async Task<IEnumerable<User>> GetUsersInRoleAsync(string roleName)
+        public async Task<IResponse<IEnumerable<User>>> GetUsersInRoleAsync(string roleName)
         {
-            return (await _dapperRepository.QueryAsync<User>(
+            var result = (await _dapperRepository.QueryAsync<User>(
                 DbConstants.Procedures.Rbac,
-                new { UserRoleAction = DbConstants.RbacActions.GetUsersInRole, RoleName = roleName })) ?? Enumerable.Empty<User>();
+                new { UserRoleAction = DbConstants.RbacActions.GetUsersInRole, RoleName = roleName }));
+
+            return Response<IEnumerable<User>>.Success(result ?? Enumerable.Empty<User>());
         }
 
-        public async Task<IEnumerable<User>> GetAllUsersWithRolesAsync()
+        public async Task<IResponse<IEnumerable<User>>> GetAllUsersWithRolesAsync()
         {
-            return (await _dapperRepository.QueryAsync<User>(
+            var result = (await _dapperRepository.QueryAsync<User>(
                 DbConstants.Procedures.Rbac,
-                new { UserRoleAction = DbConstants.RbacActions.GetAllUsersWithRoles })) ?? Enumerable.Empty<User>();
+                new { UserRoleAction = DbConstants.RbacActions.GetAllUsersWithRoles }));
+
+            return Response<IEnumerable<User>>.Success(result ?? Enumerable.Empty<User>());
         }
 
         public int? GetCurrentUserId()

@@ -84,7 +84,8 @@ namespace API.Shared.Controller.Auth
             var userId = User.GetUserId();
             if (userId == null) return Unauthorized();
 
-            var userWithRoles = await _userRoleService.GetUserWithRolesAndPermissionsAsync(userId.Value);
+            var userWithRolesResult = await _userRoleService.GetUserWithRolesAndPermissionsAsync(userId.Value);
+            var userWithRoles = userWithRolesResult.Data;
             if (userWithRoles == null)
             {
                 return NotFound();
@@ -110,7 +111,8 @@ namespace API.Shared.Controller.Auth
                 return BadRequest(new AuthResponse { Message = "Email is required" });
             }
 
-            var user = await _authService.GetUserByEmailAsync(email);
+            var userResult = await _authService.GetUserByEmailAsync(email);
+            var user = userResult.Data;
             if (user == null)
             {
                 return NotFound(new AuthResponse { Message = "User not found" });

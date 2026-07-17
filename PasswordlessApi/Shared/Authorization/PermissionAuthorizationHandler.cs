@@ -32,7 +32,7 @@ namespace API.Shared.Authorization
 
             var userRoleService = httpContext.RequestServices.GetRequiredService<IUserRoleService>();
             var hasPermission = await userRoleService.HasPermissionAsync(userId.Value, requirement.Permission);
-            if (hasPermission)
+            if (hasPermission.Data)
             {
                 context.Succeed(requirement);
             }

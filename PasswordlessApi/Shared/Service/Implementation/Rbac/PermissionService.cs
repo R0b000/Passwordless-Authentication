@@ -2,6 +2,7 @@ using API.Shared.Common;
 using API.Shared.Models.Entities;
 using API.Shared.Service.Interface.Rbac;
 using API.Shared.Service.Interface.Repository;
+using Shared.Wrapper;
 
 namespace API.Shared.Service.Implementation.Rbac
 {
@@ -14,50 +15,61 @@ namespace API.Shared.Service.Implementation.Rbac
             _dapperRepository = dapperRepository;
         }
 
-        public async Task<Permission?> CreatePermissionAsync(string name, string? description, string? module)
+        public async Task<IResponse<Permission?>> CreatePermissionAsync(string name, string? description, string? module)
         {
             var id = (await _dapperRepository.ExecuteAsync(
                 DbConstants.Procedures.Rbac,
                 new { PermissionAction = DbConstants.RbacActions.CreatePermission, Name = name, Description = description, Module = module }));
 
-            if (id <= 0) return null;
+            if (id <= 0) return Response<Permission?>.Fail("Failed to create permission");
 
-            return await GetPermissionByNameAsync(name);
+            return Response<Permission?>.Success((await GetPermissionByNameAsync(name)).Data);
         }
 
-        public async Task<IEnumerable<Permission>> GetAllPermissionsAsync()
+        public async Task<IResponse<IEnumerable<Permission>>> GetAllPermissionsAsync()
         {
-            return (await _dapperRepository.QueryAsync<Permission>(
+            var result = (await _dapperRepository.QueryAsync<Permission>(
                 DbConstants.Procedures.Rbac,
-                new { PermissionAction = DbConstants.RbacActions.GetAllPermissions })) ?? Enumerable.Empty<Permission>();
+                new { PermissionAction = DbConstants.RbacActions.GetAllPermissions }));
+
+            return Response<IEnumerable<Permission>>.Success(result ?? Enumerable.Empty<Permission>());
         }
 
-        public async Task<IEnumerable<Permission>> GetPermissionsByNamesAsync(IEnumerable<string> names)
+        public async Task<IResponse<IEnumerable<Permission>>> GetPermissionsByNamesAsync(IEnumerable<string> names)
         {
-            if (!names.Any()) return Enumerable.Empty<Permission>();
+            if (!names.Any()) return Response<IEnumerable<Permission>>.Success(Enumerable.Empty<Permission>());
 
-            return (await _dapperRepository.QueryAsync<Permission>(
+            var result = (await _dapperRepository.QueryAsync<Permission>(
                 DbConstants.Procedures.Rbac,
-                new { PermissionAction = DbConstants.RbacActions.GetPermissionsByNames, Names = string.Join(",", names) })) ?? Enumerable.Empty<Permission>();
+                new { PermissionAction = DbConstants.RbacActions.GetPermissionsByNames, Names = string.Join(",", names) }));
+
+            return Response<IEnumerable<Permission>>.Success(result ?? Enumerable.Empty<Permission>());
         }
 
-        public async Task<Permission?> GetPermissionByNameAsync(string name)
+        public async Task<IResponse<Permission?>> GetPermissionByNameAsync(string name)
         {
-            return (await _dapperRepository.QueryFirstAsync<Permission>(
+            var result = (await _dapperRepository.QueryFirstAsync<Permission>(
                 DbConstants.Procedures.Rbac,
                 new { PermissionAction = DbConstants.RbacActions.GetPermissionByName, Name = name }));
+
+            if (result == null)
+                return Response<Permission?>.Fail("Permission not found");
+
+            return Response<Permission?>.Success(result);
         }
 
-        public async Task<IEnumerable<string>> GetPermissionNamesByRoleIdAsync(int roleId)
+        public async Task<IResponse<IEnumerable<string>>> GetPermissionNamesByRoleIdAsync(int roleId)
         {
-            return (await _dapperRepository.QueryAsync<string>(
+            var result = (await _dapperRepository.QueryAsync<string>(
                 DbConstants.Procedures.Rbac,
-                new { PermissionAction = DbConstants.RbacActions.GetPermissionNamesByRoleId, RoleId = roleId })) ?? Enumerable.Empty<string>();
+                new { PermissionAction = DbConstants.RbacActions.GetPermissionNamesByRoleId, RoleId = roleId }));
+
+            return Response<IEnumerable<string>>.Success(result ?? Enumerable.Empty<string>());
         }
 
-        public async Task SeedDefaultPermissionsAsync()
+        public async Task<IResponse> SeedDefaultPermissionsAsync()
         {
-            var existing = await GetAllPermissionsAsync();
+            var existing = (await GetAllPermissionsAsync()).Data ?? Enumerable.Empty<Permission>();
             var existingNames = new HashSet<string>(existing.Select(p => p.Name.ToLowerInvariant()));
 
             var defaultPermissions = new[]
@@ -80,6 +92,8 @@ namespace API.Shared.Service.Implementation.Rbac
                     await CreatePermissionAsync(perm.Name, perm.Description, perm.Module);
                 }
             }
+
+            return Response.Success("Default permissions seeded");
         }
     }
 }

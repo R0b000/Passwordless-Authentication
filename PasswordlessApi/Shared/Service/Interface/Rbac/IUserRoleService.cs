@@ -1,18 +1,20 @@
 using API.Shared.Models.Entities;
+using Shared.Wrapper;
 
 namespace API.Shared.Service.Interface.Rbac
 {
     public interface IUserRoleService
     {
-        Task<bool> AssignRoleToUserAsync(int userId, int roleId);
-        Task<bool> RemoveRoleFromUserAsync(int userId, int roleId);
-        Task<IEnumerable<UserRole>> GetUserRolesAsync(int userId);
-        Task<IEnumerable<string>> GetUserRoleNamesAsync(int userId);
-        Task<IEnumerable<string>> GetUserPermissionNamesAsync(int userId);
-        Task<User?> GetUserWithRolesAndPermissionsAsync(int userId);
-        Task<bool> HasPermissionAsync(int userId, string permissionName);
-        Task<bool> IsInRoleAsync(int userId, string roleName);
-        Task<IEnumerable<User>> GetUsersInRoleAsync(string roleName);
-        Task<IEnumerable<User>> GetAllUsersWithRolesAsync();
+        Task<IResponse<bool>> AssignRoleToUserAsync(int userId, int roleId);
+        Task<IResponse<bool>> RemoveRoleFromUserAsync(int userId, int roleId);
+        Task<IResponse<IEnumerable<UserRole>>> GetUserRolesAsync(int userId);
+        Task<IResponse<IEnumerable<string>>> GetUserRoleNamesAsync(int userId);
+        Task<IResponse<IEnumerable<string>>> GetUserPermissionNamesAsync(int userId);
+        Task<IResponse<User?>> GetUserWithRolesAndPermissionsAsync(int userId);
+        Task<IResponse<bool>> HasPermissionAsync(int userId, string permissionName);
+        Task<IResponse<bool>> IsInRoleAsync(int userId, string roleName);
+        Task<IResponse<IEnumerable<User>>> GetUsersInRoleAsync(string roleName);
+        Task<IResponse<IEnumerable<User>>> GetAllUsersWithRolesAsync();
+        int? GetCurrentUserId();
     }
 }

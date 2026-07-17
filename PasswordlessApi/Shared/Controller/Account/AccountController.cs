@@ -27,7 +27,8 @@ namespace API.Shared.Controller.Account
             var userId = User.GetUserId();
             if (userId == null) return Unauthorized();
 
-            var user = await _authService.GetUserByIdAsync(userId.Value);
+            var userResult = await _authService.GetUserByIdAsync(userId.Value);
+            var user = userResult.Data;
             if (user == null) return NotFound();
 
             var result = new UserProfileResponse

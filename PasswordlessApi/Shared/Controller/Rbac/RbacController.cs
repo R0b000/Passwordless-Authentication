@@ -29,7 +29,8 @@ namespace API.Shared.Controller.Rbac
         [Authorize(Policy = "ManageRoles")]
         public async Task<ActionResult<RoleResponse>> CreateRole([FromBody] CreateRoleRequest request)
         {
-            var role = await _roleService.CreateRoleAsync(request.Name, request.Description);
+            var roleResult = await _roleService.CreateRoleAsync(request.Name, request.Description);
+            var role = roleResult.Data;
             if (role == null)
             {
                 return BadRequest(WrapperResponse.Fail("Role already exists or creation failed"));
@@ -37,14 +38,15 @@ namespace API.Shared.Controller.Rbac
 
             if (request.PermissionNames != null && request.PermissionNames.Any())
             {
-                var permissions = await _permissionService.GetPermissionsByNamesAsync(request.PermissionNames);
-                foreach (var perm in permissions)
+                var permissionsResult = await _permissionService.GetPermissionsByNamesAsync(request.PermissionNames);
+                foreach (var perm in permissionsResult.Data ?? Enumerable.Empty<API.Shared.Models.Entities.Permission>())
                 {
                     await _roleService.AssignPermissionToRoleAsync(role.Id, perm.Id);
                 }
             }
 
-            var roleDto = await _roleService.GetRoleWithPermissionsAsync(role.Id);
+            var roleDtoResult = await _roleService.GetRoleWithPermissionsAsync(role.Id);
+            var roleDto = roleDtoResult.Data;
             return Ok(new RoleResponse
             {
                 Id = roleDto!.Id,
@@ -58,7 +60,7 @@ namespace API.Shared.Controller.Rbac
         [HttpGet("roles")]
         public async Task<ActionResult<PaginatedResponse<RoleDto>>> GetAllRoles([FromQuery] int page = 1, [FromQuery] int pageSize = 20)
         {
-            var allRoles = await _roleService.GetAllRolesAsync();
+            var allRoles = (await _roleService.GetAllRolesAsync()).Data ?? Enumerable.Empty<API.Shared.Models.Entities.Role>();
             var totalCount = allRoles.Count();
             var totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
             var skip = (page - 1) * pageSize;
@@ -67,7 +69,7 @@ namespace API.Shared.Controller.Rbac
             var result = new List<RoleDto>();
             foreach (var role in pagedRoles)
             {
-                var roleDto = await _roleService.GetRoleWithPermissionsAsync(role.Id);
+                var roleDto = (await _roleService.GetRoleWithPermissionsAsync(role.Id)).Data;
                 if (roleDto != null)
                 {
                     result.Add(roleDto);
@@ -86,7 +88,7 @@ namespace API.Shared.Controller.Rbac
         [HttpGet("roles/{roleId}")]
         public async Task<ActionResult<RoleDto>> GetRole(int roleId)
         {
-            var roleDto = await _roleService.GetRoleWithPermissionsAsync(roleId);
+            var roleDto = (await _roleService.GetRoleWithPermissionsAsync(roleId)).Data;
             if (roleDto == null)
             {
                 return NotFound(WrapperResponse.Fail("Role not found"));
@@ -100,7 +102,7 @@ namespace API.Shared.Controller.Rbac
         public async Task<ActionResult<IResponse>> AssignPermission([FromBody] AssignPermissionRequest request)
         {
             var assigned = await _roleService.AssignPermissionToRoleAsync(request.RoleId, request.PermissionId);
-            if (!assigned)
+            if (!assigned.Data)
             {
                 return BadRequest(WrapperResponse.Fail("Failed to assign permission"));
             }
@@ -113,7 +115,7 @@ namespace API.Shared.Controller.Rbac
         public async Task<ActionResult<IResponse>> RemovePermission([FromBody] AssignPermissionRequest request)
         {
             var removed = await _roleService.RemovePermissionFromRoleAsync(request.RoleId, request.PermissionId);
-            if (!removed)
+            if (!removed.Data)
             {
                 return BadRequest(WrapperResponse.Fail("Failed to remove permission"));
             }
@@ -126,7 +128,7 @@ namespace API.Shared.Controller.Rbac
         public async Task<ActionResult<IResponse>> AssignRoleToUser([FromBody] AssignRoleRequest request)
         {
             var assigned = await _userRoleService.AssignRoleToUserAsync(request.UserId, request.RoleId);
-            if (!assigned)
+            if (!assigned.Data)
             {
                 return BadRequest(WrapperResponse.Fail("Failed to assign role to user"));
             }
@@ -139,7 +141,7 @@ namespace API.Shared.Controller.Rbac
         public async Task<ActionResult<IResponse>> RemoveRoleFromUser([FromBody] AssignRoleRequest request)
         {
             var removed = await _userRoleService.RemoveRoleFromUserAsync(request.UserId, request.RoleId);
-            if (!removed)
+            if (!removed.Data)
             {
                 return BadRequest(WrapperResponse.Fail("Failed to remove role from user"));
             }
@@ -151,20 +153,20 @@ namespace API.Shared.Controller.Rbac
         public async Task<ActionResult<IEnumerable<string>>> GetUserRoles(int userId)
         {
             var roles = await _userRoleService.GetUserRoleNamesAsync(userId);
-            return Ok(roles);
+            return Ok(roles.Data);
         }
 
         [HttpGet("users/{userId}/permissions")]
         public async Task<ActionResult<IEnumerable<string>>> GetUserPermissions(int userId)
         {
             var permissions = await _userRoleService.GetUserPermissionNamesAsync(userId);
-            return Ok(permissions);
+            return Ok(permissions.Data);
         }
 
         [HttpGet("users")]
         public async Task<ActionResult<PaginatedResponse<UserRoleResponse>>> GetAllUsersWithRoles([FromQuery] int page = 1, [FromQuery] int pageSize = 20)
         {
-            var allUsers = await _userRoleService.GetAllUsersWithRolesAsync();
+            var allUsers = (await _userRoleService.GetAllUsersWithRolesAsync()).Data ?? Enumerable.Empty<API.Shared.Models.Entities.User>();
             var totalCount = allUsers.Count();
             var skip = (page - 1) * pageSize;
             var pagedUsers = allUsers.Skip(skip).Take(pageSize);
@@ -172,7 +174,7 @@ namespace API.Shared.Controller.Rbac
             var result = new List<UserRoleResponse>();
             foreach (var user in pagedUsers)
             {
-                var userWithData = await _userRoleService.GetUserWithRolesAndPermissionsAsync(user.Id);
+                var userWithData = (await _userRoleService.GetUserWithRolesAndPermissionsAsync(user.Id)).Data;
                 if (userWithData != null)
                 {
                     result.Add(new UserRoleResponse
@@ -198,7 +200,7 @@ namespace API.Shared.Controller.Rbac
         [HttpGet("permissions")]
         public async Task<ActionResult<PaginatedResponse<PermissionDto>>> GetAllPermissions([FromQuery] int page = 1, [FromQuery] int pageSize = 20)
         {
-            var allPermissions = await _permissionService.GetAllPermissionsAsync();
+            var allPermissions = (await _permissionService.GetAllPermissionsAsync()).Data ?? Enumerable.Empty<API.Shared.Models.Entities.Permission>();
             var totalCount = allPermissions.Count();
             var skip = (page - 1) * pageSize;
             var pagedPermissions = allPermissions.Skip(skip).Take(pageSize);

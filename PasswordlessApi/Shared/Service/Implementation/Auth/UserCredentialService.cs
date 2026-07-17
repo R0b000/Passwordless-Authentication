@@ -1,6 +1,8 @@
-﻿using API.Shared.Models.Entities;
+﻿using API.Shared.Common;
+using API.Shared.Models.Entities;
 using API.Shared.Service.Interface.Auth;
 using API.Shared.Service.Interface.Repository;
+using Shared.Wrapper;
 
 namespace API.Shared.Service.Implementation.Auth
 {
@@ -14,19 +16,19 @@ namespace API.Shared.Service.Implementation.Auth
             _dapperRepository = dapperRepository;
         }
 
-        public async Task<List<UserCredential>> GetUserCredentialsAsync(int userId)
+        public async Task<IResponse<List<UserCredential>>> GetUserCredentialsAsync(int userId)
         {
-            var credentials = await _dapperRepository.QueryAsync<UserCredential>(
+            var credentials = (await _dapperRepository.QueryAsync<UserCredential>(
                 ProcedureName,
-                new { AuthType = "FIDO", FIDOOperation = "GetCredentialsByUserId", UserId = userId });
+                new { AuthType = "FIDO", FIDOOperation = "GetCredentialsByUserId", UserId = userId }));
 
-            return credentials!.ToList();
+            return Response<List<UserCredential>>.Success(credentials?.ToList() ?? new List<UserCredential>());
         }
 
-        public async Task<bool> HasCredentialsAsync(int userId)
+        public async Task<IResponse<bool>> HasCredentialsAsync(int userId)
         {
-            var credentials = await GetUserCredentialsAsync(userId);
-            return credentials.Any();
+            var credentials = (await GetUserCredentialsAsync(userId)).Data ?? new List<UserCredential>();
+            return Response<bool>.Success(credentials.Any());
         }
     }
 }

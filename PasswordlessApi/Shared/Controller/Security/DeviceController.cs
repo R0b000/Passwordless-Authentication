@@ -24,7 +24,7 @@ namespace API.Shared.Controller.Security
             if (userId == null) return Unauthorized();
 
             var sessions = await _authService.GetActiveSessionsAsync(userId.Value);
-            return Ok(sessions.Sessions);
+            return Ok(sessions.Data?.Sessions);
         }
 
         [HttpPost("logout-all")]
