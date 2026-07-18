@@ -14,9 +14,10 @@ using API.Shared.Service.Implementation.Rbac;
 using API.Shared.Service.Implementation.Security;
 using API.Shared.Service.Interface.Auth;
 using API.Shared.Service.Interface.Rbac;
-using API.Shared.Service.Interface.Repository;
 using API.Shared.Service.Interface.Security;
-using PasswordlessApi.Api.Service.Implementation.Repository;
+using Shared.Data.Repository.Interface;
+using Shared.Data.Repository;
+using Shared.Data.Configuration;
 
 var builder = WebApplication.CreateBuilder(args);
 

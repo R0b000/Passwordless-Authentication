@@ -9,18 +9,18 @@ using API.Shared.Utility.Jwt;
 using API.Shared.Utility.PasswordHash;
 using API.Shared.Utility.TokenHash;
 using API.Shared.Configuration;
-using API.Shared.Models.Entities;
-using API.Shared.Models.RequestModel.Account;
-using API.Shared.Models.RequestModel.Auth;
-using API.Shared.Models.RequestModel.Security;
-using API.Shared.Models.ResponseModel.Account;
-using API.Shared.Models.ResponseModel.Auth;
-using API.Shared.Models.ResponseModel.Security;
+using Shared.Core.Models.Entities;
+using Shared.Core.Models.RequestModel.Account;
+using Shared.Core.Models.RequestModel.Auth;
+using Shared.Core.Models.RequestModel.Security;
+using Shared.Core.Models.ResponseModel.Account;
+using Shared.Core.Models.ResponseModel.Auth;
+using Shared.Core.Models.ResponseModel.Security;
 using API.Shared.Service.Interface.Auth;
 using API.Shared.Service.Interface.Rbac;
-using API.Shared.Service.Interface.Repository;
+using Shared.Data.Repository.Interface;
 using API.Shared.Service.Interface.Security;
-using Shared.Wrapper;
+using Shared.Core.Wrapper;
 
 namespace API.Shared.Service.Implementation.Auth
 {

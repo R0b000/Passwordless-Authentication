@@ -1,10 +1,10 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
-using API.Shared.Models.Common;
-using API.Shared.Models.DTOs.Rbac;
+using Shared.Core.Models.Common;
+using Shared.Core.Models.DTOs.Rbac;
 using API.Shared.Service.Interface.Rbac;
-using Shared.Wrapper;
-using WrapperResponse = Shared.Wrapper.Response;
+using Shared.Core.Wrapper;
+using WrapperResponse = Shared.Core.Wrapper.Response;
 
 namespace API.Shared.Controller.Rbac
 {
@@ -39,7 +39,7 @@ namespace API.Shared.Controller.Rbac
             if (request.PermissionNames != null && request.PermissionNames.Any())
             {
                 var permissionsResult = await _permissionService.GetPermissionsByNamesAsync(request.PermissionNames);
-                foreach (var perm in permissionsResult.Data ?? Enumerable.Empty<API.Shared.Models.Entities.Permission>())
+                foreach (var perm in permissionsResult.Data ?? Enumerable.Empty<global::Shared.Core.Models.Entities.Permission>())
                 {
                     await _roleService.AssignPermissionToRoleAsync(role.Id, perm.Id);
                 }
@@ -60,7 +60,7 @@ namespace API.Shared.Controller.Rbac
         [HttpGet("roles")]
         public async Task<ActionResult<PaginatedResponse<RoleDto>>> GetAllRoles([FromQuery] int page = 1, [FromQuery] int pageSize = 20)
         {
-            var allRoles = (await _roleService.GetAllRolesAsync()).Data ?? Enumerable.Empty<API.Shared.Models.Entities.Role>();
+            var allRoles = (await _roleService.GetAllRolesAsync()).Data ?? Enumerable.Empty<global::Shared.Core.Models.Entities.Role>();
             var totalCount = allRoles.Count();
             var totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
             var skip = (page - 1) * pageSize;
@@ -166,7 +166,7 @@ namespace API.Shared.Controller.Rbac
         [HttpGet("users")]
         public async Task<ActionResult<PaginatedResponse<UserRoleResponse>>> GetAllUsersWithRoles([FromQuery] int page = 1, [FromQuery] int pageSize = 20)
         {
-            var allUsers = (await _userRoleService.GetAllUsersWithRolesAsync()).Data ?? Enumerable.Empty<API.Shared.Models.Entities.User>();
+            var allUsers = (await _userRoleService.GetAllUsersWithRolesAsync()).Data ?? Enumerable.Empty<global::Shared.Core.Models.Entities.User>();
             var totalCount = allUsers.Count();
             var skip = (page - 1) * pageSize;
             var pagedUsers = allUsers.Skip(skip).Take(pageSize);
@@ -200,7 +200,7 @@ namespace API.Shared.Controller.Rbac
         [HttpGet("permissions")]
         public async Task<ActionResult<PaginatedResponse<PermissionDto>>> GetAllPermissions([FromQuery] int page = 1, [FromQuery] int pageSize = 20)
         {
-            var allPermissions = (await _permissionService.GetAllPermissionsAsync()).Data ?? Enumerable.Empty<API.Shared.Models.Entities.Permission>();
+            var allPermissions = (await _permissionService.GetAllPermissionsAsync()).Data ?? Enumerable.Empty<global::Shared.Core.Models.Entities.Permission>();
             var totalCount = allPermissions.Count();
             var skip = (page - 1) * pageSize;
             var pagedPermissions = allPermissions.Skip(skip).Take(pageSize);

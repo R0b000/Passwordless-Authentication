@@ -1,8 +1,8 @@
 using API.Shared.Common;
-using API.Shared.Models.Entities;
-using API.Shared.Service.Interface.Repository;
+using Shared.Core.Models.Entities;
+using Shared.Data.Repository.Interface;
 using API.Shared.Service.Interface.Security;
-using Shared.Wrapper;
+using Shared.Core.Wrapper;
 
 namespace API.Shared.Service.Implementation.Security
 {

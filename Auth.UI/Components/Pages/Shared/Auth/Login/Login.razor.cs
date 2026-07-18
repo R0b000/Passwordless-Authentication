@@ -1,11 +1,11 @@
-using Auth.UI.Components.UI.Modal;
-using Auth.UI.Shared.Components.Toaster;
-using Auth.UI.Shared.Model.Auth;
-using Auth.UI.Shared.Utility;
+using global::Shared.UI.Components.Modal;
+using global::Shared.UI.Components.Toaster;
+using global::Shared.Core.UIModels.Auth;
+using global::Shared.Core.Token;
 using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
 using System.Text.Json.Serialization;
-using UI.Shared.Manager.Interface.Auth;
+using global::Shared.UI.Manager.Interface.Auth;
 
 namespace Auth.UI.Components.Pages.Shared.Login
 {

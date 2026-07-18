@@ -18,16 +18,13 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Shared\Shared.csproj" />
+    <ProjectReference Include="..\Shared.Core\Shared.Core.csproj" />
+    <ProjectReference Include="..\Shared.Data\Shared.Data.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Models\RequestModels\" />
-    <Folder Include="Models\ResponseModels\" />
     <Folder Include="Controllers\" />
     <Folder Include="Middleware\" />
-    <Folder Include="Shared\Service\Implementation\Repository\" />
-    <Folder Include="Shared\Service\Interface\Repository\" />
     <Folder Include="Utility\" />
     <Folder Include="Services\Interface\" />
     <Folder Include="Services\Implementation\" />

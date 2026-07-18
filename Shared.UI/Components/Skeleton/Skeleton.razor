@@ -1,0 +1,31 @@
+@namespace Shared.UI.Components.Skeleton
+
+<div class="@CssClass" style="@Style" @attributes="Attributes">
+    @if (Variant == SkeletonVariant.Text && Lines > 1)
+    {
+        @for (int i = 0; i < Lines; i++)
+        {
+            <div class="ui-skeleton ui-skeleton-text" style="width:@(100 - (i * 10))%"></div>
+        }
+    }
+    else if (Variant == SkeletonVariant.Rectangle)
+    {
+        <div class="ui-skeleton" style="width:@Width;height:@Height;"></div>
+    }
+    else if (Variant == SkeletonVariant.Circle)
+    {
+        <div class="ui-skeleton ui-skeleton-avatar"></div>
+    }
+    else if (Variant == SkeletonVariant.Image)
+    {
+        <div class="ui-skeleton ui-skeleton-image"></div>
+    }
+    else if (Variant == SkeletonVariant.Button)
+    {
+        <div class="ui-skeleton ui-skeleton-button"></div>
+    }
+    else
+    {
+        <div class="ui-skeleton ui-skeleton-text" style="width:100%"></div>
+    }
+</div>

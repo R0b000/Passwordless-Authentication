@@ -1,6 +1,6 @@
-using API.Shared.Models.RequestModel.Auth;
-using API.Shared.Models.ResponseModel.Auth;
-using Shared.Wrapper;
+using Shared.Core.Models.RequestModel.Auth;
+using Shared.Core.Models.ResponseModel.Auth;
+using Shared.Core.Wrapper;
 
 namespace API.Shared.Service.Interface.Auth
 {

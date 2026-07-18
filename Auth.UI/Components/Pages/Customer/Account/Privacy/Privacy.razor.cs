@@ -1,8 +1,8 @@
-using Auth.UI.Components.UI.Modal;
-using Auth.UI.Shared.Components.Toaster;
-using Auth.UI.Shared.Model.Account;
+using global::Shared.UI.Components.Modal;
+using global::Shared.UI.Components.Toaster;
+using global::Shared.Core.UIModels.Account;
 using Microsoft.AspNetCore.Components;
-using UI.Shared.Manager.Interface.Auth;
+using global::Shared.UI.Manager.Interface.Auth;
 
 namespace Auth.UI.Components.Pages.Customer.Account.Privacy
 {

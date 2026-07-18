@@ -1,0 +1,23 @@
+@namespace Shared.UI.Components.Steps
+
+<div class="ui-steps">
+    @for (var i = 0; i < Items.Count; i++)
+    {
+        var step = Items[i];
+        var isLast = i == Items.Count - 1;
+        <div class="ui-step @(GetStatusClass(i))">
+            <div class="ui-step-indicator">@(GetIndicator(i))</div>
+            <div class="ui-step-content">
+                <div class="ui-step-title">@step.Title</div>
+                @if (!string.IsNullOrWhiteSpace(step.Description))
+                {
+                    <div class="ui-step-desc">@step.Description</div>
+                }
+            </div>
+        </div>
+        if (!isLast)
+        {
+            <div class="ui-step-connector @(i < ActiveIndex ? "is-completed" : "")"></div>
+        }
+    }
+</div>

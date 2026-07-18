@@ -1,0 +1,16 @@
+@namespace Shared.UI.Components.Tour
+
+@if (Visible)
+{
+    <div class="ui-tour-overlay" @onclick="Close"></div>
+    <div class="ui-tour-popover" style="@PositionStyle">
+        <div class="ui-tour-header">@Title</div>
+        <div class="ui-tour-body">@ChildContent</div>
+        <div class="ui-tour-footer">
+            <Button Variant="Button.ButtonVariant.Secondary" Size="Button.ButtonSize.Small" OnClick="Prev">Previous</Button>
+            <Button Variant="Button.ButtonVariant.Primary" Size="Button.ButtonSize.Small" OnClick="Next">
+                @(IsLast ? "Finish" : "Next")
+            </Button>
+        </div>
+    </div>
+}

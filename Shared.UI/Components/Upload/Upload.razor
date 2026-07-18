@@ -1,0 +1,38 @@
+@namespace Shared.UI.Components.Upload
+
+<div class="ui-upload">
+    <label class="ui-upload-dropzone @(_dragover ? "is-dragover" : "")"
+           @ondragover:preventDefault
+           @ondragenter:preventDefault
+           @ondragleave:preventDefault
+           @ondrop:preventDefault
+           @ondrop="OnDrop">
+        <Icon Name="upload" Size="Icon.IconSize.Large" />
+        <p class="mb-1">Drag & drop files here, or click to browse</p>
+        <InputFile class="d-none" OnChange="OnInputChange" multiple="@Multiple" accept="@Accept" />
+    </label>
+
+    @if (Files.Any())
+    {
+        <div class="ui-upload-list">
+            @foreach (var file in Files)
+            {
+                <div class="ui-upload-item">
+                    <div class="ui-upload-item-info">
+                        <div class="ui-upload-item-name">@file.Name</div>
+                        <div class="ui-upload-item-size">@FormatSize(file.Size)</div>
+                        @if (file.Progress < 100)
+                        {
+                            <div class="ui-upload-progress">
+                                <div class="ui-upload-progress-bar" style="width:@file.Progress%"></div>
+                            </div>
+                        }
+                    </div>
+                    <button class="ui-icon-btn" aria-label="Remove" @onclick="() => RemoveFile(file)" disabled="@Disabled">
+                        <Icon Name="x" Size="Icon.IconSize.Small" />
+                    </button>
+                </div>
+            }
+        </div>
+    }
+</div>

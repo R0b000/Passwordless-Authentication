@@ -1,8 +1,8 @@
-﻿using API.Shared.Common;
-using API.Shared.Models.Entities;
+using API.Shared.Common;
+using Shared.Core.Models.Entities;
 using API.Shared.Service.Interface.Auth;
-using API.Shared.Service.Interface.Repository;
-using Shared.Wrapper;
+using Shared.Data.Repository.Interface;
+using Shared.Core.Wrapper;
 
 namespace API.Shared.Service.Implementation.Auth
 {

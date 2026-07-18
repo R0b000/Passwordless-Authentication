@@ -3,12 +3,12 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using API.Shared.Common;
 using API.Shared.Middleware;
-using API.Shared.Models.RequestModel.Auth;
-using API.Shared.Models.RequestModel.Security;
-using API.Shared.Models.ResponseModel.Auth;
+using Shared.Core.Models.RequestModel.Auth;
+using Shared.Core.Models.RequestModel.Security;
+using Shared.Core.Models.ResponseModel.Auth;
 using API.Shared.Service.Interface.Auth;
 using API.Shared.Service.Interface.Rbac;
-using Shared.Wrapper;
+using Shared.Core.Wrapper;
 
 namespace API.Shared.Controller.Auth
 {

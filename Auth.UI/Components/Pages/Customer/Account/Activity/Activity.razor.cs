@@ -1,8 +1,8 @@
 using Microsoft.AspNetCore.Components;
-using Auth.UI.Shared.Components.Timeline;
-using Auth.UI.Shared.Components.Toaster;
-using Auth.UI.Shared.Model.Security;
-using UI.Shared.Manager.Interface.Auth;
+using global::Shared.UI.Components.Timeline;
+using global::Shared.UI.Components.Toaster;
+using global::Shared.Core.UIModels.Security;
+using global::Shared.UI.Manager.Interface.Auth;
 
 namespace Auth.UI.Components.Pages.Customer.Account.Activity
 {

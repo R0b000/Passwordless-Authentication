@@ -1,10 +1,10 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
 using API.Shared.Common;
-using API.Shared.Models.Entities;
+using Shared.Core.Models.Entities;
 using API.Shared.Service.Interface.Rbac;
-using API.Shared.Service.Interface.Repository;
-using Shared.Wrapper;
+using Shared.Data.Repository.Interface;
+using Shared.Core.Wrapper;
 
 namespace API.Shared.Service.Implementation.Rbac
 {

@@ -1,15 +1,15 @@
-﻿using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using API.Shared.Common;
 using API.Shared.Utility.Jwt;
 using API.Shared.Utility.OtpGenerator;
-using API.Shared.Models.Entities;
-using API.Shared.Models.RequestModel.Auth;
-using API.Shared.Models.ResponseModel.Auth;
+using Shared.Core.Models.Entities;
+using Shared.Core.Models.RequestModel.Auth;
+using Shared.Core.Models.ResponseModel.Auth;
 using API.Shared.Service.Interface.Auth;
 using API.Shared.Service.Interface.Rbac;
-using API.Shared.Service.Interface.Repository;
-using Shared.Wrapper;
+using Shared.Data.Repository.Interface;
+using Shared.Core.Wrapper;
 
 namespace API.Shared.Service.Implementation.Auth
 {

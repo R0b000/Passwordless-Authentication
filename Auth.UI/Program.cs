@@ -1,10 +1,8 @@
-using Auth.UI.Shared.Components.Toaster;
-using Auth.UI.Shared.Utility;
-using Auth.UI.Shared.Model.Toast;
-using UI.Shared.Manager.Implementation.Http;
-using UI.Shared.Manager.Interface.Http;
-using UI.Shared.Manager.Implementation.Auth;
-using UI.Shared.Manager.Interface.Auth;
+using global::Shared.UI.Components.Toaster;
+using global::Shared.Core.Token;
+using global::Shared.UI.Http;
+using global::Shared.UI.Manager.Implementation.Auth;
+using global::Shared.UI.Manager.Interface.Auth;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -19,7 +17,6 @@ builder.Services.AddHttpClient("ApiGateway", client =>
 
 
 // 3. Register your services
-builder.Services.AddScoped<ToastService>();
 builder.Services.AddScoped<ITokenHelper, TokenHelper>();
 builder.Services.AddScoped<ITokenStore, TokenStore>();
 builder.Services.AddScoped<IHttpServices, HttpServices>();

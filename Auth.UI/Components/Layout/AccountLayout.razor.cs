@@ -1,8 +1,8 @@
-using Auth.UI.Shared.Components.Menu;
-using Auth.UI.Shared.Model.Account;
-using Auth.UI.Shared.Utility;
+using global::Shared.UI.Components.Menu;
+using global::Shared.Core.UIModels.Account;
+using global::Shared.Core.Token;
 using Microsoft.AspNetCore.Components;
-using UI.Shared.Manager.Interface.Auth;
+using global::Shared.UI.Manager.Interface.Auth;
 
 namespace Auth.UI.Components.Layout
 {

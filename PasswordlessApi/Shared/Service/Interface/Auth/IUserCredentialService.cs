@@ -1,5 +1,5 @@
-﻿using API.Shared.Models.Entities;
-using Shared.Wrapper;
+using Shared.Core.Models.Entities;
+using Shared.Core.Wrapper;
 
 namespace API.Shared.Service.Interface.Auth
 {

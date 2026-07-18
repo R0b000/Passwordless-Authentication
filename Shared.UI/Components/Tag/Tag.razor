@@ -1,0 +1,15 @@
+@namespace Shared.UI.Components.Tag
+
+<span class="ui-tag ui-tag-@Variant.ToString().ToLowerInvariant()">
+    @if (!string.IsNullOrWhiteSpace(TagIcon))
+    {
+        <Icon Name="@TagIcon" Size="Icon.IconSize.Small" />
+    }
+    <span>@ChildContent</span>
+    @if (Closable)
+    {
+        <button class="ui-tag-close" @onclick="Close" aria-label="Close">
+            <Icon Name="x" Size="Icon.IconSize.Small" />
+        </button>
+    }
+</span>
