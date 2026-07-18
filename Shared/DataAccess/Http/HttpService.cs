@@ -1,11 +1,12 @@
 using Shared.Wrapper;
 using Auth.UI.Shared.Model.Toast;
-using Auth.UI.Shared.Utility;
 using Microsoft.AspNetCore.Components;
 using System.Net.Http.Headers;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using UI.Shared.Manager.Interface.Http;
+using Auth.UI.Shared.Utility;
+using System.Net.Http.Json;
 
 namespace UI.Shared.Manager.Implementation.Http
 {

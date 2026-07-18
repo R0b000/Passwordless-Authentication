@@ -1,7 +1,7 @@
 using System.Data;
-using Dapper;
 using API.Shared.Models.Common;
 using API.Shared.Service.Interface.Repository;
+using Dapper;
 using Shared.Wrapper;
 
 namespace PasswordlessApi.Api.Service.Implementation.Repository
