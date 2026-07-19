@@ -381,6 +381,18 @@ namespace API.Shared.Service.Implementation.Auth
                 StoredSignatureCounter = storedCount,
                 IsUserHandleOwnerOfCredentialIdCallback = async (args, ct) =>
                 {
+                    // Some authenticators (e.g. non-discoverable credentials) do not return a
+                    // userHandle in the assertion. In that case ownership is already implied:
+                    // the credential was resolved by request.UserId and allowedCredentials is
+                    // scoped to that user, so the credential id itself proves ownership.
+                    if (args.UserHandle == null || args.UserHandle.Length < 4)
+                    {
+                        var fallback = (await _dapperRepository.QueryFirstAsync<UserCredential>(
+                            DbConstants.Procedures.Users,
+                            new { AuthType = DbConstants.AuthTypes.Fido, FIDOOperation = DbConstants.FidoOperations.GetCredential, CredentialId = Convert.ToBase64String(args.CredentialId) }));
+                        return fallback != null && fallback.UserId == request.UserId;
+                    }
+
                     var claimedUserId = BitConverter.ToInt32(args.UserHandle);
                     var credentialIdBase64Callback = Convert.ToBase64String(args.CredentialId);
                     var dbCredential = (await _dapperRepository.QueryFirstAsync<UserCredential>(
