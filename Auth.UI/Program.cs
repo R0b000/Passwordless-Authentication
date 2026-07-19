@@ -1,30 +1,30 @@
-using Auth.UI.src.Manager.Controller;
-using Auth.UI.src.Manager.Service.Implementation;
-using Auth.UI.src.Manager.Service.Interface;
-using Auth.UI.src.Shared.Http;
-using Auth.UI.src.Utility;
+using global::Shared.UI.Components.Toaster;
+using global::Shared.Core.Token;
+using global::Shared.UI.Http;
+using global::Shared.UI.Manager.Implementation.Auth;
+using global::Shared.UI.Manager.Interface.Auth;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
-builder.Services.AddScoped(sp =>
+builder.Services.AddHttpClient("ApiGateway", client =>
 {
     var baseUrl = builder.Configuration["ApiSettings:BaseUrl"] ?? "http://localhost:5000";
-    var handler = new HttpClientHandler { ServerCertificateCustomValidationCallback = (_, _, _, _) => true };
-    return new HttpClient(handler) { BaseAddress = new Uri(baseUrl) };
+    client.BaseAddress = new Uri(baseUrl);
 });
 
+
+// 3. Register your services
+builder.Services.AddScoped<ITokenHelper, TokenHelper>();
 builder.Services.AddScoped<ITokenStore, TokenStore>();
-builder.Services.AddScoped<IHttpService, HttpService>();
+builder.Services.AddScoped<IHttpServices, HttpServices>();
 builder.Services.AddScoped<IAuthManager, AuthManager>();
-builder.Services.AddScoped<AuthController>();
 builder.Services.AddScoped<IAccountManager, AccountManager>();
-builder.Services.AddScoped<AccountController>();
 builder.Services.AddScoped<ISecurityManager, SecurityManager>();
-builder.Services.AddScoped<SecurityController>();
-builder.Services.AddScoped<Auth.UI.Components.UI.Toaster.ToasterService>();
+
+builder.Services.AddScoped<ToasterService>();
 
 var app = builder.Build();
 

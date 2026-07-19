@@ -1,0 +1,28 @@
+@namespace Shared.UI.Components.Datepicker
+
+<div class="ui-datepicker">
+    <input class="ui-datepicker-input" type="date" @bind="SelectedDate" @bind:format="yyyy-MM-dd" disabled="@Disabled" />
+    @if (Popup)
+    {
+        <div class="ui-datepicker-popup">
+            <div class="ui-datepicker-header">
+                <button class="ui-icon-btn" @onclick="PrevMonth" aria-label="Previous month"><Icon Name="chevron-left" Size="Icon.IconSize.Small" /></button>
+                <span class="ui-datepicker-title">@Title</span>
+                <button class="ui-icon-btn" @onclick="NextMonth" aria-label="Next month"><Icon Name="chevron-right" Size="Icon.IconSize.Small" /></button>
+            </div>
+            <div class="ui-datepicker-grid">
+                @foreach (var day in DayNames)
+                {
+                    <div class="ui-datepicker-day-name">@day</div>
+                }
+                @foreach (var d in Days)
+                {
+                    <button class="ui-datepicker-day @(d.IsToday ? "is-today" : "") @(d.IsSelected ? "is-selected" : "") @(d.IsOtherMonth ? "is-other-month" : "")"
+                            disabled="@Disabled" @onclick="@(() => Select(d))">
+                        @d.Day
+                    </button>
+                }
+            </div>
+        </div>
+    }
+</div>

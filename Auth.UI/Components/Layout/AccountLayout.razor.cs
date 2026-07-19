@@ -1,15 +1,14 @@
-using Auth.UI.Components.UI.Menu;
-using Auth.UI.src.Manager.Controller;
-using Auth.UI.src.Model.Account;
-using Auth.UI.src.Utility;
+using global::Shared.UI.Components.Menu;
+using global::Shared.Core.UIModels.Account;
+using global::Shared.Core.Token;
 using Microsoft.AspNetCore.Components;
-using System.Collections.Generic;
+using global::Shared.UI.Manager.Interface.Auth;
 
 namespace Auth.UI.Components.Layout
 {
     public partial class AccountLayout : LayoutComponentBase
     {
-        [Inject] private AccountController AccountController { get; set; } = default!;
+        [Inject] private IAccountManager AccountManager { get; set; } = default!;
         [Inject] private NavigationManager Navigation { get; set; } = default!;
         [Inject] private ITokenStore TokenStore { get; set; } = default!;
 
@@ -59,7 +58,7 @@ namespace Auth.UI.Components.Layout
                 return;
             }
 
-            var result = await AccountController.GetProfileAsync();
+            var result = await AccountManager.GetProfileAsync();
             Profile = result.Succeeded ? result.Data : null;
         }
 

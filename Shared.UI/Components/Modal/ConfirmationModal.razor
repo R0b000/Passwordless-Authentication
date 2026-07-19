@@ -1,0 +1,10 @@
+@namespace Shared.UI.Components.Modal
+
+<Modal @ref="_modal" Size="@Size" Title="@Title" Visible="@Visible" VisibleChanged="@VisibleChanged"
+       SubmitText="@ConfirmText" SubmitIcon="check" CancelText="@CancelText"
+       OnSubmit="ConfirmAsync" OnCancel="DeclineAsync">
+    <ChildContent>
+        <p class="ui-confirm-message">@Message</p>
+        @ChildContent
+    </ChildContent>
+</Modal>

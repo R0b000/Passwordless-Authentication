@@ -1,15 +1,15 @@
-using Auth.UI.Components.UI.Toaster;
-using Auth.UI.src.Manager.Controller;
-using Auth.UI.src.Model.Account;
-using Auth.UI.src.Utility;
+using global::Shared.UI.Components.Toaster;
+using global::Shared.Core.UIModels.Account;
+using global::Shared.Core.Token;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Forms;
+using global::Shared.UI.Manager.Interface.Auth;
 
 namespace Auth.UI.Components.Pages.Customer.Account.Profile
 {
     public partial class Profile : ComponentBase
     {
-        [Inject] private AccountController AccountController { get; set; } = default!;
+        [Inject] private IAccountManager AccountManager { get; set; } = default!;
         [Inject] private ToasterService Toaster { get; set; } = default!;
         [Inject] private ITokenStore TokenStore { get; set; } = default!;
         [Inject] private NavigationManager Navigation { get; set; } = default!;
@@ -34,7 +34,7 @@ namespace Auth.UI.Components.Pages.Customer.Account.Profile
 
         protected override async Task OnInitializedAsync()
         {
-            var result = await AccountController.GetProfileAsync();
+            var result = await AccountManager.GetProfileAsync();
             Model = result.Succeeded ? result.Data : new UserProfile();
         }
 
@@ -48,16 +48,16 @@ namespace Auth.UI.Components.Pages.Customer.Account.Profile
 
         protected async Task ReloadAsync()
         {
-            var result = await AccountController.GetProfileAsync();
+            var result = await AccountManager.GetProfileAsync();
             if (result.Succeeded) Model = result.Data;
         }
 
         protected async Task SaveAsync()
         {
             if (Model is null) return;
-            var result = await AccountController.UpdateProfileAsync(Model);
+            var result = await AccountManager.UpdateProfileAsync(Model);
             Succeeded = result.Succeeded;
-            StatusMessage = result.Message ?? string.Empty;
+            StatusMessage = result.Messages ?? string.Empty;
             EditMode = !result.Succeeded;
             if (result.Succeeded) Toaster.ShowSuccess("Profile updated");
             else Toaster.ShowDanger(StatusMessage);

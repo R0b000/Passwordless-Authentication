@@ -1,13 +1,13 @@
-using Auth.UI.Components.UI.Toaster;
-using Auth.UI.src.Manager.Controller;
-using Auth.UI.src.Model.Auth;
+using global::Shared.UI.Components.Toaster;
+using global::Shared.Core.UIModels.Auth;
 using Microsoft.AspNetCore.Components;
+using global::Shared.UI.Manager.Interface.Auth;
 
 namespace Auth.UI.Components.Pages.Shared.Register
 {
     public partial class Signup : ComponentBase
     {
-        [Inject] private AccountController AccountController { get; set; } = default!;
+        [Inject] private IAccountManager AccountManager { get; set; } = default!;
         [Inject] private ToasterService Toaster { get; set; } = default!;
         [Inject] private NavigationManager Navigation { get; set; } = default!;
 
@@ -62,9 +62,9 @@ namespace Auth.UI.Components.Pages.Shared.Register
                 return;
             }
 
-            var result = await AccountController.RegisterAsync(Model);
+            var result = await AccountManager.RegisterAsync(Model);
             Succeeded = result.Succeeded;
-            StatusMessage = result.Message ?? string.Empty;
+            StatusMessage = result.Messages ?? string.Empty;
 
             if (result.Succeeded)
             {

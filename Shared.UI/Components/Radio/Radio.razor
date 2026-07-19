@@ -1,0 +1,6 @@
+@namespace Shared.UI.Components.Radio
+
+<label class="ui-radio @(Disabled ? "is-disabled" : "")">
+    <input type="radio" name="@GroupName" value="@Value" checked="@IsChecked" disabled="@Disabled" @onchange="OnChanged" />
+    <span>@ChildContent</span>
+</label>

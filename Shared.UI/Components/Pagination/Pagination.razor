@@ -1,0 +1,43 @@
+@namespace Shared.UI.Components.Pagination
+
+<nav aria-label="Page navigation">
+    <ul class="ui-pagination">
+        <li>
+            <button class="ui-page-btn" @onclick="FirstPage" disabled="@(CurrentPage == 1)">
+                <Icon Name="chevron-left" Size="Icon.IconSize.Small" />
+                <Icon Name="chevron-left" Size="Icon.IconSize.Small" />
+            </button>
+        </li>
+        <li>
+            <button class="ui-page-btn" @onclick="PrevPage" disabled="@(CurrentPage == 1)">
+                <Icon Name="chevron-left" Size="Icon.IconSize.Small" />
+            </button>
+        </li>
+
+        @foreach (var p in GetPages())
+        {
+            if (p == -1)
+            {
+                <li class="ui-page-indicator">…</li>
+            }
+            else
+            {
+                <li>
+                    <button class="ui-page-btn @(p == CurrentPage ? "is-active" : "")" @onclick="@(() => GoToPage(p))">@p</button>
+                </li>
+            }
+        }
+
+        <li>
+            <button class="ui-page-btn" @onclick="NextPage" disabled="@(CurrentPage == TotalPages)">
+                <Icon Name="chevron-right" Size="Icon.IconSize.Small" />
+            </button>
+        </li>
+        <li>
+            <button class="ui-page-btn" @onclick="LastPage" disabled="@(CurrentPage == TotalPages)">
+                <Icon Name="chevron-right" Size="Icon.IconSize.Small" />
+                <Icon Name="chevron-right" Size="Icon.IconSize.Small" />
+            </button>
+        </li>
+    </ul>
+</nav>

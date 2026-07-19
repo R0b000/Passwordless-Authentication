@@ -1,12 +1,12 @@
-using Auth.UI.Components.UI.Toaster;
-using Auth.UI.src.Manager.Controller;
+using global::Shared.UI.Components.Toaster;
 using Microsoft.AspNetCore.Components;
+using global::Shared.UI.Manager.Interface.Auth;
 
 namespace Auth.UI.Components.Pages.Shared.Reset
 {
     public partial class ResetPassword : ComponentBase
     {
-        [Inject] private AccountController AccountController { get; set; } = default!;
+        [Inject] private IAccountManager AccountManager { get; set; } = default!;
         [Inject] private ToasterService Toaster { get; set; } = default!;
         [Inject] private NavigationManager Navigation { get; set; } = default!;
 
@@ -35,9 +35,9 @@ namespace Auth.UI.Components.Pages.Shared.Reset
                 return;
             }
 
-            var result = await AccountController.ResetPasswordAsync(Token, NewPassword);
+            var result = await AccountManager.ResetPasswordAsync(Token, NewPassword);
             Succeeded = result.Succeeded;
-            StatusMessage = result.Message ?? string.Empty;
+            StatusMessage = result.Messages ?? string.Empty;
 
             if (result.Succeeded)
             {

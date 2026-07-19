@@ -1,4 +1,8 @@
 <Solution>
-  <Project Path="Auth.UI/Auth.UI.csproj" />
-  <Project Path="PasswordlessApi/PasswordlessApi.csproj" />
+  <Project Path="Auth.UI/UI.csproj" />
+  <Project Path="PasswordlessApi/API.csproj" />
+  <Project Path="Shared.Core/Shared.Core.csproj" />
+  <Project Path="Shared.Data/Shared.Data.csproj" />
+  <Project Path="Shared.UI/Shared.UI.csproj" />
+  <Project Path="Database/Database.csproj" />
 </Solution>

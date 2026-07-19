@@ -1,8 +1,8 @@
-using Auth.UI.src.Manager.Controller;
-using Auth.UI.src.Model.Auth;
+using global::Shared.Core.UIModels.Auth;
 using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
 using System.Text.Json.Serialization;
+using global::Shared.UI.Manager.Interface.Auth;
 
 namespace Auth.UI.Components.Pages.Shared.Fido
 {
@@ -10,7 +10,7 @@ namespace Auth.UI.Components.Pages.Shared.Fido
     {
         public enum PasskeyState { Idle, Requesting, Awaiting, Verifying, Success, Error }
 
-        [Inject] private AuthController AuthController { get; set; } = default!;
+        [Inject] private IAuthManager AuthManager { get; set; } = default!;
         [Inject] private NavigationManager NavigationManager { get; set; } = default!;
         [Inject] private IJSRuntime JsRuntime { get; set; } = default!;
 
@@ -76,7 +76,7 @@ namespace Auth.UI.Components.Pages.Shared.Fido
 
             try
             {
-                var result = await AuthController.GetUserByEmailAsync(Email);
+                var result = await AuthManager.GetUserByEmailAsync(Email);
                 if (result.Succeeded && result.Data is not null)
                 {
                     UserId = result.Data.UserId;
@@ -89,7 +89,7 @@ namespace Auth.UI.Components.Pages.Shared.Fido
                 else
                 {
                     State = PasskeyState.Idle;
-                    StatusMessage = result.Message ?? "No account found with this email address.";
+                    StatusMessage = result.Messages ?? "No account found with this email address.";
                     Succeeded = false;
                 }
             }
@@ -129,11 +129,11 @@ namespace Auth.UI.Components.Pages.Shared.Fido
             StatusDetail = "Contacting the server to prepare your passkey challenge…";
 
             var origin = new Uri(NavigationManager.BaseUri).GetLeftPart(UriPartial.Authority);
-            var result = await AuthController.CreateFido2ChallengeAsync(UserId, origin);
+            var result = await AuthManager.CreateFido2ChallengeAsync(UserId, origin);
             if (!result.Succeeded || result.Data is null)
             {
                 State = PasskeyState.Error;
-                StatusDetail = result.Message ?? "Unable to start passkey sign-in. Please try again.";
+                StatusDetail = result.Messages ?? "Unable to start passkey sign-in. Please try again.";
                 return;
             }
 
@@ -175,7 +175,7 @@ namespace Auth.UI.Components.Pages.Shared.Fido
             State = PasskeyState.Verifying;
             StatusDetail = "Verifying your passkey with the server…";
 
-            var result = await AuthController.VerifyFido2AssertionAsync(VerifyModel);
+            var result = await AuthManager.VerifyFido2AssertionAsync(VerifyModel);
             if (result.Succeeded)
             {
                 State = PasskeyState.Success;
@@ -185,7 +185,7 @@ namespace Auth.UI.Components.Pages.Shared.Fido
             }
 
             State = PasskeyState.Error;
-            StatusDetail = result.Data?.Message ?? result.Message ?? "The passkey could not be verified. Please try again.";
+            StatusDetail = result.Data?.Message ?? result.Messages ?? "The passkey could not be verified. Please try again.";
         }
 
         private async Task<string> MapErrorAsync(Exception ex)

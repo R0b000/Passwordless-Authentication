@@ -1,0 +1,11 @@
+@namespace Shared.UI.Components.Progress
+
+<div class="ui-progress">
+    <div class="ui-progress-track">
+        <div class="ui-progress-bar" style="width:@Percent%"></div>
+    </div>
+    @if (ShowLabel)
+    {
+        <div class="ui-progress-label">@LabelText</div>
+    }
+</div>

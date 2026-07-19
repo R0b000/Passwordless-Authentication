@@ -1,13 +1,13 @@
-using Auth.UI.Components.UI.Toaster;
-using Auth.UI.src.Manager.Controller;
-using Auth.UI.src.Model.Security;
+using global::Shared.UI.Components.Toaster;
+using global::Shared.Core.UIModels.Security;
 using Microsoft.AspNetCore.Components;
+using global::Shared.UI.Manager.Interface.Auth;
 
 namespace Auth.UI.Components.Pages.Customer.Account.Sessions
 {
     public partial class Sessions : ComponentBase
     {
-        [Inject] private SecurityController SecurityController { get; set; } = default!;
+        [Inject] private ISecurityManager SecurityManager { get; set; } = default!;
         [Inject] private ToasterService Toaster { get; set; } = default!;
 
         protected List<SessionInfo> SessionItems { get; set; } = new();
@@ -19,7 +19,7 @@ namespace Auth.UI.Components.Pages.Customer.Account.Sessions
 
         private async Task ReloadAsync()
         {
-            var result = await SecurityController.GetSessionsAsync();
+            var result = await SecurityManager.GetSessionsAsync();
             SessionItems = result.Succeeded ? result.Data ?? new List<SessionInfo>() : new List<SessionInfo>();
         }
 
@@ -32,22 +32,22 @@ namespace Auth.UI.Components.Pages.Customer.Account.Sessions
 
         protected async Task RevokeAsync(string id)
         {
-            var result = await SecurityController.RevokeSessionAsync(id);
-            Toaster.Show(result.Message ?? "Done", result.Succeeded ? ToastType.Success : ToastType.Danger);
+            var result = await SecurityManager.RevokeSessionAsync(id);
+            Toaster.Show(result.Messages ?? "Done", result.Succeeded ? ToastType.Success : ToastType.Danger);
             await ReloadAsync();
         }
 
         protected async Task RevokeOthersAsync()
         {
-            var result = await SecurityController.RevokeAllSessionsAsync(false);
-            Toaster.Show(result.Message ?? "Done", result.Succeeded ? ToastType.Success : ToastType.Danger);
+            var result = await SecurityManager.RevokeAllSessionsAsync(false);
+            Toaster.Show(result.Messages ?? "Done", result.Succeeded ? ToastType.Success : ToastType.Danger);
             await ReloadAsync();
         }
 
         protected async Task RevokeAllAsync()
         {
-            var result = await SecurityController.RevokeAllSessionsAsync(true);
-            Toaster.Show(result.Message ?? "Done", result.Succeeded ? ToastType.Success : ToastType.Danger);
+            var result = await SecurityManager.RevokeAllSessionsAsync(true);
+            Toaster.Show(result.Messages ?? "Done", result.Succeeded ? ToastType.Success : ToastType.Danger);
             await ReloadAsync();
         }
     }

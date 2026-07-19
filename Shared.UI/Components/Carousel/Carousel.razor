@@ -1,0 +1,33 @@
+@namespace Shared.UI.Components.Carousel
+
+<div class="ui-carousel" @ref="_root">
+    <div class="ui-carousel-track" style="transform:@($"translateX(-{ActiveIndex * 100}%)")">
+        @foreach (var slide in Slides)
+        {
+            <div class="ui-carousel-slide">
+                @if (!string.IsNullOrWhiteSpace(slide.ImageUrl))
+                {
+                    <img src="@slide.ImageUrl" alt="@slide.Caption" />
+                }
+                else if (slide.Content is not null)
+                {
+                    @slide.Content
+                }
+            </div>
+        }
+    </div>
+
+    <button class="ui-carousel-btn ui-carousel-prev" @onclick="Prev" disabled="@(ActiveIndex == 0)" aria-label="Previous">
+        <Icon Name="chevron-left" Size="Icon.IconSize.Small" />
+    </button>
+    <button class="ui-carousel-btn ui-carousel-next" @onclick="Next" disabled="@(ActiveIndex == Slides.Count - 1)" aria-label="Next">
+        <Icon Name="chevron-right" Size="Icon.IconSize.Small" />
+    </button>
+
+    <div class="ui-carousel-dots">
+        @foreach (var (slide, idx) in Slides.Select((s, i) => (s, i)))
+        {
+            <button class="ui-carousel-dot @(idx == ActiveIndex ? "is-active" : "")" @onclick="@(() => GoTo(idx))" aria-label="Slide @(idx+1)"></button>
+        }
+    </div>
+</div>

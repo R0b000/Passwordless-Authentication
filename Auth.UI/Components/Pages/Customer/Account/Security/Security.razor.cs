@@ -1,13 +1,13 @@
-using Auth.UI.Components.UI.Toaster;
-using Auth.UI.src.Manager.Controller;
-using Auth.UI.src.Model.Security;
+using global::Shared.UI.Components.Toaster;
+using global::Shared.Core.UIModels.Security;
 using Microsoft.AspNetCore.Components;
+using global::Shared.UI.Manager.Interface.Auth;
 
 namespace Auth.UI.Components.Pages.Customer.Account.Security
 {
     public partial class Security : ComponentBase
     {
-        [Inject] private SecurityController SecurityController { get; set; } = default!;
+        [Inject] private ISecurityManager SecurityManager { get; set; } = default!;
         [Inject] private ToasterService Toaster { get; set; } = default!;
 
         protected SecuritySettings Settings { get; set; } = new();
@@ -19,15 +19,15 @@ namespace Auth.UI.Components.Pages.Customer.Account.Security
 
         protected override async Task OnInitializedAsync()
         {
-            var result = await SecurityController.GetSecurityAsync();
+            var result = await SecurityManager.GetSecurityAsync();
             if (result.Succeeded && result.Data is not null) Settings = result.Data;
         }
 
         protected async Task ChangePasswordAsync()
         {
-            var result = await SecurityController.ChangePasswordAsync(Pw);
+            var result = await SecurityManager.ChangePasswordAsync(Pw);
             Succeeded = result.Succeeded;
-            StatusMessage = result.Message ?? string.Empty;
+            StatusMessage = result.Messages ?? string.Empty;
             if (result.Succeeded)
             {
                 Pw = new ChangePasswordRequest();
@@ -42,8 +42,8 @@ namespace Auth.UI.Components.Pages.Customer.Account.Security
         protected async Task ToggleTwoFactor(bool enabled)
         {
             var result = enabled
-                ? await SecurityController.EnableTwoFactorAsync()
-                : await SecurityController.DisableTwoFactorAsync();
+                ? await SecurityManager.EnableTwoFactorAsync()
+                : await SecurityManager.DisableTwoFactorAsync();
 
             if (result.Succeeded && result.Data is not null)
             {
@@ -52,22 +52,22 @@ namespace Auth.UI.Components.Pages.Customer.Account.Security
             }
             else
             {
-                Toaster.ShowDanger(result.Message ?? "Could not update 2FA");
+                Toaster.ShowDanger(result.Messages ?? "Could not update 2FA");
             }
         }
 
         protected async Task SaveTwoFactorAsync()
         {
-            var result = await SecurityController.UpdateSecurityAsync(Settings);
+            var result = await SecurityManager.UpdateSecurityAsync(Settings);
             Succeeded = result.Succeeded;
-            StatusMessage = result.Message ?? string.Empty;
+            StatusMessage = result.Messages ?? string.Empty;
             if (result.Succeeded) Toaster.ShowSuccess("2FA settings saved");
             else Toaster.ShowDanger(StatusMessage);
         }
 
         protected async Task DisableTwoFactorAsync()
         {
-            var result = await SecurityController.DisableTwoFactorAsync();
+            var result = await SecurityManager.DisableTwoFactorAsync();
             if (result.Succeeded && result.Data is not null)
             {
                 Settings = result.Data;
@@ -75,15 +75,15 @@ namespace Auth.UI.Components.Pages.Customer.Account.Security
             }
             else
             {
-                Toaster.ShowDanger(result.Message ?? "Could not disable 2FA");
+                Toaster.ShowDanger(result.Messages ?? "Could not disable 2FA");
             }
         }
 
         protected async Task SaveAlertsAsync()
         {
-            var result = await SecurityController.UpdateSecurityAsync(Settings);
+            var result = await SecurityManager.UpdateSecurityAsync(Settings);
             Succeeded = result.Succeeded;
-            StatusMessage = result.Message ?? string.Empty;
+            StatusMessage = result.Messages ?? string.Empty;
             if (result.Succeeded) Toaster.ShowSuccess("Security alerts saved");
             else Toaster.ShowDanger(StatusMessage);
         }

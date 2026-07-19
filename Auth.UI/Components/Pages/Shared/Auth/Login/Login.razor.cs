@@ -1,17 +1,17 @@
-using Auth.UI.Components.UI.Modal;
-using Auth.UI.Components.UI.Toaster;
-using Auth.UI.src.Manager.Controller;
-using Auth.UI.src.Model.Auth;
-using Auth.UI.src.Utility;
+using global::Shared.UI.Components.Modal;
+using global::Shared.UI.Components.Toaster;
+using global::Shared.Core.UIModels.Auth;
+using global::Shared.Core.Token;
 using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
 using System.Text.Json.Serialization;
+using global::Shared.UI.Manager.Interface.Auth;
 
 namespace Auth.UI.Components.Pages.Shared.Login
 {
     public partial class Login : ComponentBase
     {
-        [Inject] private AuthController AuthController { get; set; } = default!;
+        [Inject] private IAuthManager AuthManager { get; set; } = default!;
         [Inject] private NavigationManager NavigationManager { get; set; } = default!;
         [Inject] private IJSRuntime JsRuntime { get; set; } = default!;
         [Inject] private ToasterService Toaster { get; set; } = default!;
@@ -63,9 +63,9 @@ namespace Auth.UI.Components.Pages.Shared.Login
         {
             StatusMessage = string.Empty;
 
-            var result = await AuthController.RegisterAsync(RegisterModel);
+            var result = await AuthManager.RegisterAsync(RegisterModel);
             Succeeded = result.Succeeded;
-            StatusMessage = result.Data?.Message ?? result.Message ?? "Registration failed";
+            StatusMessage = result.Data?.Message ?? result.Messages ?? "Registration failed";
 
             if (result.Succeeded && result.Data is not null)
             {
@@ -79,9 +79,9 @@ namespace Auth.UI.Components.Pages.Shared.Login
         {
             StatusMessage = string.Empty;
 
-            var result = await AuthController.LoginAsync(LoginModel);
+            var result = await AuthManager.LoginAsync(LoginModel);
             Succeeded = result.Succeeded;
-            StatusMessage = result.Data?.Message ?? result.Message ?? "Login failed";
+            StatusMessage = result.Data?.Message ?? result.Messages ?? "Login failed";
 
             if (result.Succeeded)
             {
