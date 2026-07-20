@@ -1,4 +1,6 @@
-namespace Shared.Core.Token
+using Shared.Core.Token;
+
+namespace Auth.API.Utility.Auth
 {
     public class TokenHelper : ITokenHelper
     {

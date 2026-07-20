@@ -1,5 +1,6 @@
 using global::Shared.UI.Components.Toaster;
 using global::Shared.Core.Token;
+using global::Auth.API.Utility.Auth;
 using global::Shared.UI.Http;
 using global::Shared.UI.Manager.Implementation.Auth;
 using global::Shared.UI.Manager.Interface.Auth;

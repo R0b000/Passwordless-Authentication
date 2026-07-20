@@ -1,8 +1,7 @@
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Shared.Core.Models.Entities;
-using Shared.Core.Models.RequestModel.Auth;
-using Shared.Core.Models.ResponseModel.Auth;
+using Shared.Core.Models.Auth;
 using Shared.Data.Repository.Interface;
 using Shared.Core.Wrapper;
 using Auth.API.Config;

@@ -1,11 +1,9 @@
 using Shared.Core.Models.Common;
 using Shared.Core.Models.Entities;
-using Shared.Core.Models.RequestModel.Account;
-using Shared.Core.Models.RequestModel.Auth;
-using Shared.Core.Models.RequestModel.Security;
-using Shared.Core.Models.ResponseModel.Account;
-using Shared.Core.Models.ResponseModel.Auth;
-using Shared.Core.Models.ResponseModel.Security;
+using Shared.Core.Models.Account;
+using Shared.Core.Models.Auth;
+using Shared.Core.Models.Security;
+using Shared.Core.Models.Rbac;
 using Shared.Core.Wrapper;
 
 namespace Auth.API.Service.Interface.Auth

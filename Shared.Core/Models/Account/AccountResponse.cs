@@ -1,4 +1,4 @@
-namespace Shared.Core.Models.ResponseModel.Account
+namespace Shared.Core.Models.Account
 {
     public class UserProfileResponse
     {

@@ -5,12 +5,10 @@ using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using Microsoft.Extensions.Options;
 using Shared.Core.Models.Entities;
-using Shared.Core.Models.RequestModel.Account;
-using Shared.Core.Models.RequestModel.Auth;
-using Shared.Core.Models.RequestModel.Security;
-using Shared.Core.Models.ResponseModel.Account;
-using Shared.Core.Models.ResponseModel.Auth;
-using Shared.Core.Models.ResponseModel.Security;
+using Shared.Core.Models.Account;
+using Shared.Core.Models.Auth;
+using Shared.Core.Models.Security;
+using Shared.Core.Models.Rbac;
 using Shared.Data.Repository.Interface;
 using Shared.Core.Wrapper;
 using Auth.API.Config;
@@ -63,50 +61,65 @@ namespace Auth.API.Service.Implementation.Auth
 
         public async Task<IResponse<AuthResponse>> RegisterAsync(RegisterRequest request)
         {
-            var passwordHash = _passwordHash.HashPassword(request.Password);
-
-            using var scope = new TransactionScope(TransactionScopeOption.Required, TransactionScopeAsyncFlowOption.Enabled);
-
-            var userIdResult = await _authRepository.QuerySingleAsync<UserIdResult>(
-                ProcedureName,
-                new { AuthType = DbConstants.AuthTypes.Register, Username = request.Username, Email = request.Email, PasswordHash = passwordHash });
-
-            if (userIdResult == null || !userIdResult.Succeeded || userIdResult.Data == null)
+            try
             {
-                return Response<AuthResponse>.Fail("Registration failed");
+                var passwordHash = _passwordHash.HashPassword(request.Password);
+
+                using var scope = new TransactionScope(TransactionScopeOption.Required, TransactionScopeAsyncFlowOption.Enabled);
+                var param = new
+                {
+                    AuthType = DbConstants.AuthTypes.Register,
+                    Username = request.Username,
+                    Email = request.Email,
+                    PasswordHash = passwordHash
+                };
+
+                var userIdResult = await _authRepository.QuerySingleAsync<UserIdResult>(
+                    ProcedureName,
+                    param
+                );
+
+                if (userIdResult == null || !userIdResult.Succeeded || userIdResult.Data == null)
+                {
+                    return Response<AuthResponse>.Fail("Registration failed");
+                }
+
+                var token = _jwtHelper.GenerateToken(userIdResult.Data.UserId, request.Username);
+                var deviceInfo = await GetDeviceInfoAsync();
+                var refreshToken = await CreateRefreshTokenAsync(userIdResult.Data.UserId, deviceInfo);
+                await AssignDefaultRoleIfMissingAsync(userIdResult.Data.UserId);
+
+                var userWithRoles = (await _userRoleService.GetUserWithRolesAndPermissionsAsync(userIdResult.Data.UserId)).Data;
+
+                await _auditLogService.LogAsync(
+                    userIdResult.Data.UserId,
+                    "UserRegistered",
+                    "User",
+                    userIdResult.Data.UserId.ToString(),
+                    null,
+                    request.Username,
+                    deviceInfo.IpAddress,
+                    deviceInfo.UserAgent);
+
+                scope.Complete();
+
+                return Response<AuthResponse>.Success(new AuthResponse
+                {
+                    UserId = userIdResult.Data.UserId,
+                    Username = request.Username,
+                    Email = request.Email,
+                    Token = token,
+                    RefreshToken = refreshToken,
+                    Message = "Registered successfully",
+                    RequiresFido2Registration = true,
+                    Role = userWithRoles?.Role,
+                    Permissions = userWithRoles?.Permissions ?? new List<string>()
+                });
             }
-
-            var token = _jwtHelper.GenerateToken(userIdResult.Data.UserId, request.Username);
-            var deviceInfo = await GetDeviceInfoAsync();
-            var refreshToken = await CreateRefreshTokenAsync(userIdResult.Data.UserId, deviceInfo);
-            await AssignDefaultRoleIfMissingAsync(userIdResult.Data.UserId);
-
-            var userWithRoles = (await _userRoleService.GetUserWithRolesAndPermissionsAsync(userIdResult.Data.UserId)).Data;
-
-            await _auditLogService.LogAsync(
-                userIdResult.Data.UserId,
-                "UserRegistered",
-                "User",
-                userIdResult.Data.UserId.ToString(),
-                null,
-                request.Username,
-                deviceInfo.IpAddress,
-                deviceInfo.UserAgent);
-
-            scope.Complete();
-
-            return Response<AuthResponse>.Success(new AuthResponse
+            catch (Exception ex)
             {
-                UserId = userIdResult.Data.UserId,
-                Username = request.Username,
-                Email = request.Email,
-                Token = token,
-                RefreshToken = refreshToken,
-                Message = "Registered successfully",
-                RequiresFido2Registration = true,
-                Role = userWithRoles?.Role,
-                Permissions = userWithRoles?.Permissions ?? new List<string>()
-            });
+                return Response<AuthResponse>.Fail("Registration failed: " + ex.Message);
+            }
         }
 
         public async Task<IResponse<AuthResponse>> LoginAsync(LoginRequest request, string? ipAddress = null, string? userAgent = null)

@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace Shared.Core.Models.RequestModel.Account
+namespace Shared.Core.Models.Account
 {
     public class UpdateProfileRequest
     {
@@ -64,4 +64,3 @@ namespace Shared.Core.Models.RequestModel.Account
         public string ConfirmPassword { get; set; } = string.Empty;
     }
 }
-

@@ -19,7 +19,7 @@
 
     <div class="account-section">
         <h4>Profile Visibility</h4>
-        <div class="account-field" style="max-width:320px;">
+        <div class="account-field account-field-narrow">
             <label>Who can see your profile</label>
             <select class="form-control" @bind="Settings!.ProfileVisibility">
                 <option value="public">Public</option>
@@ -44,7 +44,7 @@
             </div>
             <Switch Checked="@Settings!.ThirdPartyConnections" CheckedChanged="v => Settings!.ThirdPartyConnections = v" Label="Third-party connections" />
         </div>
-        <div class="account-field" style="max-width:320px;">
+        <div class="account-field account-field-narrow">
             <label>Cookie preferences</label>
             <select class="form-control" @bind="Settings!.CookiePreferences">
                 <option value="essential">Essential only</option>

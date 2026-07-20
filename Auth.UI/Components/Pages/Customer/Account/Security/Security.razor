@@ -55,7 +55,7 @@
 
         @if (Settings.TwoFactorEnabled)
         {
-            <div class="account-field" style="max-width:320px;">
+            <div class="account-field account-field-narrow">
                 <label>Method</label>
                 <select class="form-control" @bind="Settings.TwoFactorMethod">
                     <option value="authenticator">Authenticator app</option>

@@ -1,8 +1,9 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Shared.Core.Models.RequestModel.Account;
-using Shared.Core.Models.RequestModel.Security;
-using Shared.Core.Models.ResponseModel.Security;
+using Shared.Core.Models.Account;
+using Shared.Core.Models.Security;
+using Shared.Core.Models.Rbac;
+using Shared.Core.Wrapper;
 using Auth.API.Config;
 using Auth.API.Service.Interface.Auth;
 

@@ -9,6 +9,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Shared.Core\Shared.Core.csproj" />
     <ProjectReference Include="..\Shared.UI\Shared.UI.csproj" />
+    <ProjectReference Include="..\Auth.API\Auth.API.csproj" />
   </ItemGroup>
 
 </Project>

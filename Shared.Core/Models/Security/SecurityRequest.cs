@@ -1,4 +1,4 @@
-namespace Shared.Core.Models.RequestModel.Security
+namespace Shared.Core.Models.Security
 {
     public class SecuritySettingsRequest
     {
@@ -15,6 +15,10 @@ namespace Shared.Core.Models.RequestModel.Security
         public string? Type { get; set; }
         public string? Search { get; set; }
     }
+    /// <summary>
+    /// Sets the authentication token.
+    /// </summary>
+    /// <param name="token">The token to be stored.</param>
 
     public class VerifyDeviceRequest
     {

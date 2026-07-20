@@ -4,8 +4,8 @@ using Microsoft.AspNetCore.RateLimiting;
 using Auth.API.Config;
 using Auth.API.Middleware;
 using Auth.API.Service.Interface.Auth;
-using Shared.Core.Models.ResponseModel.Account;
-using Shared.Core.Models.RequestModel.Account;
+using Shared.Core.Models.Account;
+using Shared.Core.Wrapper;
 
 namespace Auth.API.Controller.Account
 {

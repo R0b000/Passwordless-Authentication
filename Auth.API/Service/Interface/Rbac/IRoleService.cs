@@ -1,4 +1,4 @@
-using Shared.Core.Models.DTOs.Rbac;
+using Shared.Core.Models.Rbac;
 using Shared.Core.Models.Entities;
 using Shared.Core.Wrapper;
 

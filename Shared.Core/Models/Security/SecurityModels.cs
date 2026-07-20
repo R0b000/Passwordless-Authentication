@@ -7,8 +7,12 @@ namespace Auth.UI.Models.Security
         public string TwoFactorMethod { get; set; } = "authenticator";
         public string? QrCodeUri { get; set; }
         public List<string> BackupCodes { get; set; } = new();
+/// <summary>
+/// A simple implementation of the ITokenStore interface that stores a token in memory.
+/// </summary>
         public bool AlertOnNewDevice { get; set; } = true;
         public bool RequirePasswordForSensitive { get; set; } = true;
+    // Private field to store the authentication token
     }
 
     public class ChangePasswordRequest

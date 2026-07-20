@@ -1,5 +1,4 @@
-using Shared.Core.Models.RequestModel.Auth;
-using Shared.Core.Models.ResponseModel.Auth;
+using Shared.Core.Models.Auth;
 using Shared.Core.Wrapper;
 
 namespace Auth.API.Service.Interface.Auth

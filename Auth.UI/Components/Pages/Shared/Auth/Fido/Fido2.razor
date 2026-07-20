@@ -113,7 +113,7 @@
             }
             else if (State == PasskeyState.Success)
             {
-                <div class="biometric-ring is-static" style="border-color: rgba(46,139,87,.35); color: var(--ui-success);">
+                <div class="biometric-ring is-static is-success">
                     <Icon Name="check" Size="Icon.IconSize.Small" />
                 </div>
                 <p class="auth-status-text">Signed in</p>
@@ -121,7 +121,7 @@
             }
             else if (State == PasskeyState.Error)
             {
-                <div class="biometric-ring is-static" style="border-color: rgba(192,57,43,.35); color: var(--ui-danger);">
+                <div class="biometric-ring is-static is-error">
                     <Icon Name="alert-triangle" Size="Icon.IconSize.Small" />
                 </div>
                 <p class="auth-status-text">Passkey sign-in couldn't be completed</p>

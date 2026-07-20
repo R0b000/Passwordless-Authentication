@@ -1,0 +1,9 @@
+.biometric-ring.is-success {
+    border-color: rgba(46, 139, 87, .35);
+    color: var(--ui-success);
+}
+
+.biometric-ring.is-error {
+    border-color: rgba(192, 57, 43, .35);
+    color: var(--ui-danger);
+}

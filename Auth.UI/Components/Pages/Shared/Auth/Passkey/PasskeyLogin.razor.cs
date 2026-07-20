@@ -49,7 +49,7 @@ namespace Auth.UI.Components.Pages.Shared.Passkey
         {
             if (firstRender)
             {
-                _webAuthnModule = await JsRuntime.InvokeAsync<IJSObjectReference>("import", "./webauthn.js");
+                _webAuthnModule = await JsRuntime.InvokeAsync<IJSObjectReference>("import", "./js/webauthn.js");
 
                 if (AutoStart && UserId.HasValue)
                 {

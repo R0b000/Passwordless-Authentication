@@ -1,7 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using Shared.Core.Models.Common;
-using Shared.Core.Models.DTOs.Rbac;
+using Shared.Core.Models.Rbac;
+using Shared.Core.Models.Entities;
 using Shared.Core.Wrapper;
 using WrapperResponse = Shared.Core.Wrapper.Response;
 using Auth.API.Service.Interface.Rbac;
