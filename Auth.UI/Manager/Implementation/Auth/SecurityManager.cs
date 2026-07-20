@@ -1,9 +1,9 @@
 using Shared.Core.Wrapper;
-using Shared.Core.UIModels.Security;
 using Shared.Core.Token;
 using Shared.UI.Manager.Interface.Auth;
 using Shared.UI.Http;
 using Shared.UI.Manager.Routes;
+using Auth.UI.Models.Security;
 
 namespace Shared.UI.Manager.Implementation.Auth
 {

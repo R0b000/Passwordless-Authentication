@@ -1,4 +1,4 @@
-namespace Shared.Core.UIModels.Account
+namespace Auth.UI.Models.Account
 {
     public class UserProfile
     {

@@ -1,11 +1,11 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
-using Shared.Core.Models.RequestModel.Account;
-using Shared.Core.Models.ResponseModel.Account;
 using Auth.API.Config;
 using Auth.API.Middleware;
 using Auth.API.Service.Interface.Auth;
+using Shared.Core.Models.ResponseModel.Account;
+using Shared.Core.Models.RequestModel.Account;
 
 namespace Auth.API.Controller.Account
 {

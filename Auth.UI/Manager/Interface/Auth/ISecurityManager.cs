@@ -1,5 +1,5 @@
 using Shared.Core.Wrapper;
-using Shared.Core.UIModels.Security;
+using Auth.UI.Models.Security;
 
 namespace Shared.UI.Manager.Interface.Auth
 {

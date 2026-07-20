@@ -1,7 +1,7 @@
 using global::Shared.UI.Components.Toaster;
-using global::Shared.Core.UIModels.Security;
 using Microsoft.AspNetCore.Components;
 using global::Shared.UI.Manager.Interface.Auth;
+using Auth.UI.Models.Security;
 
 namespace Auth.UI.Components.Pages.Customer.Account.Security
 {

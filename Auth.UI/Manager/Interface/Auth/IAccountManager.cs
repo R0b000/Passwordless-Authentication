@@ -1,6 +1,6 @@
 using Shared.Core.Wrapper;
-using Shared.Core.UIModels.Account;
-using Shared.Core.UIModels.Auth;
+using Auth.UI.Models.Account;
+using Auth.UI.Models.Auth;
 
 namespace Shared.UI.Manager.Interface.Auth
 {

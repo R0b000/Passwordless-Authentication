@@ -1,7 +1,7 @@
 using global::Shared.UI.Components.Toaster;
-using global::Shared.Core.UIModels.Auth;
 using Microsoft.AspNetCore.Components;
 using global::Shared.UI.Manager.Interface.Auth;
+using Auth.UI.Models.Auth;
 
 namespace Auth.UI.Components.Pages.Shared.Register
 {

@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace Shared.Core.UIModels.Auth
+namespace Auth.UI.Models.Auth
 {
     public class WebAuthnAssertion
     {

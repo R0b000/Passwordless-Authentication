@@ -1,9 +1,9 @@
 using global::Shared.UI.Components.Toaster;
-using global::Shared.Core.UIModels.Account;
 using global::Shared.Core.Token;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Forms;
 using global::Shared.UI.Manager.Interface.Auth;
+using Auth.UI.Models.Account;
 
 namespace Auth.UI.Components.Pages.Customer.Account.Profile
 {

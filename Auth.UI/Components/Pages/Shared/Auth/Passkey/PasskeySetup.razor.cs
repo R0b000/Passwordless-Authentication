@@ -1,8 +1,8 @@
-using global::Shared.Core.UIModels.Auth;
 using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
 using System.Text.Json;
 using global::Shared.UI.Manager.Interface.Auth;
+using Auth.UI.Models.Auth;
 
 namespace Auth.UI.Components.Pages.Shared.Passkey
 {

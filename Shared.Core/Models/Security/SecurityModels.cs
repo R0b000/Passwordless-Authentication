@@ -1,4 +1,4 @@
-namespace Shared.Core.UIModels.Security
+namespace Auth.UI.Models.Security
 {
     public class SecuritySettings
     {

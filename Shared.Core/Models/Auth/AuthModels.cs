@@ -1,4 +1,4 @@
-namespace Shared.Core.UIModels.Auth
+namespace Auth.UI.Models.Auth
 {
     public class RegisterRequest
     {
