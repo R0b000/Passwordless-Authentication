@@ -1,8 +1,8 @@
-﻿using System.Data;
+using System.Data;
 using Auth.Model.Models.Common;
 using Shared.Data.Repository.Interface;
 using Dapper;
-using Auth.Model.Wrapper;
+using Shared.Data.Wrapper;
 
 namespace Shared.Data.Repository
 {
@@ -106,3 +106,4 @@ namespace Shared.Data.Repository
         }
     }
 }
+

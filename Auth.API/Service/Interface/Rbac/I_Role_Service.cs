@@ -1,6 +1,6 @@
-﻿using Auth.Model.Models.Rbac;
+using Auth.Model.Models.Rbac;
 using Auth.Model.Models.Entities;
-using Auth.Model.Wrapper;
+using Shared.Data.Wrapper;
 
 namespace Auth.API.Service.Interface.Rbac
 {
@@ -17,4 +17,5 @@ namespace Auth.API.Service.Interface.Rbac
         Task<IResponse<bool>> IsSystemRoleAsync(int roleId);
     }
 }
+
 

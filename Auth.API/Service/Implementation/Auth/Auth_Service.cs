@@ -1,4 +1,4 @@
-﻿using System.Transactions;
+using System.Transactions;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using Microsoft.IdentityModel.Tokens;
@@ -10,7 +10,7 @@ using Auth.Model.Models.Auth;
 using Auth.Model.Models.Security;
 using Auth.Model.Models.Rbac;
 using Shared.Data.Repository.Interface;
-using Auth.Model.Wrapper;
+using Shared.Data.Wrapper;
 using Auth.API.Config;
 using Auth.API.Configuration;
 using Auth.API.Utility.Jwt;
@@ -1043,5 +1043,6 @@ namespace Auth.API.Service.Implementation.Auth
         }
     }
 }
+
 
 

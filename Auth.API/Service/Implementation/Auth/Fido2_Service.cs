@@ -1,4 +1,4 @@
-﻿using System.Security;
+using System.Security;
 using Fido2NetLib;
 using Fido2NetLib.Objects;
 using Microsoft.Extensions.Options;
@@ -9,7 +9,7 @@ using System.Transactions;
 using Auth.Model.Models.Entities;
 using Auth.Model.Models.Auth;
 using Shared.Data.Repository.Interface;
-using Auth.Model.Wrapper;
+using Shared.Data.Wrapper;
 using Auth.API.Config;
 using Auth.API.Configuration;
 using Auth.API.Utility.Jwt;
@@ -508,4 +508,5 @@ namespace Auth.API.Service.Implementation.Auth
         }
     }
 }
+
 

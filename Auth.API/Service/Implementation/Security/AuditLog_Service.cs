@@ -1,6 +1,6 @@
-﻿using Auth.Model.Models.Entities;
+using Auth.Model.Models.Entities;
 using Shared.Data.Repository.Interface;
-using Auth.Model.Wrapper;
+using Shared.Data.Wrapper;
 using Auth.API.Config;
 using Auth.API.Service.Interface.Security;
 
@@ -56,4 +56,5 @@ namespace Auth.API.Service.Implementation.Security
         }
     }
 }
+
 

@@ -144,17 +144,25 @@
 
 ---
 
-## Shared.Core (Model Projects)
+## Shared.Core (Shared Model Projects)
 
-### Project Naming
-- Use domain-specific model projects like:
+### Shared.Core Purpose
+- `Shared.Core` is a folder grouping for shared model projects.
+- It is not a build project and should not contain a `Shared.Core.csproj` file.
+- It should also not contain build artifacts such as `obj` or `bin` folders.
+- Each domain gets its own class library project, for example:
   - `Auth.Model`
   - `Business.Model`
-- Keep the name consistent with the owning application domain.
+- These shared model projects are referenced directly by UI and API projects.
 
-### Folder and Model Organization
-- Organize models by logical feature area.
-- Example:
+### Project and Folder Structure
+- Build a separate `.csproj` for each domain model project.
+- Example structure:
+  - `Shared.Core/`
+    - `Auth.Model/Auth.Model.csproj`
+    - `Business.Model/Business.Model.csproj`
+- Inside each domain model project, organize models by feature area.
+- Example folders inside `Auth.Model`:
   - `Authentication/`
     - `LoginRequestModel.cs`
     - `LoginResponseModel.cs`
@@ -162,31 +170,52 @@
     - `Fido2RequestModel.cs`
     - `Fido2ResponseModel.cs`
 - Each page or feature should normally have request and response models.
-- Additional models may exist for special use cases such as Excel mapping:
+- Add additional models for special feature needs such as Excel export mapping:
   - `OrderExcelModel.cs`
+
+### Wrapper and Global Shared Types
+- Global wrapper types must not live inside domain model projects.
+- Shared model libraries should contain only domain DTOs and feature models.
+- Move shared wrapper types to `Shared.Data` because they are cross-domain and reusable across all `*.Model` projects.
+- `Shared.Data` is the right place for truly global wrappers, utilities, and data access helpers.
+
+### Model Reuse
+- Do not duplicate shared models in UI or API projects.
+- Keep DTOs and shared request/response models only in the domain model library projects.
+- Domain model project names should match the owning business area and be consistent across the solution.
 
 ---
 
 ## Database Guidelines
 
+### Shared Database Grouping
+- The database layer also uses domain-specific projects grouped under a shared database area.
+- If your solution has a root database grouping project like `Database.csproj` or `Shared.Database`, domain projects should live under it.
+- Example structure:
+  - `Shared.Database/`
+    - `Auth.Database/Auth.Database.csproj`
+    - `Business.Database/Business.Database.csproj`
+- Each database project contains SQL artifacts for that domain.
+
 ### Domain-Based Database Projects
-- Use database projects named per domain:
+- Use separate database projects per domain:
   - `Auth.Database`
   - `Business.Database`
-- Store all SQL artifacts inside the matching database project.
+- Store all SQL objects inside the matching domain project.
+- Do not mix database SQL files across unrelated domains.
 
-### Schema and Folder Structure
-- Use schema-based organization under each database project:
+### Folder and Schema Organization
+- Within each domain database project, use schema-based folders for organization:
   - `Procedures/`
   - `Tables/`
   - `Functions/`
-- Include other folders as needed for scripts and migrations.
+- Add folders for `Scripts/`, `Migrations/`, or other domain-specific SQL as needed.
 
 ### Stored Procedure Standards
-- Create procedures for UI pages or feature areas.
-- Prefer page-wise procedures where one controller/page maps to one procedure set.
-- Use a `Flag` parameter inside procedures to switch logic paths.
-- Required shared procedures:
+- Create procedures that map to pages or feature areas.
+- Prefer page-wise stored procedures so one page/controller maps to one set of procedures.
+- Use a `Flag` parameter inside procedures to switch between operation modes.
+- Required shared procedures for each database project:
   - `sp_Dropdown.sql`
   - `sp_StaticValues.sql`
 - Add feature-specific procedures as needed.
@@ -196,14 +225,16 @@
 ## Shared.Data
 
 ### Purpose
-- `Shared.Data` contains global, project-independent data utilities.
+- `Shared.Data` contains global, project-independent data utilities and wrappers.
+- It is the correct home for truly global shared types used across all model and UI projects.
+- Do not move domain-specific model artifacts or wrappers into `Shared.Core`; `Shared.Core` is only for model grouping.
 
 ### Common Contents
-- `Wrapper/`
+- `Wrapper/` (global response wrapper types)
 - `DataAccess/`
   - `Http/`
   - `Dapper/`
-- Use this folder for shared access patterns and wrapper types that can be reused across projects.
+- Use this folder for shared access patterns, utilities, and truly global wrapper types that can be reused across projects.
 
 ---
 

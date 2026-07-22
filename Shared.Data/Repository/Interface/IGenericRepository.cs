@@ -1,7 +1,7 @@
-﻿using System.Data;
+using System.Data;
 using Dapper;
 using Auth.Model.Models.Common;
-using Auth.Model.Wrapper;
+using Shared.Data.Wrapper;
 
 namespace Shared.Data.Repository.Interface
 {
@@ -26,4 +26,5 @@ namespace Shared.Data.Repository.Interface
         Task<List<object>> GetFromMultipleQuery<T0, T1, T2, T3>(string sqlQuery, object sqlParam, CommandType queryType = CommandType.StoredProcedure);
     }
 }
+
 

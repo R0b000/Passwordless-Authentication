@@ -1,4 +1,4 @@
-﻿namespace Auth.Model.Wrapper
+namespace Shared.Data.Wrapper
 {
     public interface IResponse
     {
@@ -12,3 +12,4 @@
         T Data { get; }
     }
 }
+

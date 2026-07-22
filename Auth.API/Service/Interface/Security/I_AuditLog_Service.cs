@@ -1,5 +1,5 @@
-﻿using Auth.Model.Models.Entities;
-using Auth.Model.Wrapper;
+using Auth.Model.Models.Entities;
+using Shared.Data.Wrapper;
 
 namespace Auth.API.Service.Interface.Security
 {
@@ -10,4 +10,5 @@ namespace Auth.API.Service.Interface.Security
         Task<IResponse<List<AuditLog>>> GetUserAuditLogsAsync(int userId, int limit = 50);
     }
 }
+
 

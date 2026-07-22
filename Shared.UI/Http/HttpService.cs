@@ -1,4 +1,4 @@
-﻿using Auth.Model.Wrapper;
+using Shared.Data.Wrapper;
 using Shared.UI.Components.Toaster;
 using Microsoft.AspNetCore.Components;
 using System.Net.Http.Headers;
@@ -140,4 +140,5 @@ namespace Shared.UI.Http
         }
     }
 }
+
 

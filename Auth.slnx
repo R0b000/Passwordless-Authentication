@@ -1,8 +1,8 @@
 <Solution>
   <Project Path="Auth.API/Auth.API.csproj" />
   <Project Path="Auth.UI/Auth.UI.csproj" />
-  <Project Path="Auth.Model/Auth.Model.csproj" />
+  <Project Path="Shared.Core/Auth.Model/Auth.Model.csproj" />
   <Project Path="Shared.Data/Shared.Data.csproj" />
   <Project Path="Shared.UI/Shared.UI.csproj" />
-  <Project Path="Auth.Database/Auth.Database.csproj" />
+  <Project Path="Shared.Database/Auth.Database/Auth.Database.csproj" />
 </Solution>

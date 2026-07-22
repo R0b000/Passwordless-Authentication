@@ -1,10 +1,10 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using Auth.Model.Models.Common;
 using Auth.Model.Models.Rbac;
 using Auth.Model.Models.Entities;
-using Auth.Model.Wrapper;
-using WrapperResponse = Auth.Model.Wrapper.Response;
+using Shared.Data.Wrapper;
+using WrapperResponse = Shared.Data.Wrapper.Response;
 using Auth.API.Service.Interface.Rbac;
 
 namespace Auth.API.Controller.Rbac
@@ -248,4 +248,5 @@ namespace Auth.API.Controller.Rbac
         public int PermissionId { get; set; }
     }
 }
+
 

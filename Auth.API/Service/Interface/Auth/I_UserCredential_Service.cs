@@ -1,5 +1,5 @@
-﻿using Auth.Model.Models.Entities;
-using Auth.Model.Wrapper;
+using Auth.Model.Models.Entities;
+using Shared.Data.Wrapper;
 
 namespace Auth.API.Service.Interface.Auth
 {
@@ -9,4 +9,5 @@ namespace Auth.API.Service.Interface.Auth
         Task<IResponse<bool>> HasCredentialsAsync(int userId);
     }
 }
+
 

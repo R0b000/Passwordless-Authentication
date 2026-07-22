@@ -1,9 +1,9 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Auth.Model.Models.Account;
 using Auth.Model.Models.Security;
 using Auth.Model.Models.Rbac;
-using Auth.Model.Wrapper;
+using Shared.Data.Wrapper;
 using Auth.API.Config;
 using Auth.API.Service.Interface.Auth;
 
@@ -94,4 +94,5 @@ namespace Auth.API.Controller.Security
         }
     }
 }
+
 

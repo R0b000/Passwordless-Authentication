@@ -1,10 +1,10 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Auth.Model.Models.Auth;
 using Auth.Model.Models.Security;
 using Auth.Model.Models.Rbac;
-using Auth.Model.Wrapper;
+using Shared.Data.Wrapper;
 using Auth.API.Config;
 using Auth.API.Middleware;
 using Auth.API.Service.Interface.Auth;
@@ -163,4 +163,5 @@ namespace Auth.API.Controller.Auth
         }
     }
 }
+
 

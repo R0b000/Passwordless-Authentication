@@ -1,8 +1,8 @@
-﻿using System.Security.Claims;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
 using Auth.Model.Models.Entities;
 using Shared.Data.Repository.Interface;
-using Auth.Model.Wrapper;
+using Shared.Data.Wrapper;
 using Auth.API.Config;
 using Auth.API.Service.Interface.Rbac;
 
@@ -131,4 +131,5 @@ namespace Auth.API.Service.Implementation.Rbac
         }
     }
 }
+
 

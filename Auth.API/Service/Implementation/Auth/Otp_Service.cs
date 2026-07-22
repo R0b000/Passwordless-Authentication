@@ -1,9 +1,9 @@
-﻿using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Auth.Model.Models.Entities;
 using Auth.Model.Models.Auth;
 using Shared.Data.Repository.Interface;
-using Auth.Model.Wrapper;
+using Shared.Data.Wrapper;
 using Auth.API.Config;
 using Auth.API.Utility.Jwt;
 using Auth.API.Utility.OtpGenerator;
@@ -186,4 +186,5 @@ namespace Auth.API.Service.Implementation.Auth
         }
     }
 }
+
 

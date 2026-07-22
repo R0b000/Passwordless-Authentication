@@ -1,4 +1,4 @@
-﻿using Auth.Model.Wrapper;
+using Shared.Data.Wrapper;
 using Auth.Model.Models.Auth;
 
 namespace Auth.UI.Manager.Interface.Auth
@@ -17,6 +17,7 @@ namespace Auth.UI.Manager.Interface.Auth
         Task<IResponse<AuthResponse>> VerifyOtpAsync(OtpVerifyRequest request);
     }
 }
+
 
 
 

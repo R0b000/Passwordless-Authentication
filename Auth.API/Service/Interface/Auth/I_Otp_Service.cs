@@ -1,5 +1,5 @@
-﻿using Auth.Model.Models.Auth;
-using Auth.Model.Wrapper;
+using Auth.Model.Models.Auth;
+using Shared.Data.Wrapper;
 
 namespace Auth.API.Service.Interface.Auth
 {
@@ -9,4 +9,5 @@ namespace Auth.API.Service.Interface.Auth
         Task<IResponse<AuthResponse>> VerifyOtpAsync(OtpVerifyRequest request);
     }
 }
+
 

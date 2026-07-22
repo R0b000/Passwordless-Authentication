@@ -1,10 +1,10 @@
-﻿using Auth.Model.Models.Common;
+using Auth.Model.Models.Common;
 using Auth.Model.Models.Entities;
 using Auth.Model.Models.Account;
 using Auth.Model.Models.Auth;
 using Auth.Model.Models.Security;
 using Auth.Model.Models.Rbac;
-using Auth.Model.Wrapper;
+using Shared.Data.Wrapper;
 
 namespace Auth.API.Service.Interface.Auth
 {
@@ -44,3 +44,4 @@ namespace Auth.API.Service.Interface.Auth
         Task<IResponse> DeleteAccountAsync(int userId);
     }
 }
+

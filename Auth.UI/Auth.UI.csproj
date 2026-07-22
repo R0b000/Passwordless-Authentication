@@ -7,7 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Auth.Model\Auth.Model.csproj" />
+    <ProjectReference Include="..\Shared.Core\Auth.Model\Auth.Model.csproj" />
     <ProjectReference Include="..\Shared.UI\Shared.UI.csproj" />
     <ProjectReference Include="..\Auth.API\Auth.API.csproj" />
   </ItemGroup>

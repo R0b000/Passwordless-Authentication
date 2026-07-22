@@ -1,4 +1,4 @@
-﻿using Auth.Model.Wrapper;
+using Shared.Data.Wrapper;
 using Auth.Model.Models.Security;
 using Auth.Model.Models.Account;
 
@@ -18,6 +18,7 @@ namespace Auth.UI.Manager.Interface.Auth
         Task<IResponse<bool>> VerifyDeviceAsync(VerifyDeviceRequest request);
     }
 }
+
 
 
 

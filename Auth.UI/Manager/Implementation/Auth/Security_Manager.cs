@@ -1,4 +1,4 @@
-﻿using Auth.Model.Wrapper;
+using Shared.Data.Wrapper;
 using Auth.Model.Token;
 using Auth.UI.Manager.Interface.Auth;
 using Shared.UI.Http;
@@ -281,6 +281,7 @@ namespace Auth.UI.Manager.Implementation.Auth
         }
     }
 }
+
 
 
 

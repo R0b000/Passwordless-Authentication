@@ -1,4 +1,4 @@
-﻿namespace Auth.Model.Wrapper
+namespace Shared.Data.Wrapper
 {
     public class Response : IResponse
     {
@@ -163,4 +163,5 @@ public class Response<T> : Response, IResponse<T>
 
 
 }
+
 
