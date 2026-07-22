@@ -9,7 +9,7 @@ namespace Shared.Data.Wrapper
 
     public interface IResponse<out T> : IResponse
     {
-        T Data { get; }
+        T? Data { get; }
     }
 }
 

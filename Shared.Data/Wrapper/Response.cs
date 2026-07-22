@@ -9,8 +9,8 @@ namespace Shared.Data.Wrapper
     public string? Messages { get; set; }
 
     public bool Succeeded { get; set; }
-    public string Code { get; set; }
-    public string Datas { get; set; }
+    public string? Code { get; set; }
+    public string? Datas { get; set; }
     public static IResponse Fail()
     {
         return new Response { Succeeded = false };
@@ -68,7 +68,7 @@ public class Response<T> : Response, IResponse<T>
     {
     }
 
-    public T Data { get; set; }
+    public T? Data { get; set; }
 
     public new static Response<T> Fail()
     {
@@ -110,12 +110,12 @@ public class Response<T> : Response, IResponse<T>
         return new Response<T> { Succeeded = true, Messages = message };
     }
 
-    public static Response<T> Success(T data)
+    public static Response<T> Success(T? data)
     {
         return new Response<T> { Succeeded = true, Data = data };
     }
 
-    public static Response<T> Success(T data, string? message)
+    public static Response<T> Success(T? data, string? message)
     {
         return new Response<T> { Succeeded = true, Data = data, Messages = message };
     }
@@ -123,9 +123,9 @@ public class Response<T> : Response, IResponse<T>
 	{
 		return new Response<T> { Succeeded = true, Datas=datas, Messages = message };
 	}
-	public static Response<T> Success(T data, string? datas, string? message)
+	public static Response<T> Success(T? data, string? datas, string? message)
 	{
-		return new Response<T> { Succeeded = true, Data = data,Datas = datas, Messages = message };
+		return new Response<T> { Succeeded = true, Data = data, Datas = datas, Messages = message };
 	}
 	//public static Response<T> Success(T data, List<string> messages)
 	//{
