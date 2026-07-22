@@ -96,6 +96,13 @@ namespace Auth.UI.Models.Auth
         public string? Otp { get; set; }
     }
 
+    public class DeviceInfo
+    {
+        public string? IpAddress { get; set; }
+        public string? UserAgent { get; set; }
+        public string? Location { get; set; }
+    }
+
     public class WebAuthnCredential
     {
         [System.Text.Json.Serialization.JsonPropertyName("id")] public string id { get; set; } = string.Empty;

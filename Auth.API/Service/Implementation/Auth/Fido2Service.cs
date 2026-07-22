@@ -406,7 +406,7 @@ namespace Auth.API.Service.Implementation.Auth
                 var fido2 = new Fido2(config);
                 var result = await fido2.MakeAssertionAsync(makeAssertionParams);
 
-                if (storedCount != 0 && result.SignCount <= storedCount)
+                if (result.SignCount < storedCount)
                 {
                     return Response<Fido2VerifyResponse>.Fail("Counter regression detected");
                 }

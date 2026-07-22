@@ -138,11 +138,11 @@
         }
     }
 
-    @if (!string.IsNullOrEmpty(AssertionOptions) && State == PasskeyState.Error)
+    @* @if (!string.IsNullOrEmpty(AssertionOptions) && State == PasskeyState.Error)
     {
         <details class="lp-passkey-advanced">
             <summary>Advanced: assertion options from server</summary>
             <pre>@AssertionOptions</pre>
         </details>
-    }
+    } *@
 </div>

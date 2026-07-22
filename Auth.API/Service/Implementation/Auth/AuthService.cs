@@ -19,6 +19,7 @@ using Auth.API.Utility.TokenHash;
 using Auth.API.Service.Interface.Auth;
 using Auth.API.Service.Interface.Rbac;
 using Auth.API.Service.Interface.Security;
+using Auth.UI.Models.Auth;
 
 namespace Auth.API.Service.Implementation.Auth
 {
@@ -381,9 +382,6 @@ namespace Auth.API.Service.Implementation.Auth
 
             if (refreshToken.IsRevoked)
             {
-                // A revoked refresh token being presented again is a classic sign of
-                // token theft (the legitimate owner rotated it and an attacker tried to
-                // reuse the old one). Revoke every remaining session to evict the attacker.
                 await RevokeAllSessionsAsync(userId);
                 await _auditLogService.LogAsync(
                     userId,
@@ -1061,13 +1059,6 @@ namespace Auth.API.Service.Implementation.Auth
         {
             var context = _httpContextAccessor.HttpContext;
             return context?.Request.Headers["User-Agent"].ToString();
-        }
-
-        private class DeviceInfo
-        {
-            public string? IpAddress { get; set; }
-            public string? UserAgent { get; set; }
-            public string? Location { get; set; }
         }
     }
 }
