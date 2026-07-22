@@ -1,9 +1,9 @@
-using global::Shared.UI.Components.Toaster;
-using global::Shared.Core.Token;
+﻿using global::Shared.UI.Components.Toaster;
+using global::Auth.Model.Token;
 using global::Auth.API.Utility.Auth;
 using global::Shared.UI.Http;
-using global::Shared.UI.Manager.Implementation.Auth;
-using global::Shared.UI.Manager.Interface.Auth;
+using global::Auth.UI.Manager.Implementation.Auth;
+using global::Auth.UI.Manager.Interface.Auth;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -42,3 +42,4 @@ app.MapRazorComponents<Auth.UI.Components.App>()
     .AddInteractiveServerRenderMode();
 
 app.Run();
+

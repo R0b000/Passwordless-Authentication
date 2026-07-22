@@ -1,10 +1,10 @@
-using Shared.Core.Wrapper;
+﻿using Auth.Model.Wrapper;
 using Shared.UI.Components.Toaster;
 using Microsoft.AspNetCore.Components;
 using System.Net.Http.Headers;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Shared.Core.Token;
+using Auth.Model.Token;
 using System.Net.Http.Json;
 
 namespace Shared.UI.Http
@@ -140,3 +140,4 @@ namespace Shared.UI.Http
         }
     }
 }
+

@@ -1,0 +1,296 @@
+# Project Rules & Standards
+
+## UI Guidelines
+
+### 1. Page File Structure
+- Each UI page must use three files:
+  - `PageName.razor` (markup)
+  - `PageName.razor.cs` (code-behind)
+  - `PageName.razor.cs.css` (component-scoped styles)
+
+### 2. Dynamic UI Data
+- Avoid hardcoding UI values wherever possible.
+- Use database-driven values via stored procedures like `sp_Dropdown` with parameters.
+- Hardcoding is only allowed when it is necessary and the best approach; if so, ask for approval with a reason.
+
+### 3. CSS Practices
+- Put all component styles in the page's `.razor.cs.css` file.
+- Only add truly global utility classes in `wwwroot`.
+- Global utility classes should be responsive and reusable, such as:
+  - Buttons: `-button-success`, `-button-error`, `-button-warning`
+  - Layout: `-row`, `-columns`
+  - Colors: `-background-color`, `-text-color`
+- Keep global styles limited to real reusable utilities.
+
+### 4. UI Manager Pattern
+- Each UI feature should have a `Manager` folder containing:
+  - `I{Name}Manager.cs` (interface)
+  - `{Name}Manager.cs` (implementation)
+  - `{Name}Router.cs` (route helper)
+
+### 5. Standard Response Wrapping
+- UI methods in interfaces and implementations must return `IResponse<T>`.
+- Use this wrapper pattern to ensure standardized `Data`, `Success`, and `Messages`.
+- Examples:
+  ```csharp
+  Task<IResponse<ResponseModel>> FunctionName(RequestModel request);
+  Task<IResponse<List<ResponseModel>>> FunctionName(RequestModel request);
+  Task<IResponse<string>> FunctionName(string id);
+  ```
+
+### 6. Dependency Injection
+- Inject shared services via DI in UI components and managers.
+- Example:
+  ```csharp
+  [Inject] public IHttpService HttpService { get; set; } = default!;
+  ```
+
+### 7. Shared UI and Project-Specific Shared
+- Put project-specific reusable components and helpers in `Auth.UI/Shared`.
+- Put truly global reusable UI components in `Shared.UI`.
+- Examples of shared UI components:
+  - `AutoCompleteSelect`
+  - `Cards`
+  - `Tables`
+  - `Graph`
+
+### 8. Shared HTTP Service
+- All API calls from UI must use the shared HTTP service implementation.
+
+### 9. Shared Models
+- Shared models belong in `Auth.Model` (or domain-specific model projects like `Business.Model`).
+- Avoid defining the same models in both UI and API.
+- Feature model organization should be clean and grouped by area.
+
+### 10. Shared Data Access Patterns
+- Prefer `Dictionary<string, string>` for frequent key lookups instead of repeated `FirstOrDefault`.
+- This keeps lookup complexity O(1) and improves performance.
+
+---
+
+## API Guidelines
+
+### 1. Controller Responsibilities
+- Controllers are the API entry point and must stay minimal.
+- A controller method should call the service and return the service response.
+- Example:
+  ```csharp
+  public async Task<IActionResult> FunctionName(RequestModel request)
+  {
+      var response = await _service.FunctionName(request);
+      return Ok(response);
+  }
+  ```
+- Do not place business logic in controllers.
+- Always return `IActionResult`.
+
+### 2. Service Layer Structure
+- API services reside under `Service/Interface` and `Service/Implementation`.
+- All service methods should return `IResponse<T>`.
+- Example pattern:
+  ```csharp
+  if (!string.IsNullOrEmpty(response) || response.Succeeded)
+  {
+      return Response<ReturnType>.Success(response.Data);
+  }
+  else
+  {
+      return Response<ReturnType>.Fail(ServiceMessage_Name.Function_Name.FailMessage ?? "Default message");
+  }
+  ```
+- Add business logic only inside service implementation, not in controller.
+
+### 3. Error Handling and Logging
+- Use `try-catch` around service logic.
+- Log exceptions and return standardized failure responses.
+- Handle specific conditions inside the success branch when needed.
+
+### 4. Reusability and Dynamic Logic
+- Extract repeated or project-common logic into reusable helpers.
+- Make API logic dynamic and avoid duplicate code.
+- Only create new code when it cannot be reused safely.
+
+### 5. Shared Models Across API and UI
+- Use shared model packages (`Auth.Model`, `Business.Model`, etc.) so UI and API share the same request/response DTOs.
+- Do not duplicate model definitions in API or UI.
+
+### 6. Middleware for Cross-Cutting Concerns
+- Use middleware for concerns like:
+  - IP logging
+  - route/view access tracking
+  - login activity auditing
+  - error logging
+- Do not implement these manually in every controller action.
+
+### 7. Configuration via DI
+- Store configuration values in `appsettings.json` or `appsettings.Development.json`.
+- Register configuration classes through DI.
+- Examples:
+  - `SmtpSettings`
+  - `CloudinarySettings`
+
+### 8. Utility / Helper Folder
+- Place reusable helpers in `Utility/`.
+- Typical utilities:
+  - Random number generation (OTP code)
+  - Excel generation helpers
+  - Token hashing and verification
+  - Password hashing utilities
+
+### 9. API Simplicity for Mobile Readiness
+- Keep API endpoints simple and stable.
+- Avoid complex UI-specific logic in API methods.
+- Design APIs so they are mobile-friendly and easy to reuse.
+
+---
+
+## Shared.Core (Model Projects)
+
+### Project Naming
+- Use domain-specific model projects like:
+  - `Auth.Model`
+  - `Business.Model`
+- Keep the name consistent with the owning application domain.
+
+### Folder and Model Organization
+- Organize models by logical feature area.
+- Example:
+  - `Authentication/`
+    - `LoginRequestModel.cs`
+    - `LoginResponseModel.cs`
+  - `Fido2/`
+    - `Fido2RequestModel.cs`
+    - `Fido2ResponseModel.cs`
+- Each page or feature should normally have request and response models.
+- Additional models may exist for special use cases such as Excel mapping:
+  - `OrderExcelModel.cs`
+
+---
+
+## Database Guidelines
+
+### Domain-Based Database Projects
+- Use database projects named per domain:
+  - `Auth.Database`
+  - `Business.Database`
+- Store all SQL artifacts inside the matching database project.
+
+### Schema and Folder Structure
+- Use schema-based organization under each database project:
+  - `Procedures/`
+  - `Tables/`
+  - `Functions/`
+- Include other folders as needed for scripts and migrations.
+
+### Stored Procedure Standards
+- Create procedures for UI pages or feature areas.
+- Prefer page-wise procedures where one controller/page maps to one procedure set.
+- Use a `Flag` parameter inside procedures to switch logic paths.
+- Required shared procedures:
+  - `sp_Dropdown.sql`
+  - `sp_StaticValues.sql`
+- Add feature-specific procedures as needed.
+
+---
+
+## Shared.Data
+
+### Purpose
+- `Shared.Data` contains global, project-independent data utilities.
+
+### Common Contents
+- `Wrapper/`
+- `DataAccess/`
+  - `Http/`
+  - `Dapper/`
+- Use this folder for shared access patterns and wrapper types that can be reused across projects.
+
+---
+
+## Shared.UI
+
+### Purpose
+- `Shared.UI` contains global UI components reusable across applications.
+
+### Component Structure
+- Each shared component should include:
+  - `ComponentName.razor`
+  - `ComponentName.razor.cs`
+  - `ComponentName.razor.cs.css`
+  - Optional supporting file like `ComponentNameType.cs`
+
+### Example Components
+- `Button/`
+- `AutoCompleteSelect/`
+- `Cards/`
+- `Tables/`
+- `Graph/`
+
+---
+
+## Naming Rules
+
+### File Naming
+- Match names consistently across layers whenever possible.
+- Example patterns:
+  - `Name_Page.razor`
+  - `Name_Manager.cs`
+  - `I_Name_Manager.cs`
+  - `Name_Router.cs`
+  - `Name_Controller.cs`
+  - `Name_Service.cs`
+  - `I_Name_Service.cs`
+  - `sp_Name.sql` or `Schema.Name.sql`
+  - `Name_RequestModel.cs`
+  - `Name_ResponseModel.cs`
+
+### Function Naming
+- Use short, meaningful names that align across UI, manager, controller, and service layers.
+- The same function name should be used in the UI code-behind, manager, controller, service interface, and service implementation when it represents the same action.
+- Stored procedure `Flag` values should follow the same short-name convention.
+
+---
+
+## New File Flow
+
+### UI Files
+- `PageName.razor`
+- `PageName.razor.cs`
+- `PageName.razor.cs.css`
+- `I{Name}Manager.cs`
+- `{Name}Manager.cs`
+- `{Name}Router.cs`
+
+### API Files
+- `NameController.cs`
+- `I{Name}Service.cs`
+- `{Name}Service.cs`
+
+### Shared Model Files
+- `NameRequestModel.cs`
+- `NameResponseModel.cs`
+
+### Typical Flow
+UI ↔ Model ↔ API
+- When exceptions occur, add middleware or reusable components instead of duplicating logic.
+
+---
+
+## Build Process
+
+### Documentation
+- Document each build or flow in a `Flow_Name.txt` file.
+- Include the date and a clear description of what changed.
+
+### Flow Changes
+- When the flow changes, create a new file named:
+  - `FlowChange_Name_Reason.txt`
+- Record the reason for the change and the updated behavior.
+
+---
+
+## General Rules
+
+1. Follow these rules in most cases. If an exception is required, ask before deviating.
+2. Prefer dynamic, reusable, maintainable architecture over hardcoded or duplicated solutions.
+3. When a rule conflicts with a real requirement, raise the issue and confirm the alternative.

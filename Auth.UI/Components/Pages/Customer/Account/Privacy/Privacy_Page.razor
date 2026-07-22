@@ -1,0 +1,78 @@
+@page "/account/privacy"
+@namespace Auth.UI.Components.Pages.Customer.Account.Privacy
+@layout AccountLayout
+@using global::Shared.UI.Components.Toaster
+@using global::Shared.UI.Components.Switch
+@using global::Shared.UI.Components.Modal
+
+<PageTitle>Privacy - Passwordless Auth</PageTitle>
+
+<div class="account-card">
+    <h3>Privacy</h3>
+    <div class="section-sub">Control what you share and how your data is used.</div>
+
+    @if (!string.IsNullOrEmpty(StatusMessage))
+    {
+        <div class="alert @(Succeeded ? "alert-success" : "alert-danger") mb-3" role="alert">@StatusMessage</div>
+    }
+
+    <div class="account-section">
+        <h4>Profile Visibility</h4>
+        <div class="account-field account-field-narrow">
+            <label>Who can see your profile</label>
+            <select class="form-control" @bind="Settings!.ProfileVisibility">
+                <option value="public">Public</option>
+                <option value="private">Private</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="account-section">
+        <h4>Data &amp; Connections</h4>
+        <div class="switch-row">
+            <div>
+                <div class="switch-label">Share usage data</div>
+                <div class="switch-desc">Help improve the product with anonymous usage analytics.</div>
+            </div>
+            <Switch Checked="@Settings!.DataSharing" CheckedChanged="v => Settings!.DataSharing = v" Label="Share usage data" />
+        </div>
+        <div class="switch-row">
+            <div>
+                <div class="switch-label">Third-party app connections</div>
+                <div class="switch-desc">Allow connected apps to access your account.</div>
+            </div>
+            <Switch Checked="@Settings!.ThirdPartyConnections" CheckedChanged="v => Settings!.ThirdPartyConnections = v" Label="Third-party connections" />
+        </div>
+        <div class="account-field account-field-narrow">
+            <label>Cookie preferences</label>
+            <select class="form-control" @bind="Settings!.CookiePreferences">
+                <option value="essential">Essential only</option>
+                <option value="functional">Functional</option>
+                <option value="all">All cookies</option>
+            </select>
+        </div>
+        <div class="account-actions">
+            <Button Variant="Button.ButtonVariant.Primary" OnClick="SaveAsync">Save preferences</Button>
+        </div>
+    </div>
+
+    <div class="account-section">
+        <h4>Your Data</h4>
+        <div class="account-actions">
+            <Button Variant="Button.ButtonVariant.Primary" IconName="download" OnClick="DownloadAsync">Download my data</Button>
+        </div>
+    </div>
+
+    <div class="account-section">
+        <h4 class="text-danger">Danger Zone</h4>
+        <div class="switch-desc mb-2">Permanently delete your account and all associated data.</div>
+        <Button Variant="Button.ButtonVariant.Danger" OnClick="OpenDelete">Delete account</Button>
+    </div>
+</div>
+
+<ConfirmationModal @ref="_confirm" Title="Delete account"
+                   Message="This action cannot be undone. All your data will be permanently removed."
+                   ConfirmText="Delete my account" CancelText="Cancel"
+                   OnConfirm="ConfirmDeleteAsync" />
+
+<Toaster Position="ToastPosition.TopRight" />

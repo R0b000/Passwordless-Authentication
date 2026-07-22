@@ -29,7 +29,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Shared.Core\Shared.Core.csproj" />
+    <ProjectReference Include="..\Auth.Model\Auth.Model.csproj" />
     <ProjectReference Include="..\Shared.Data\Shared.Data.csproj" />
   </ItemGroup>
 
@@ -38,3 +38,4 @@
   </ItemGroup>
 
 </Project>
+

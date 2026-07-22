@@ -1,6 +1,6 @@
-using System.Data;
+﻿using System.Data;
 using Dapper;
-using Shared.Core.Models.Common;
+using Auth.Model.Models.Common;
 
 namespace Shared.Data.Repository.Interface
 {

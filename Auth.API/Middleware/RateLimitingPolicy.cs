@@ -2,6 +2,7 @@ using Auth.API.Configuration;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.RateLimiting;
 using System.Threading.RateLimiting;
+using Auth.API.Utility.Http;
 
 namespace Auth.API.Middleware
 {
@@ -73,22 +74,8 @@ namespace Auth.API.Middleware
             HttpContext context,
             Func<string, FixedWindowRateLimiterOptions> factory)
         {
-            var ip = GetClientIpAddress(context) ?? "unknown";
+            var ip = context.GetClientIpAddress() ?? "unknown";
             return RateLimitPartition.GetFixedWindowLimiter(ip, factory);
-        }
-
-        private static string? GetClientIpAddress(HttpContext context)
-        {
-            if (context.Request.Headers.TryGetValue("X-Forwarded-For", out var forwardedFor))
-            {
-                var first = forwardedFor.ToString().Split(',')[0].Trim();
-                if (!string.IsNullOrEmpty(first))
-                {
-                    return first;
-                }
-            }
-
-            return context.Connection.RemoteIpAddress?.ToString();
         }
     }
 }

@@ -1,5 +1,5 @@
-using Shared.Data.Configuration;
-using Shared.Core.Models.Common;
+﻿using Shared.Data.Configuration;
+using Auth.Model.Models.Common;
 using Shared.Data.Repository.Interface;
 using Dapper;
 using System.Data;

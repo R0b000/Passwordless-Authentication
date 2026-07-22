@@ -1,4 +1,4 @@
-using Shared.Core.Token;
+﻿using Auth.Model.Token;
 
 namespace Auth.API.Utility.Auth
 {
@@ -15,3 +15,4 @@ namespace Auth.API.Utility.Auth
         }
     }
 }
+
