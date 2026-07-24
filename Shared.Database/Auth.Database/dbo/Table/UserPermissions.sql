@@ -11,7 +11,7 @@ CREATE TABLE [dbo].[UserPermissions] (
 );
 GO
 
-CREATE UNIQUE INDEX [IX_UserPermissions_UserId_PermissionId] ON [dbo].[UserPermissions] ([UserId], [PermissionId]) WHERE [ExpiresAt] IS NULL OR [ExpiresAt] > SYSUTCDATETIME();
+CREATE UNIQUE INDEX [IX_UserPermissions_UserId_PermissionId] ON [dbo].[UserPermissions] ([UserId], [PermissionId]) WHERE [ExpiresAt] IS NULL;
 GO
 
 CREATE INDEX [IX_UserPermissions_UserId] ON [dbo].[UserPermissions] ([UserId]);

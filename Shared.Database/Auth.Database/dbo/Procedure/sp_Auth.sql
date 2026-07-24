@@ -2,7 +2,7 @@ SET QUOTED_IDENTIFIER ON;
 SET ANSI_NULLS ON;
 GO
 
-CREATE OR ALTER PROCEDURE dbo.sp_Users
+CREATE OR ALTER PROCEDURE dbo.sp_Auth
     @AuthType NVARCHAR(20),
     @Username NVARCHAR(200) = NULL,
     @Email NVARCHAR(300) = NULL,
@@ -10,6 +10,7 @@ CREATE OR ALTER PROCEDURE dbo.sp_Users
     @UserId INT = NULL,
     @FIDOOperation NVARCHAR(50) = NULL,
     @Challenge NVARCHAR(500) = NULL,
+    @AssertionOptionsJson NVARCHAR(MAX) = NULL,
     @ExpiresAt DATETIME2 = NULL,
     @CredentialId NVARCHAR(300) = NULL,
     @PublicKey NVARCHAR(MAX) = NULL,
@@ -111,14 +112,14 @@ BEGIN
 
             DECLARE @NewId UNIQUEIDENTIFIER = NEWID();
 
-            INSERT INTO dbo.AuthChallenges (Id, UserId, Challenge, ExpiresAt, UsedAt)
-            VALUES (@NewId, @UserId, @Challenge, @ExpiresAt, NULL);
+            INSERT INTO dbo.AuthChallenges (Id, UserId, Challenge, AssertionOptionsJson, ExpiresAt, UsedAt)
+            VALUES (@NewId, @UserId, @Challenge, @AssertionOptionsJson, @ExpiresAt, NULL);
 
-            SELECT @NewId AS Id, @Challenge AS Challenge;
+            SELECT @NewId AS Id, @Challenge AS Challenge, @AssertionOptionsJson AS AssertionOptionsJson;
         END
         ELSE IF @FIDOOperation = 'GetUserChallenge'
         BEGIN
-            SELECT TOP 1 Id, Challenge, ExpiresAt
+            SELECT TOP 1 Id, Challenge, AssertionOptionsJson, ExpiresAt
             FROM dbo.AuthChallenges
             WHERE UserId = @UserId
               AND Challenge = @Challenge

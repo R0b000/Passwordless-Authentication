@@ -266,11 +266,12 @@ namespace Auth.API.Service.Implementation.Auth
                 var options = fido2.GetAssertionOptions(new GetAssertionOptionsParams
                 {
                     AllowedCredentials = allowedCredentials,
-                    UserVerification = UserVerificationRequirement.Required
+                    UserVerification = UserVerificationRequirement.Preferred
                 });
 
                 var challenge = Convert.ToBase64String(options.Challenge);
                 var expiresAt = DateTime.UtcNow.AddMinutes(10);
+                var assertionOptionsJson = options.ToJson();
 
                 await _dapperRepository.ExecuteAsync(DbConstants.Procedures.Users, new
                 {
@@ -278,6 +279,7 @@ namespace Auth.API.Service.Implementation.Auth
                     FIDOOperation = DbConstants.FidoOperations.CreateChallenge,
                     UserId = userId,
                     Challenge = challenge,
+                    AssertionOptionsJson = assertionOptionsJson,
                     ExpiresAt = expiresAt
                 });
 
@@ -349,13 +351,14 @@ namespace Auth.API.Service.Implementation.Auth
             }).ToList();
 
             var config = BuildConfig(origin);
-            var originalOptions = AssertionOptions.Create(
-                config,
-                originalChallenge,
-                allowedCredentials,
-                UserVerificationRequirement.Required,
-                new AuthenticationExtensionsClientInputs()
-            );
+            var originalOptions = string.IsNullOrEmpty(storedChallenge.AssertionOptionsJson)
+                ? AssertionOptions.Create(
+                    config,
+                    originalChallenge,
+                    allowedCredentials,
+                    UserVerificationRequirement.Preferred,
+                    new AuthenticationExtensionsClientInputs())
+                : AssertionOptions.FromJson(storedChallenge.AssertionOptionsJson);
 
             var assertionResponse = new AuthenticatorAssertionRawResponse.AssertionResponse
             {

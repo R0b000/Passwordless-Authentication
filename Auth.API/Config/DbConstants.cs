@@ -4,7 +4,7 @@ namespace Auth.API.Config
     {
         public static class Procedures
         {
-            public const string Users = "sp_Users";
+            public const string Users = "sp_Auth";
             public const string Rbac = "sp_RBAC";
         }
 

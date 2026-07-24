@@ -8,7 +8,7 @@ namespace Auth.API.Service.Implementation.Auth
     public class UserCredentialService : IUserCredentialService
     {
         private readonly IDapperRepository _dapperRepository;
-        private static string ProcedureName = "sp_Users";
+        private static string ProcedureName = "sp_Auth";
 
         public UserCredentialService(IDapperRepository dapperRepository)
         {

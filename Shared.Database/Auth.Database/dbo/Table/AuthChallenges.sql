@@ -2,6 +2,7 @@ CREATE TABLE [dbo].[AuthChallenges] (
     [Id] UNIQUEIDENTIFIER NOT NULL,
     [UserId] INT NOT NULL,
     [Challenge] NVARCHAR(500) NOT NULL,
+    [AssertionOptionsJson] NVARCHAR(MAX) NULL,
     [CreatedAt] DATETIME2 NOT NULL CONSTRAINT [DF_AuthChallenges_CreatedAt] DEFAULT (SYSUTCDATETIME()),
     [ExpiresAt] DATETIME2 NOT NULL,
     [UsedAt] DATETIME2 NULL,
