@@ -71,7 +71,7 @@ namespace Auth.UI.Components.Pages.Customer.Account.Profile
         protected void Logout()
         {
             TokenStore.Clear();
-            Navigation.NavigateTo("/login", replace: true);
+            Navigation.NavigateTo("/login", replace: true, forceLoad: true);
         }
     }
 }

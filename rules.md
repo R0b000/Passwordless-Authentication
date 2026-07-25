@@ -271,16 +271,16 @@
 ### File Naming
 - Match names consistently across layers whenever possible.
 - Example patterns:
-  - `Name_Page.razor`
-  - `Name_Manager.cs`
-  - `I_Name_Manager.cs`
-  - `Name_Router.cs`
-  - `Name_Controller.cs`
-  - `Name_Service.cs`
-  - `I_Name_Service.cs`
-  - `sp_Name.sql` or `Schema.Name.sql`
-  - `Name_RequestModel.cs`
-  - `Name_ResponseModel.cs`
+  - `NamePage.razor`
+  - `NameManager.cs`
+  - `INameManager.cs`
+  - `NameRouter.cs`
+  - `NameController.cs`
+  - `NameService.cs`
+  - `INameService.cs`
+  - `spName.sql` or `Schema.Name.sql`
+  - `NameRequestModel.cs`
+  - `NameResponseModel.cs`
 
 ### Function Naming
 - Use short, meaningful names that align across UI, manager, controller, and service layers.

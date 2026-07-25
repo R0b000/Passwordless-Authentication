@@ -1,11 +1,12 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
+using System.Text.Json.Serialization;
 using global::Auth.UI.Manager.Interface.Auth;
 using Auth.Model.Models.Auth;
 
-namespace Auth.UI.Components.Pages.Shared.Passkey
+namespace Auth.UI.Components.Pages.Shared.Fido
 {
-    public partial class PasskeyLogin_Page : ComponentBase
+    public partial class Fido2_Page : ComponentBase
     {
         public enum PasskeyState { Idle, Requesting, Awaiting, Verifying, Success, Error }
 
@@ -13,12 +14,10 @@ namespace Auth.UI.Components.Pages.Shared.Passkey
         [Inject] private NavigationManager NavigationManager { get; set; } = default!;
         [Inject] private IJSRuntime JsRuntime { get; set; } = default!;
 
-        [Parameter] public int? UserId { get; set; }
-        [Parameter] public EventCallback OnCompleted { get; set; }
-        [Parameter] public bool AutoStart { get; set; }
+        [Parameter] public int? UserIdParam { get; set; }
 
         protected PasskeyState State { get; set; } = PasskeyState.Idle;
-        protected int ResolvedUserId { get; set; }
+        protected int UserId { get; set; }
         protected Fido2VerifyRequest VerifyModel { get; set; } = new();
         protected string AssertionOptions { get; set; } = string.Empty;
         protected string StatusDetail { get; set; } = string.Empty;
@@ -30,17 +29,13 @@ namespace Auth.UI.Components.Pages.Shared.Passkey
         protected string StatusMessage { get; set; } = string.Empty;
         protected bool Succeeded { get; set; }
 
-        protected bool IsStepUp => UserId.HasValue;
-        protected bool OtpRequested { get; set; }
-        protected string OtpCode { get; set; } = string.Empty;
-
         private IJSObjectReference? _webAuthnModule;
 
         protected override void OnParametersSet()
         {
-            if (UserId.HasValue)
+            if (UserIdParam.HasValue)
             {
-                ResolvedUserId = UserId.Value;
+                UserId = UserIdParam.Value;
                 IsEmailResolved = true;
             }
         }
@@ -51,7 +46,7 @@ namespace Auth.UI.Components.Pages.Shared.Passkey
             {
                 _webAuthnModule = await JsRuntime.InvokeAsync<IJSObjectReference>("import", "./js/webauthn.js");
 
-                if (AutoStart && UserId.HasValue)
+                if (UserIdParam.HasValue)
                 {
                     await StartAssertionAsync();
                 }
@@ -84,7 +79,7 @@ namespace Auth.UI.Components.Pages.Shared.Passkey
                 var result = await AuthManager.GetUserByEmailAsync(Email);
                 if (result.Succeeded && result.Data is not null)
                 {
-                    ResolvedUserId = result.Data.UserId;
+                    UserId = result.Data.UserId;
                     ResolvedUsername = result.Data.Username;
                     IsEmailResolved = true;
                     State = PasskeyState.Idle;
@@ -114,102 +109,16 @@ namespace Auth.UI.Components.Pages.Shared.Passkey
         {
             Email = string.Empty;
             IsEmailResolved = false;
-            ResolvedUserId = 0;
+            UserId = 0;
             ResolvedUsername = null;
             StatusMessage = string.Empty;
             State = PasskeyState.Idle;
             StatusDetail = string.Empty;
         }
 
-        protected async Task RequestOtpAsync()
-        {
-            StatusMessage = string.Empty;
-            var response = await AuthManager.RequestOtpAsync(new OtpRequest { Email = Email });
-            if (response.Succeeded)
-            {
-                OtpRequested = true;
-            }
-            else
-            {
-                Succeeded = false;
-                StatusMessage = response.Messages ?? "Failed to request OTP";
-            }
-        }
-
-        protected async Task VerifyOtpAsync()
-        {
-            StatusMessage = string.Empty;
-            var response = await AuthManager.VerifyOtpAsync(new OtpVerifyRequest { Email = Email, Otp = OtpCode });
-            if (response.Succeeded)
-            {
-                await OnCompleted.InvokeAsync();
-                NavigationManager.NavigateTo("/profile");
-                return;
-            }
-
-            Succeeded = false;
-            StatusMessage = response.Messages ?? "Failed to verify OTP";
-        }
-
-        protected void HideOtp() => OtpRequested = false;
-
-        //protected async Task StartAssertionAsync(string? authenticatorAttachment = null)
-        //{
-        //    if (ResolvedUserId <= 0)
-        //    {
-        //        State = PasskeyState.Error;
-        //        StatusDetail = "Account resolution required to continue. Please go back and enter your email.";
-        //        return;
-        //    }
-
-        //    State = PasskeyState.Requesting;
-        //    StatusDetail = "Contacting the server to prepare your passkey challengeâ€¦";
-
-        //    var origin = new Uri(NavigationManager.BaseUri).GetLeftPart(UriPartial.Authority);
-        //    var result = await AuthManager.CreateFido2ChallengeAsync(ResolvedUserId, origin);
-        //    if (!result.Succeeded || result.Data is null)
-        //    {
-        //        State = PasskeyState.Error;
-        //        StatusDetail = result.Messages ?? "Unable to start passkey sign-in. Please try again.";
-        //        return;
-        //    }
-
-        //    AssertionOptions = result.Data.PublicKeyCredentialCreationOptions;
-        //    VerifyModel = new Fido2VerifyRequest { UserId = ResolvedUserId };
-
-        //    State = PasskeyState.Awaiting;
-        //    StatusDetail = authenticatorAttachment == "cross-platform"
-        //        ? "Insert your security key and tap it when it blinks."
-        //        : "Use your fingerprint, face, or screen lock on this device.";
-
-        //    try
-        //    {
-        //        var cred = await _webAuthnModule!.InvokeAsync<WebAuthnAssertion>(
-        //            "getCredential",
-        //            result.Data.PublicKeyCredentialCreationOptions,
-        //            result.Data.Challenge,
-        //            new { authenticatorAttachment = authenticatorAttachment, userVerification = "required" });
-
-        //        VerifyModel.Challenge = cred.challenge;
-        //        VerifyModel.CredentialId = cred.id;
-        //        VerifyModel.ClientDataJson = cred.response.clientDataJSON;
-        //        VerifyModel.AuthenticatorData = cred.response.authenticatorData;
-        //        VerifyModel.Signature = cred.response.signature;
-        //        VerifyModel.UserId = ResolvedUserId;
-        //        VerifyModel.Origin = new Uri(NavigationManager.BaseUri).GetLeftPart(UriPartial.Authority);
-
-        //        await VerifyAsync();
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        State = PasskeyState.Error;
-        //        StatusDetail = await MapErrorAsync(ex);
-        //    }
-        //}
-
         protected async Task StartAssertionAsync(string? authenticatorAttachment = null)
         {
-            if (ResolvedUserId <= 0)
+            if (UserId <= 0)
             {
                 State = PasskeyState.Error;
                 StatusDetail = "Account resolution required to continue. Please go back and enter your email.";
@@ -218,44 +127,39 @@ namespace Auth.UI.Components.Pages.Shared.Passkey
 
             State = PasskeyState.Requesting;
             StatusDetail = "Contacting the server to prepare your passkey challengeâ€¦";
+
             var origin = new Uri(NavigationManager.BaseUri).GetLeftPart(UriPartial.Authority);
+            var result = await AuthManager.CreateFido2ChallengeAsync(UserId, origin);
+            if (!result.Succeeded || result.Data is null)
+            {
+                State = PasskeyState.Error;
+                StatusDetail = result.Messages ?? "Unable to start passkey sign-in. Please try again.";
+                return;
+            }
+
+            AssertionOptions = result.Data.PublicKeyCredentialCreationOptions;
+            VerifyModel = new Fido2VerifyRequest { UserId = UserId };
+
+            State = PasskeyState.Awaiting;
+            StatusDetail = authenticatorAttachment == "cross-platform"
+                ? "Insert your security key and tap it when it blinks."
+                : "Use your fingerprint, face, or screen lock on this device.";
 
             try
             {
-                var result = await AuthManager.CreateFido2ChallengeAsync(ResolvedUserId, origin);
-
-                if (!result.Succeeded || result.Data is null)
-                {
-                    State = PasskeyState.Error;
-                    // FIX: Show the REAL error from the server
-                    var errorMessage = !string.IsNullOrWhiteSpace(result.Messages)
-                        ? result.Messages
-                        : "Unable to start passkey sign-in. Please try again.";
-                    StatusDetail = errorMessage;
-                    Console.WriteLine($"[FIDO2] CreateChallenge failed: {errorMessage}");
-                    return;
-                }
-
-                AssertionOptions = result.Data.PublicKeyCredentialCreationOptions;
-                VerifyModel = new Fido2VerifyRequest { UserId = ResolvedUserId };
-                State = PasskeyState.Awaiting;
-                StatusDetail = authenticatorAttachment == "cross-platform"
-                    ? "Insert your security key and tap it when it blinks."
-                    : "Use your fingerprint, face, or screen lock on this device.";
-
                 var cred = await _webAuthnModule!.InvokeAsync<WebAuthnAssertion>(
                     "getCredential",
                     result.Data.PublicKeyCredentialCreationOptions,
                     result.Data.Challenge,
-                    new { authenticatorAttachment = authenticatorAttachment, userVerification = "required" });
+                    new { authenticatorAttachment = authenticatorAttachment, userVerification = "preferred" });
 
                 VerifyModel.Challenge = cred.challenge;
                 VerifyModel.CredentialId = cred.id;
                 VerifyModel.ClientDataJson = cred.response.clientDataJSON;
                 VerifyModel.AuthenticatorData = cred.response.authenticatorData;
                 VerifyModel.Signature = cred.response.signature;
-                VerifyModel.UserId = ResolvedUserId;
-                VerifyModel.Origin = origin;
+                VerifyModel.UserId = UserId;
+                VerifyModel.Origin = new Uri(NavigationManager.BaseUri).GetLeftPart(UriPartial.Authority);
 
                 await VerifyAsync();
             }
@@ -263,7 +167,6 @@ namespace Auth.UI.Components.Pages.Shared.Passkey
             {
                 State = PasskeyState.Error;
                 StatusDetail = await MapErrorAsync(ex);
-                Console.WriteLine($"[FIDO2] Exception: {ex}");
             }
         }
 
@@ -277,7 +180,6 @@ namespace Auth.UI.Components.Pages.Shared.Passkey
             {
                 State = PasskeyState.Success;
                 StatusDetail = result.Data?.Message ?? "You're signed in.";
-                await OnCompleted.InvokeAsync();
                 NavigationManager.NavigateTo("/profile");
                 return;
             }
