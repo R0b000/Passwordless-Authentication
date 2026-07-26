@@ -6,7 +6,7 @@ using Auth.Model.Models.Auth;
 
 namespace Auth.UI.Components.Pages.Shared.Fido
 {
-    public partial class Fido2_Page : ComponentBase
+    public partial class Fido2Page : ComponentBase
     {
         public enum PasskeyState { Idle, Requesting, Awaiting, Verifying, Success, Error }
 

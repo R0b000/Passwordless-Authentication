@@ -7,7 +7,7 @@ using Auth.Model.Models.Account;
 
 namespace Auth.UI.Components.Pages.Customer.Account.Profile
 {
-    public partial class Profile_Page : ComponentBase
+    public partial class ProfilePage : ComponentBase
     {
         [Inject] private IAccountManager AccountManager { get; set; } = default!;
         [Inject] private ToasterService Toaster { get; set; } = default!;

@@ -5,7 +5,7 @@ using Auth.Model.Models.Auth;
 
 namespace Auth.UI.Components.Pages.Shared.Register
 {
-    public partial class Signup_Page : ComponentBase
+    public partial class SignupPage : ComponentBase
     {
         [Inject] private IAccountManager AccountManager { get; set; } = default!;
         [Inject] private ToasterService Toaster { get; set; } = default!;

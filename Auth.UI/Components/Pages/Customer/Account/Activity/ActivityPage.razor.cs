@@ -6,7 +6,7 @@ using Auth.Model.Models.Security;
 
 namespace Auth.UI.Components.Pages.Customer.Account.Activity
 {
-    public partial class Activity_Page : ComponentBase
+    public partial class ActivityPage : ComponentBase
     {
         [Inject] private ISecurityManager SecurityManager { get; set; } = default!;
         [Inject] private ToasterService Toaster { get; set; } = default!;

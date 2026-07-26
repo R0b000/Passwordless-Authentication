@@ -33,7 +33,7 @@ using global::Shared.UI.Components.Toaster;
 
 namespace Auth.UI.Components.Pages.Shared.Showcase;
 
-public partial class Showcase_Page : ComponentBase
+public partial class ShowcasePage : ComponentBase
 {
     [Inject] private ToasterService ToasterService { get; set; } = default!;
 

@@ -86,7 +86,7 @@ namespace Auth.UI.Components.Layout
         {
             TokenStore.Clear();
             AccountMenuOpen = false;
-            Navigation.NavigateTo("/");
+            Navigation.NavigateTo("/login", replace: true, forceLoad: true);
         }
     }
 }

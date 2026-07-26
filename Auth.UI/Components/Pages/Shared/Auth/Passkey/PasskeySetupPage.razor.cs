@@ -6,7 +6,7 @@ using Auth.Model.Models.Auth;
 
 namespace Auth.UI.Components.Pages.Shared.Passkey
 {
-    public partial class PasskeySetup_Page : ComponentBase
+    public partial class PasskeySetupPage : ComponentBase
     {
         public enum SetupState { Idle, Processing, Success, Error }
 

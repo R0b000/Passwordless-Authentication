@@ -4,7 +4,7 @@ using global::Auth.UI.Manager.Interface.Auth;
 
 namespace Auth.UI.Components.Pages.Shared.Forgot
 {
-    public partial class ForgotPassword_Page : ComponentBase
+    public partial class ForgotPasswordPage : ComponentBase
     {
         [Inject] private IAccountManager AccountManager { get; set; } = default!;
         [Inject] private ToasterService Toaster { get; set; } = default!;

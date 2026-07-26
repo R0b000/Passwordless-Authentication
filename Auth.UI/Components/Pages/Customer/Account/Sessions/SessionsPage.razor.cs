@@ -5,7 +5,7 @@ using Auth.Model.Models.Security;
 
 namespace Auth.UI.Components.Pages.Customer.Account.Sessions
 {
-    public partial class Sessions_Page : ComponentBase
+    public partial class SessionsPage : ComponentBase
     {
         [Inject] private ISecurityManager SecurityManager { get; set; } = default!;
         [Inject] private ToasterService Toaster { get; set; } = default!;

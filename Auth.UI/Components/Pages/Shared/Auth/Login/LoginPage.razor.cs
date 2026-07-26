@@ -9,7 +9,7 @@ using Auth.Model.Models.Auth;
 
 namespace Auth.UI.Components.Pages.Shared.Login
 {
-    public partial class Login_Page : ComponentBase
+    public partial class LoginPage : ComponentBase
     {
         [Inject] private IAuthManager AuthManager { get; set; } = default!;
         [Inject] private NavigationManager NavigationManager { get; set; } = default!;

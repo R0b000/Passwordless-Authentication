@@ -5,7 +5,7 @@ using Auth.Model.Models.Security;
 
 namespace Auth.UI.Components.Pages.Shared.VerifyDevice
 {
-    public partial class VerifyDevice_Page : ComponentBase
+    public partial class VerifyDevicePage : ComponentBase
     {
         [Inject] private ISecurityManager SecurityManager { get; set; } = default!;
         [Inject] private ToasterService Toaster { get; set; } = default!;
