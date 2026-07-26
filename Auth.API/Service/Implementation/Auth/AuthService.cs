@@ -313,19 +313,61 @@ namespace Auth.API.Service.Implementation.Auth
         {
             try
             {
-                var response = await _fido2Service.VerifyAssertionAsync(request); // What need to be done here is seperate the idea of the concept of the jwt token generation and do something like if this is sucess then we then generate the jwt token and so on here got it this is looking sketchy here this is not gonna do here but I dont think here is where we generate the jwt token instead we do soemthign like after we get the method where we will pass the 
+                var response = await _fido2Service.VerifyAssertionAsync(request);
 
-                if (response != null)
+                if (response == null || !response.Succeeded || response.Data == null)
                 {
-                    return Response<Fido2VerifyResponse>.Success(response.Data);
-                } else
-                {
-                    return Response<Fido2VerifyResponse>.Fail("Server Error, Try Again!!!"); // You need to change this here got it bro 
+                    return Response<Fido2VerifyResponse>.Fail("FIDO2 verification failed. Please try again.");
                 }
+
+                var userId = response.Data.UserId;
+                var user = await _authRepository.QuerySingleAsync<User>(
+                    ProcedureName,
+                    new { AuthType = DbConstants.AuthTypes.Login, UserId = userId });
+
+                if (user == null || !user.Succeeded || user.Data == null)
+                {
+                    return Response<Fido2VerifyResponse>.Fail("User not found");
+                }
+
+                var token = _jwtHelper.GenerateToken(user.Data.Id, user.Data.Username);
+                var deviceInfo = new DeviceInfo
+                {
+                    IpAddress = _httpContextAccessor.HttpContext.GetClientIpAddress(),
+                    UserAgent = _httpContextAccessor.HttpContext.GetUserAgent()
+                };
+
+                deviceInfo.Location = await _locationResolver.ResolveLocationAsync(deviceInfo.IpAddress);
+
+                await AssignDefaultRoleIfMissingAsync(user.Data.Id);
+                await EnforceConcurrentSessionLimitAsync(user.Data.Id);
+                var refreshToken = await CreateRefreshTokenAsync(user.Data.Id, deviceInfo);
+
+                await _auditLogService.LogAsync(
+                    user.Data.Id,
+                    "UserLoggedIn",
+                    "User",
+                    user.Data.Id.ToString(),
+                    null,
+                    "FIDO2 login successful",
+                    deviceInfo.IpAddress,
+                    deviceInfo.UserAgent);
+
+                var userWithRoles = (await _userRoleService.GetUserWithRolesAndPermissionsAsync(user.Data.Id)).Data;
+
+                return Response<Fido2VerifyResponse>.Success(new Fido2VerifyResponse
+                {
+                    Success = true,
+                    UserId = user.Data.Id,
+                    Username = user.Data.Username,
+                    Token = token,
+                    RefreshToken = refreshToken,
+                    Message = "FIDO2 verification successful"
+                });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return Response<Fido2VerifyResponse>.Fail(ex.Message);
+                return Response<Fido2VerifyResponse>.Fail("An error occurred during FIDO2 verification. Please try again.");
             }
         }
 

@@ -2,9 +2,7 @@ using System.Security;
 using Fido2NetLib;
 using Fido2NetLib.Objects;
 using Microsoft.Extensions.Options;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using Microsoft.AspNetCore.Http;
 using System.Transactions;
 using Auth.Model.Models.Entities;
 using Auth.Model.Models.Auth;
@@ -12,31 +10,21 @@ using Shared.Data.Repository.Interface;
 using Shared.Data.Wrapper;
 using Auth.API.Config;
 using Auth.API.Configuration;
-using Auth.API.Utility.Jwt;
-using Auth.API.Utility.TokenHash;
 using Auth.API.Service.Interface.Auth;
-using Auth.API.Service.Interface.Security;
-using Auth.API.Utility.Http;
 
 namespace Auth.API.Service.Implementation.Auth
 {
     public class Fido2Service : IFido2Service
     {
         private readonly IDapperRepository _dapperRepository;
-        private readonly IJwtHelper _jwtHelper;
         private readonly ILogger<Fido2Service> _logger;
         private readonly ApiSettings _apiSettings;
-        private readonly IHttpContextAccessor _httpContextAccessor;
-        private readonly ILocationResolver _locationResolver;
 
-        public Fido2Service(IDapperRepository dapperRepository, IJwtHelper jwtHelper, IOptions<ApiSettings> apiSettings, ILogger<Fido2Service> logger, IHttpContextAccessor httpContextAccessor, ILocationResolver locationResolver)
+        public Fido2Service(IDapperRepository dapperRepository, IOptions<ApiSettings> apiSettings, ILogger<Fido2Service> logger)
         {
             _dapperRepository = dapperRepository;
-            _jwtHelper = jwtHelper;
             _logger = logger;
             _apiSettings = apiSettings.Value;
-            _httpContextAccessor = httpContextAccessor;
-            _locationResolver = locationResolver;
         }
 
         private HashSet<string> GetAllowedOrigins()
@@ -318,7 +306,6 @@ namespace Auth.API.Service.Implementation.Auth
                 return Response<Fido2VerifyResponse>.Fail("UserId is required for assertion");
             }
 
-            // UI sends Base64URL, we convert to Standard Base64 to match DB
             var credentialIdBase64 = Convert.ToBase64String(Base64UrlDecode(request.CredentialId));
             var credentialParam = new {
                 AuthType = DbConstants.AuthTypes.Fido,
@@ -360,7 +347,6 @@ namespace Auth.API.Service.Implementation.Auth
             var signatureBytes = Base64UrlDecode(request.Signature);
             var userHandleBytes = GetUserHandle(request.UserId);
 
-            // FIXED: Was Base64UrlDecode which corrupts Standard Base64 from DB
             var storedPublicKey = Convert.FromBase64String(credential.PublicKey);
             var storedCount = (uint)credential.SignCount;
 
@@ -412,10 +398,6 @@ namespace Auth.API.Service.Implementation.Auth
                 StoredSignatureCounter = storedCount,
                 IsUserHandleOwnerOfCredentialIdCallback = async (args, ct) =>
                 {
-                    // Some authenticators (e.g. non-discoverable credentials) do not return a
-                    // userHandle in the assertion. In that case ownership is already implied:
-                    // the credential was resolved by request.UserId and allowedCredentials is
-                    // scoped to that user, so the credential id itself proves ownership.
                     if (args.UserHandle == null || args.UserHandle.Length < 4)
                     {
                         var fallback = (await _dapperRepository.QueryFirstAsync<UserCredential>(
@@ -462,35 +444,12 @@ namespace Auth.API.Service.Implementation.Auth
                     Challenge = request.Challenge
                 });
 
-                var user = (await _dapperRepository.QueryFirstAsync<User>(
-                    DbConstants.Procedures.Users,
-                    new { AuthType = DbConstants.AuthTypes.Login, UserId = credential.UserId }));
-
-                var username = user?.Username ?? credential.UserId.ToString();
-                var token = _jwtHelper.GenerateToken(credential.UserId, username);
-
-                var ipAddress = _httpContextAccessor.HttpContext.GetClientIpAddress();
-                var userAgent = _httpContextAccessor.HttpContext.GetUserAgent();
-                var location = await _locationResolver.ResolveLocationAsync(ipAddress);
-
-                var rawRefreshToken = _jwtHelper.GenerateRefreshToken();
-                var refreshTokenHash = TokenHasher.HashToken(rawRefreshToken);
-                var refreshExpiryDays = _jwtHelper.GetRefreshTokenExpiryDays();
-
-                await _dapperRepository.ExecuteAsync(DbConstants.Procedures.Users, new
+                return Response<Fido2VerifyResponse>.Success(new Fido2VerifyResponse
                 {
-                    AuthType = DbConstants.AuthTypes.RefreshToken,
-                    FIDOOperation = DbConstants.FidoOperations.CreateRefreshToken,
+                    Success = true,
                     UserId = credential.UserId,
-                    TokenHash = refreshTokenHash,
-                    ExpiresAt = DateTime.UtcNow.AddDays(refreshExpiryDays),
-                    Now = DateTime.UtcNow,
-                    IpAddress = ipAddress,
-                    UserAgent = userAgent,
-                    Location = location
+                    Message = "FIDO2 verification successful"
                 });
-
-                return Response<Fido2VerifyResponse>.Success(new Fido2VerifyResponse { Success = true, Token = token, RefreshToken = rawRefreshToken, Message = "FIDO2 verification successful" });
             }
             catch (Fido2VerificationException ex)
             {

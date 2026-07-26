@@ -133,7 +133,7 @@ namespace Auth.UI.Components.Pages.Shared.Fido
             if (!result.Succeeded || result.Data is null)
             {
                 State = PasskeyState.Error;
-                StatusDetail = result.Messages ?? "Unable to start passkey sign-in. Please try again.";
+                StatusDetail = "Unable to start passkey sign-in. Please try again.";
                 return;
             }
 
@@ -163,10 +163,16 @@ namespace Auth.UI.Components.Pages.Shared.Fido
 
                 await VerifyAsync();
             }
+            catch (TaskCanceledException)
+            {
+                State = PasskeyState.Error;
+                StatusDetail = "Passkey sign-in was canceled.";
+            }
             catch (Exception ex)
             {
                 State = PasskeyState.Error;
-                StatusDetail = await MapErrorAsync(ex);
+                StatusDetail = "An error occurred during passkey sign-in. Please try again.";
+                Console.WriteLine($"[FIDO2] Exception: {ex}");
             }
         }
 

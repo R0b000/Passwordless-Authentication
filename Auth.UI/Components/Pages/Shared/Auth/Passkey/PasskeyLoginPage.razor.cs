@@ -226,12 +226,7 @@ namespace Auth.UI.Components.Pages.Shared.Passkey
                 if (!result.Succeeded || result.Data is null)
                 {
                     State = PasskeyState.Error;
-                    // FIX: Show the REAL error from the server
-                    var errorMessage = !string.IsNullOrWhiteSpace(result.Messages)
-                        ? result.Messages
-                        : "Unable to start passkey sign-in. Please try again.";
-                    StatusDetail = errorMessage;
-                    Console.WriteLine($"[FIDO2] CreateChallenge failed: {errorMessage}");
+                    StatusDetail = "Unable to start passkey sign-in. Please try again.";
                     return;
                 }
 
@@ -242,26 +237,34 @@ namespace Auth.UI.Components.Pages.Shared.Passkey
                     ? "Insert your security key and tap it when it blinks."
                     : "Use your fingerprint, face, or screen lock on this device.";
 
-                var cred = await _webAuthnModule!.InvokeAsync<WebAuthnAssertion>(
-                    "getCredential",
-                    result.Data.PublicKeyCredentialCreationOptions,
-                    result.Data.Challenge,
-                    new { authenticatorAttachment = authenticatorAttachment, userVerification = "preferred" });
+                try
+                {
+                    var cred = await _webAuthnModule!.InvokeAsync<WebAuthnAssertion>(
+                        "getCredential",
+                        result.Data.PublicKeyCredentialCreationOptions,
+                        result.Data.Challenge,
+                        new { authenticatorAttachment = authenticatorAttachment, userVerification = "preferred" });
 
-                VerifyModel.Challenge = cred.challenge;
-                VerifyModel.CredentialId = cred.id;
-                VerifyModel.ClientDataJson = cred.response.clientDataJSON;
-                VerifyModel.AuthenticatorData = cred.response.authenticatorData;
-                VerifyModel.Signature = cred.response.signature;
-                VerifyModel.UserId = ResolvedUserId;
-                VerifyModel.Origin = origin;
+                    VerifyModel.Challenge = cred.challenge;
+                    VerifyModel.CredentialId = cred.id;
+                    VerifyModel.ClientDataJson = cred.response.clientDataJSON;
+                    VerifyModel.AuthenticatorData = cred.response.authenticatorData;
+                    VerifyModel.Signature = cred.response.signature;
+                    VerifyModel.UserId = ResolvedUserId;
+                    VerifyModel.Origin = origin;
 
-                await VerifyAsync();
+                    await VerifyAsync();
+                }
+                catch (TaskCanceledException)
+                {
+                    State = PasskeyState.Error;
+                    StatusDetail = "Passkey sign-in was canceled.";
+                }
             }
             catch (Exception ex)
             {
                 State = PasskeyState.Error;
-                StatusDetail = await MapErrorAsync(ex);
+                StatusDetail = "An error occurred during passkey sign-in. Please try again.";
                 Console.WriteLine($"[FIDO2] Exception: {ex}");
             }
         }

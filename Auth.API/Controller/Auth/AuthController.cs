@@ -20,7 +20,7 @@ namespace Auth.API.Controller.Auth
         private readonly IAuthService _authService;
         private readonly IUserRoleService _userRoleService;
 
-        public AuthController(IAuthService authService, IUserRoleService userRoleService, IFido2Service fido2Service)
+        public AuthController(IAuthService authService, IUserRoleService userRoleService)
         {
             _authService = authService;
             _userRoleService = userRoleService;
