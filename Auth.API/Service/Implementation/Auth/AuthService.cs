@@ -125,81 +125,73 @@ namespace Auth.API.Service.Implementation.Auth
 
         public async Task<IResponse<AuthResponse>> LoginAsync(LoginRequest request, string? ipAddress = null, string? userAgent = null)
         {
-            var result = await _authRepository.QuerySingleAsync<UserIdResult>(
+            var userDetails = await _authRepository.QuerySingleAsync<User>(
                 ProcedureName,
                 new { AuthType = DbConstants.AuthTypes.Login, Username = request.Username });
 
-            if (result == null || !result.Succeeded || result.Data == null || result.Data.UserId <= 0)
+            if (userDetails == null || !userDetails.Succeeded || userDetails.Data == null || string.IsNullOrEmpty(userDetails.Data.PasswordHash))
             {
                 return Response<AuthResponse>.Fail("Invalid username or password");
             }
 
-            var user = await _authRepository.QuerySingleAsync<User>(
-                ProcedureName,
-                new { AuthType = DbConstants.AuthTypes.Login, UserId = result.Data.UserId });
-
-            if (user == null || !user.Succeeded || user.Data == null || string.IsNullOrEmpty(user.Data.PasswordHash))
+            if (!_passwordHash.VerifyPassword(request.Password, userDetails.Data.PasswordHash))
             {
                 return Response<AuthResponse>.Fail("Invalid username or password");
             }
 
-            if (!_passwordHash.VerifyPassword(request.Password, user.Data.PasswordHash))
-            {
-                return Response<AuthResponse>.Fail("Invalid username or password");
-            }
-
-            bool hasFido2 = await HasFido2CredentialsAsync(user.Data.Id);
+            bool hasFido2 = await HasFido2CredentialsAsync(userDetails.Data.Id);
 
             if (hasFido2)
             {
                 return Response<AuthResponse>.Success(new AuthResponse
                 {
-                    UserId = user.Data.Id,
-                    Username = user.Data.Username,
-                    Email = user.Data.Email,
+                    UserId = userDetails.Data.Id,
+                    Username = userDetails.Data.Username,
+                    Email = userDetails.Data.Email,
                     Message = "FIDO2 verification required",
                     RequiresFido2 = true
                 });
+            } else
+            {
+                var token = _jwtHelper.GenerateToken(userDetails.Data.Id, userDetails.Data.Username);
+                var deviceInfo = new DeviceInfo
+                {
+                    IpAddress = ipAddress ?? _httpContextAccessor.HttpContext.GetClientIpAddress(),
+                    UserAgent = userAgent ?? _httpContextAccessor.HttpContext.GetUserAgent()
+                };
+
+                deviceInfo.Location = await _locationResolver.ResolveLocationAsync(deviceInfo.IpAddress);
+
+                await AssignDefaultRoleIfMissingAsync(userDetails.Data.Id);
+                await EnforceConcurrentSessionLimitAsync(userDetails.Data.Id);
+                var refreshToken = await CreateRefreshTokenAsync(userDetails.Data.Id, deviceInfo);
+
+                await _auditLogService.LogAsync(
+                    userDetails.Data.Id,
+                    "UserLoggedIn",
+                    "User",
+                    userDetails.Data.Id.ToString(),
+                    null,
+                    "Login successful",
+                    deviceInfo.IpAddress,
+                    deviceInfo.UserAgent);
+
+                var userWithRoles = (await _userRoleService.GetUserWithRolesAndPermissionsAsync(userDetails.Data.Id)).Data;
+
+                return Response<AuthResponse>.Success(new AuthResponse
+                {
+                    UserId = userDetails.Data.Id,
+                    Username = userDetails.Data.Username,
+                    Email = userDetails.Data.Email,
+                    Token = token,
+                    RefreshToken = refreshToken,
+                    Message = "Login successful",
+                    RequiresFido2 = false,
+                    RequiresFido2Registration = !hasFido2,
+                    Role = userWithRoles?.Role,
+                    Permissions = userWithRoles?.Permissions ?? new List<string>()
+                });
             }
-
-            var token = _jwtHelper.GenerateToken(user.Data.Id, user.Data.Username);
-            var deviceInfo = new DeviceInfo
-            {
-                IpAddress = ipAddress ?? _httpContextAccessor.HttpContext.GetClientIpAddress(),
-                UserAgent = userAgent ?? _httpContextAccessor.HttpContext.GetUserAgent()
-            };
-
-            deviceInfo.Location = await _locationResolver.ResolveLocationAsync(deviceInfo.IpAddress);
-
-            await AssignDefaultRoleIfMissingAsync(user.Data.Id);
-            await EnforceConcurrentSessionLimitAsync(user.Data.Id);
-            var refreshToken = await CreateRefreshTokenAsync(user.Data.Id, deviceInfo);
-
-            await _auditLogService.LogAsync(
-                user.Data.Id,
-                "UserLoggedIn",
-                "User",
-                user.Data.Id.ToString(),
-                null,
-                "Login successful",
-                deviceInfo.IpAddress,
-                deviceInfo.UserAgent);
-
-            var userWithRoles = (await _userRoleService.GetUserWithRolesAndPermissionsAsync(user.Data.Id)).Data;
-
-            return Response<AuthResponse>.Success(new AuthResponse
-            {
-                UserId = user.Data.Id,
-                Username = user.Data.Username,
-                Email = user.Data.Email,
-                Token = token,
-                RefreshToken = refreshToken,
-                Message = "Login successful",
-                RequiresFido2 = false,
-                RequiresFido2Registration = !hasFido2,
-                Role = userWithRoles?.Role,
-                Permissions = userWithRoles?.Permissions ?? new List<string>()
-            });
         }
 
         public async Task<IResponse<User?>> GetUserByIdAsync(int userId)
@@ -301,7 +293,15 @@ namespace Auth.API.Service.Implementation.Auth
         {
             try
             {
-                return Response<Fido2ChallengeResponse>.Success((await _fido2Service.CreateChallengeAsync(request.UserId, request.Origin ?? string.Empty)).Data);
+                var response = (await _fido2Service.CreateChallengeAsync(request.UserId, request.Origin ?? string.Empty));
+                if (response != null)
+                {
+                    return Response<Fido2ChallengeResponse>.Success(response.Data);
+                }
+                else
+                {
+                    return Response<Fido2ChallengeResponse>.Fail("Server Error, Try again!!");
+                }
             }
             catch (Exception ex)
             {
@@ -313,7 +313,15 @@ namespace Auth.API.Service.Implementation.Auth
         {
             try
             {
-                return Response<Fido2VerifyResponse>.Success((await _fido2Service.VerifyAssertionAsync(request, request.Origin ?? string.Empty)).Data);
+                var response = await _fido2Service.VerifyAssertionAsync(request); // What need to be done here is seperate the idea of the concept of the jwt token generation and do something like if this is sucess then we then generate the jwt token and so on here got it this is looking sketchy here this is not gonna do here but I dont think here is where we generate the jwt token instead we do soemthign like after we get the method where we will pass the 
+
+                if (response != null)
+                {
+                    return Response<Fido2VerifyResponse>.Success(response.Data);
+                } else
+                {
+                    return Response<Fido2VerifyResponse>.Fail("Server Error, Try Again!!!"); // You need to change this here got it bro 
+                }
             }
             catch (Exception ex)
             {

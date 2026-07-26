@@ -81,28 +81,12 @@ BEGIN
     END
     ELSE IF @AuthType = 'Login'
     BEGIN
-        IF @UserId IS NOT NULL
-        BEGIN
-            SELECT Id, Username, Email, PasswordHash, CreatedAt, UpdatedAt
-            FROM dbo.Users
-            WHERE Id = @UserId;
-        END
-        ELSE IF @Username IS NOT NULL
-        BEGIN
-            DECLARE @FoundUserId INT;
-
-            SELECT @FoundUserId = Id
-            FROM dbo.Users
-            WHERE Username = @Username;
-
-            SELECT @FoundUserId AS UserId;
-        END
-        ELSE IF @Email IS NOT NULL
-        BEGIN
-            SELECT Id, Username, Email, PasswordHash, CreatedAt, UpdatedAt
-            FROM dbo.Users
-            WHERE Email = @Email;
-        END
+        SELECT Id, Username, Email, PasswordHash, CreatedAt, UpdatedAt
+        FROM dbo.Users (nolock)
+        WHERE 
+        (@UserId is not null and Id = @UserId)
+        or (@UserId is null and @UserName is not null and Username = @Username)
+        or (@UserId is null and @UserName is null and @Email is not null and Email = @Email)
     END
     ELSE IF @AuthType = 'FIDO'
     BEGIN

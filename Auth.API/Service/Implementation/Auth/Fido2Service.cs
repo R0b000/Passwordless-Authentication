@@ -243,12 +243,21 @@ namespace Auth.API.Service.Implementation.Auth
         {
             try
             {
-                var config = BuildConfig(origin);
-                var fido2 = new Fido2(config);
+                //Quick origin validation
+                if (string.IsNullOrEmpty(origin) && string.IsNullOrEmpty(_apiSettings.BaseUrl))
+                    throw new InvalidOperationException("Origin now allowed");
+
+                var param = new
+                {
+                    AuthType = DbConstants.AuthTypes.Fido,
+                    FIDOOperation = DbConstants.FidoOperations.GetCredentialsByUserId,
+                    UserId = userId
+                };
 
                 var credentials = (await _dapperRepository.QueryAsync<UserCredential>(
                     DbConstants.Procedures.Users,
-                    new { AuthType = DbConstants.AuthTypes.Fido, FIDOOperation = DbConstants.FidoOperations.GetCredentialsByUserId, UserId = userId }))!.ToList();
+                    param
+                ))!.ToList();
 
                 if (!credentials.Any())
                     throw new InvalidOperationException("No FIDO2 credentials found for user");
@@ -263,6 +272,10 @@ namespace Auth.API.Service.Implementation.Auth
                     );
                 }).ToList();
 
+                //Build the config only when required 
+                var config = BuildConfig(origin);
+                var fido2 = new Fido2(config);
+
                 var options = fido2.GetAssertionOptions(new GetAssertionOptionsParams
                 {
                     AllowedCredentials = allowedCredentials,
@@ -272,8 +285,7 @@ namespace Auth.API.Service.Implementation.Auth
                 var challenge = Convert.ToBase64String(options.Challenge);
                 var expiresAt = DateTime.UtcNow.AddMinutes(10);
                 var assertionOptionsJson = options.ToJson();
-
-                await _dapperRepository.ExecuteAsync(DbConstants.Procedures.Users, new
+                var challengeParams = new
                 {
                     AuthType = DbConstants.AuthTypes.Fido,
                     FIDOOperation = DbConstants.FidoOperations.CreateChallenge,
@@ -281,13 +293,15 @@ namespace Auth.API.Service.Implementation.Auth
                     Challenge = challenge,
                     AssertionOptionsJson = assertionOptionsJson,
                     ExpiresAt = expiresAt
-                });
+                };
+
+                await _dapperRepository.ExecuteAsync(DbConstants.Procedures.Users, challengeParams);
 
                 return Response<Fido2ChallengeResponse>.Success(new Fido2ChallengeResponse
                 {
                     Id = challenge,
                     Challenge = challenge,
-                    PublicKeyCredentialCreationOptions = options.ToJson()
+                    PublicKeyCredentialCreationOptions = assertionOptionsJson
                 });
             }
             catch (Exception ex)
@@ -297,7 +311,7 @@ namespace Auth.API.Service.Implementation.Auth
             }
         }
 
-        public async Task<IResponse<Fido2VerifyResponse>> VerifyAssertionAsync(Fido2VerifyRequest request, string origin)
+        public async Task<IResponse<Fido2VerifyResponse>> VerifyAssertionAsync(Fido2VerifyRequest request)
         {
             if (request.UserId <= 0)
             {
@@ -306,19 +320,33 @@ namespace Auth.API.Service.Implementation.Auth
 
             // UI sends Base64URL, we convert to Standard Base64 to match DB
             var credentialIdBase64 = Convert.ToBase64String(Base64UrlDecode(request.CredentialId));
+            var credentialParam = new {
+                AuthType = DbConstants.AuthTypes.Fido,
+                FIDOOperation = DbConstants.FidoOperations.GetCredential,
+                CredentialId = credentialIdBase64
+            };
 
             var credential = (await _dapperRepository.QueryFirstAsync<UserCredential>(
                 DbConstants.Procedures.Users,
-                new { AuthType = DbConstants.AuthTypes.Fido, FIDOOperation = DbConstants.FidoOperations.GetCredential, CredentialId = credentialIdBase64 }));
+                credentialParam
+            ));
 
             if (credential == null)
             {
                 return Response<Fido2VerifyResponse>.Fail("Credential not found");
             }
 
+            var storedParam = new { 
+                AuthType = DbConstants.AuthTypes.Fido, 
+                FIDOOperation = DbConstants.FidoOperations.GetUserChallenge, 
+                UserId = request.UserId, 
+                Challenge = request.Challenge 
+            };
+
             var storedChallenge = (await _dapperRepository.QueryFirstAsync<AuthChallenge>(
                 DbConstants.Procedures.Users,
-                new { AuthType = DbConstants.AuthTypes.Fido, FIDOOperation = DbConstants.FidoOperations.GetUserChallenge, UserId = request.UserId, Challenge = request.Challenge }));
+                storedParam
+             ));
 
             if (storedChallenge == null)
             {
@@ -350,7 +378,7 @@ namespace Auth.API.Service.Implementation.Auth
                 );
             }).ToList();
 
-            var config = BuildConfig(origin);
+            var config = BuildConfig(request.Origin ?? string.Empty);
             var originalOptions = string.IsNullOrEmpty(storedChallenge.AssertionOptionsJson)
                 ? AssertionOptions.Create(
                     config,

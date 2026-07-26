@@ -148,8 +148,15 @@ namespace Auth.UI.Manager.Implementation.Auth
         {
             try
             {
+                var param = new Fido2ChallengeRequest { 
+                    UserId = userId, 
+                    Origin = origin 
+                };
+
                 var result = await _httpService.PostAsJsonAsync<Fido2ChallengeResponse>(
-                    AuthRoute.Fido2Challenge, new Fido2ChallengeRequest { UserId = userId, Origin = origin });
+                    AuthRoute.Fido2Challenge, param
+                );
+
                 if (result.Succeeded && result.Data is not null)
                 {
                     return Response<Fido2ChallengeResponse>.Success(result.Data, "Challenge created");
