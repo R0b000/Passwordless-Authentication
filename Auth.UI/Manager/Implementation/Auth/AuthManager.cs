@@ -25,7 +25,7 @@ namespace Auth.UI.Manager.Implementation.Auth
                 var result = await _httpService.PostAsJsonAsync<AuthResponse>(AuthRoute.Register, request);
                 if (result.Succeeded && result.Data?.Token is not null)
                 {
-                    _tokenStore.SetToken(result.Data.Token);
+                    await _tokenStore.SetToken(result.Data.Token);
                     return Response<AuthResponse>.Success(result.Data, "Registration successful");
                 }
                 else
@@ -46,7 +46,7 @@ namespace Auth.UI.Manager.Implementation.Auth
                 var result = await _httpService.PostAsJsonAsync<AuthResponse>(AuthRoute.Login, request);
                 if (result.Succeeded && result.Data?.Token is not null)
                 {
-                    _tokenStore.SetToken(result.Data.Token);
+                    await _tokenStore.SetToken(result.Data.Token);
                     return Response<AuthResponse>.Success(result.Data, "Login successful");
                 }
                 else if (result.Succeeded && result.Data?.RequiresFido2 == true)
@@ -179,7 +179,7 @@ namespace Auth.UI.Manager.Implementation.Auth
                 var result = await _httpService.PostAsJsonAsync<Fido2VerifyResponse>(AuthRoute.Fido2Verify, request);
                 if (result.Succeeded && result.Data?.Token is not null)
                 {
-                    _tokenStore.SetToken(result.Data.Token);
+                    await _tokenStore.SetToken(result.Data.Token);
                     return Response<Fido2VerifyResponse>.Success(result.Data, "Assertion verified");
                 }
                 else if (result.Succeeded && result.Data is not null)
@@ -224,7 +224,7 @@ namespace Auth.UI.Manager.Implementation.Auth
                 var result = await _httpService.PostAsJsonAsync<AuthResponse>(AuthRoute.OtpVerify, request);
                 if (result.Succeeded && result.Data?.Token is not null)
                 {
-                    _tokenStore.SetToken(result.Data.Token);
+                    await _tokenStore.SetToken(result.Data.Token);
                     return Response<AuthResponse>.Success(result.Data, "OTP verified");
                 }
                 else if (result.Succeeded && result.Data is not null)

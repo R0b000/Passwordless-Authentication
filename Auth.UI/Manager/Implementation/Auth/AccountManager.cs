@@ -147,7 +147,7 @@ namespace Auth.UI.Manager.Implementation.Auth
                 var result = await _httpService.PostAsJsonAsync<AuthResponse>(AuthRoute.Register, request);
                 if (result.Succeeded && result.Data?.Token is not null)
                 {
-                    _tokenStore.SetToken(result.Data.Token);
+                    await _tokenStore.SetToken(result.Data.Token);
                     return Response<AuthResponse>.Success(result.Data, "Registration successful");
                 }
                 else

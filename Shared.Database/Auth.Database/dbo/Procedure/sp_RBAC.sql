@@ -252,8 +252,9 @@ BEGIN
         ELSE IF @UserRoleAction = 'IsInRole'
         BEGIN
             SELECT CASE WHEN EXISTS (
-                SELECT 1 FROM dbo.UserRoles
-                WHERE UserId = @UserId AND RevokedAt IS NULL
+                SELECT 1 FROM dbo.UserRoles ur
+                INNER JOIN dbo.Roles r ON ur.RoleId = r.Id
+                WHERE ur.UserId = @UserId AND ur.RevokedAt IS NULL AND r.Name = @RoleName
             ) THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT) END AS Result;
         END
         ELSE IF @UserRoleAction = 'GetUsersInRole'

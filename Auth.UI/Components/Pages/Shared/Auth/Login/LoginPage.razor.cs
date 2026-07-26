@@ -29,19 +29,15 @@ namespace Auth.UI.Components.Pages.Shared.Login
         protected string LoggedInUsername { get; set; } = string.Empty;
         protected bool _redirectToProfile;
 
-        protected override void OnInitialized()
-        {
-            if (TokenStore.GetToken() is not null)
-            {
-                _redirectToProfile = true;
-            }
-        }
-
         protected override async Task OnAfterRenderAsync(bool firstRender)
         {
-            if (_redirectToProfile)
+            if (firstRender && !_redirectToProfile)
             {
-                NavigationManager.NavigateTo("/profile", replace: true);
+                if (await TokenStore.GetToken() is not null)
+                {
+                    _redirectToProfile = true;
+                    NavigationManager.NavigateTo("/profile", replace: true);
+                }
             }
         }
 
@@ -138,7 +134,7 @@ namespace Auth.UI.Components.Pages.Shared.Login
             NavigationManager.NavigateTo("/profile");
         }
 
-        protected void OnPasskeyCancel()
+        protected async void OnPasskeyCancel()
         {
             var wasVerification = IsVerificationMode;
             PasskeyVisible = false;
@@ -148,7 +144,7 @@ namespace Auth.UI.Components.Pages.Shared.Login
 
             if (wasVerification)
             {
-                TokenStore.Clear();
+                await TokenStore.Clear();
             }
             else
             {

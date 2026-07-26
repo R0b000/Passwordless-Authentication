@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using Auth.API.Config;
 using Auth.API.Middleware;
 using Auth.API.Service.Interface.Auth;
+using Auth.API.Service.Interface.Security;
 using Auth.Model.Models.Account;
 using Shared.Data.Wrapper;
 
@@ -15,10 +16,20 @@ namespace Auth.API.Controller.Account
     public class AccountController : ControllerBase
     {
         private readonly IAuthService _authService;
+        private readonly IUserProfileService _profileService;
+        private readonly IAccountSettingsService _settingsService;
+        private readonly IPrivacySettingsService _privacyService;
 
-        public AccountController(IAuthService authService)
+        public AccountController(
+            IAuthService authService,
+            IUserProfileService profileService,
+            IAccountSettingsService settingsService,
+            IPrivacySettingsService privacyService)
         {
             _authService = authService;
+            _profileService = profileService;
+            _settingsService = settingsService;
+            _privacyService = privacyService;
         }
 
         [HttpGet("profile")]
@@ -27,20 +38,11 @@ namespace Auth.API.Controller.Account
             var userId = User.GetUserId();
             if (userId == null) return Unauthorized();
 
-            var userResult = await _authService.GetUserByIdAsync(userId.Value);
-            var user = userResult.Data;
+            var result = await _profileService.GetProfileAsync(userId.Value);
+            var user = result.Data;
             if (user == null) return NotFound();
 
-            var result = new UserProfileResponse
-            {
-                UserId = user.Id,
-                Username = user.Username ?? string.Empty,
-                Email = user.Email ?? string.Empty,
-                DateJoined = user.CreatedAt,
-                AccountStatus = "active"
-            };
-
-            return Ok(result);
+            return Ok(result.Data);
         }
 
         [HttpPut("profile")]
@@ -49,10 +51,10 @@ namespace Auth.API.Controller.Account
             var userId = User.GetUserId();
             if (userId == null) return Unauthorized();
 
-            var result = await _authService.UpdateProfileAsync(userId.Value, request);
-            if (result == null) return NotFound();
+            var result = await _profileService.UpdateProfileAsync(userId.Value, request);
+            if (result.Data == null) return NotFound();
 
-            return Ok(result);
+            return Ok(result.Data);
         }
 
         [HttpGet("settings")]
@@ -61,8 +63,8 @@ namespace Auth.API.Controller.Account
             var userId = User.GetUserId();
             if (userId == null) return Unauthorized();
 
-            var result = await _authService.GetAccountSettingsAsync(userId.Value);
-            return Ok(result);
+            var result = await _settingsService.GetAccountSettingsAsync(userId.Value);
+            return Ok(result.Data);
         }
 
         [HttpPut("settings")]
@@ -71,8 +73,8 @@ namespace Auth.API.Controller.Account
             var userId = User.GetUserId();
             if (userId == null) return Unauthorized();
 
-            var result = await _authService.UpdateAccountSettingsAsync(userId.Value, request);
-            return Ok(result);
+            var result = await _settingsService.UpdateAccountSettingsAsync(userId.Value, request);
+            return Ok(result.Data);
         }
 
         [HttpGet("privacy")]
@@ -81,8 +83,8 @@ namespace Auth.API.Controller.Account
             var userId = User.GetUserId();
             if (userId == null) return Unauthorized();
 
-            var result = await _authService.GetPrivacySettingsAsync(userId.Value);
-            return Ok(result);
+            var result = await _privacyService.GetPrivacySettingsAsync(userId.Value);
+            return Ok(result.Data);
         }
 
         [HttpPut("privacy")]
@@ -91,8 +93,8 @@ namespace Auth.API.Controller.Account
             var userId = User.GetUserId();
             if (userId == null) return Unauthorized();
 
-            var result = await _authService.UpdatePrivacySettingsAsync(userId.Value, request);
-            return Ok(result);
+            var result = await _privacyService.UpdatePrivacySettingsAsync(userId.Value, request);
+            return Ok(result.Data);
         }
 
         [AllowAnonymous]

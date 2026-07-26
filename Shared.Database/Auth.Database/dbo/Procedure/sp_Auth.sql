@@ -427,12 +427,22 @@ BEGIN
     END
     ELSE IF @AuthType = 'ResetPassword'
     BEGIN
-        UPDATE dbo.Users
-        SET PasswordHash = @PasswordHash,
-            UpdatedAt = @Now
-        WHERE Id = @UserId;
+        DECLARE @ResetUserId INT;
 
-        SELECT @@ROWCOUNT AS RowsAffected;
+        SELECT TOP 1 @ResetUserId = UserId 
+        FROM dbo.EmailOtps 
+        WHERE Otp = @TokenHash AND UsedAt IS NULL AND ExpiresAt > @Now;
+
+        IF @ResetUserId IS NOT NULL
+        BEGIN
+            UPDATE dbo.Users SET PasswordHash = @PasswordHash, UpdatedAt = @Now WHERE Id = @ResetUserId;
+            UPDATE dbo.EmailOtps SET UsedAt = @Now WHERE Otp = @TokenHash;
+            SELECT @@ROWCOUNT AS RowsAffected;
+        END
+        ELSE
+        BEGIN
+            SELECT 0 AS RowsAffected;
+        END
     END
     ELSE IF @AuthType = 'DeleteAccount'
     BEGIN

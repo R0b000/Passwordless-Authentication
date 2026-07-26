@@ -7,6 +7,7 @@ using Shared.Data.Wrapper;
 using Auth.API.Config;
 using Auth.API.Utility.Jwt;
 using Auth.API.Utility.OtpGenerator;
+using Auth.API.Utility.TokenHash;
 using Auth.API.Service.Interface.Auth;
 using Auth.API.Service.Interface.Rbac;
 
@@ -69,7 +70,7 @@ namespace Auth.API.Service.Implementation.Auth
                     AuthType = DbConstants.AuthTypes.EmailOtp,
                     FIDOOperation = "CreateOtp",
                     UserId = user.Id,
-                    Otp = otp,
+                    Otp = TokenHasher.HashToken(otp),
                     ExpiresAt = expiresAt
                 });
 
@@ -107,7 +108,7 @@ namespace Auth.API.Service.Implementation.Auth
                     AuthType = DbConstants.AuthTypes.EmailOtp,
                     FIDOOperation = "ConsumeOtp",
                     UserId = user.Id,
-                    Otp = request.Otp,
+                    Otp = TokenHasher.HashToken(request.Otp),
                     Now = DateTime.UtcNow
                 }));
 
@@ -140,7 +141,8 @@ namespace Auth.API.Service.Implementation.Auth
         private async Task<string> CreateRefreshTokenAsync(int userId)
         {
             var now = DateTime.UtcNow;
-            var refreshToken = _jwtHelper.GenerateRefreshToken();
+            var rawToken = _jwtHelper.GenerateRefreshToken();
+            var tokenHash = TokenHasher.HashToken(rawToken);
             var refreshExpiryDays = _jwtHelper.GetRefreshTokenExpiryDays();
 
             await _dapperRepository.ExecuteAsync(
@@ -150,12 +152,12 @@ namespace Auth.API.Service.Implementation.Auth
                     AuthType = DbConstants.AuthTypes.RefreshToken,
                     FIDOOperation = DbConstants.FidoOperations.CreateRefreshToken,
                     UserId = userId,
-                    Token = refreshToken,
+                    TokenHash = tokenHash,
                     ExpiresAt = now.AddDays(refreshExpiryDays),
                     Now = now
                 });
 
-            return refreshToken;
+            return rawToken;
         }
 
         private async Task AssignDefaultRoleIfMissingAsync(int userId)

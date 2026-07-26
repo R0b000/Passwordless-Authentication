@@ -9,9 +9,9 @@ namespace Auth.API.Utility.Auth
         {
             _tokenStore = tokenStore;
         }
-        public Task<object> GetToken()
+        public async Task<object> GetToken()
         {
-            return Task.FromResult<object>(_tokenStore.GetToken() ?? string.Empty);
+            return await _tokenStore.GetToken() ?? string.Empty;
         }
     }
 }

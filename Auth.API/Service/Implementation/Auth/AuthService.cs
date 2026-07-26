@@ -582,54 +582,6 @@ namespace Auth.API.Service.Implementation.Auth
             return Response.Success();
         }
 
-        public async Task<IResponse<UserProfileResponse?>> GetProfileAsync(int userId)
-        {
-            var user = await _authRepository.QuerySingleAsync<User>(ProcedureName, new { AuthType = DbConstants.AuthTypes.Login, UserId = userId });
-            if (user?.Succeeded != true || user.Data == null) return Response<UserProfileResponse?>.Fail("User not found");
-
-            var profile = await _authRepository.QuerySingleAsync<UserProfileResponse>(
-                ProcedureName,
-                new { AuthType = DbConstants.AuthTypes.GetProfile, UserId = userId });
-
-            if (profile?.Succeeded == true && profile.Data != null)
-            {
-                return Response<UserProfileResponse?>.Success(profile.Data);
-            }
-
-            return Response<UserProfileResponse?>.Success(new UserProfileResponse
-            {
-                UserId = user.Data.Id,
-                Username = user.Data.Username ?? string.Empty,
-                Email = user.Data.Email ?? string.Empty,
-                DateJoined = user.Data.CreatedAt,
-                AccountStatus = "active"
-            });
-        }
-
-        public async Task<IResponse<UserProfileResponse?>> UpdateProfileAsync(int userId, UpdateProfileRequest request)
-        {
-            var result = await _authRepository.QuerySingleAsync<UserProfileResponse>(
-                ProcedureName,
-                new
-                {
-                    AuthType = DbConstants.AuthTypes.UpdateProfile,
-                    UserId = userId,
-                    request.Username,
-                    request.Email,
-                    request.Phone,
-                    request.Bio,
-                    Now = DateTime.UtcNow
-                });
-
-            if (result?.Succeeded == true && result.Data != null)
-            {
-                await _auditLogService.LogAsync(userId, "ProfileUpdated", "User", userId.ToString(), null, "Profile updated");
-                return Response<UserProfileResponse?>.Success(result.Data);
-            }
-
-            return Response<UserProfileResponse?>.Fail("Failed to update profile");
-        }
-
         public async Task<IResponse<AccountSettingsResponse>> GetAccountSettingsAsync(int userId)
         {
             var result = await _authRepository.QuerySingleAsync<AccountSettingsResponse>(
@@ -642,48 +594,6 @@ namespace Auth.API.Service.Implementation.Auth
             }
 
             return Response<AccountSettingsResponse>.Success(new AccountSettingsResponse());
-        }
-
-        public async Task<IResponse<AccountSettingsResponse>> UpdateAccountSettingsAsync(int userId, UpdateSettingsRequest request)
-        {
-            var result = await _authRepository.QuerySingleAsync<AccountSettingsResponse>(
-                ProcedureName,
-                new
-                {
-                    AuthType = DbConstants.AuthTypes.UpdateSettings,
-                    UserId = userId,
-                    request.DisplayName,
-                    request.Username,
-                    request.Email,
-                    request.EmailPreferences,
-                    request.Timezone,
-                    request.Language,
-                    request.EmailNotifications,
-                    request.PushNotifications,
-                    request.SmsAlerts,
-                    request.MarketingEmails,
-                    Now = DateTime.UtcNow
-                });
-
-            if (result?.Succeeded == true && result.Data != null)
-            {
-                await _auditLogService.LogAsync(userId, "SettingsUpdated", "User", userId.ToString(), null, "Settings updated");
-                return Response<AccountSettingsResponse>.Success(result.Data);
-            }
-
-            return Response<AccountSettingsResponse>.Success(new AccountSettingsResponse
-            {
-                DisplayName = request.DisplayName,
-                Username = request.Username,
-                Email = request.Email,
-                EmailPreferences = request.EmailPreferences,
-                Timezone = request.Timezone,
-                Language = request.Language,
-                EmailNotifications = request.EmailNotifications,
-                PushNotifications = request.PushNotifications,
-                SmsAlerts = request.SmsAlerts,
-                MarketingEmails = request.MarketingEmails
-            });
         }
 
         public async Task<IResponse<PrivacySettingsResponse>> GetPrivacySettingsAsync(int userId)
@@ -700,36 +610,6 @@ namespace Auth.API.Service.Implementation.Auth
             return Response<PrivacySettingsResponse>.Success(new PrivacySettingsResponse());
         }
 
-        public async Task<IResponse<PrivacySettingsResponse>> UpdatePrivacySettingsAsync(int userId, UpdatePrivacyRequest request)
-        {
-            var result = await _authRepository.QuerySingleAsync<PrivacySettingsResponse>(
-                ProcedureName,
-                new
-                {
-                    AuthType = DbConstants.AuthTypes.UpdatePrivacy,
-                    UserId = userId,
-                    request.ProfileVisibility,
-                    request.DataSharing,
-                    request.ThirdPartyConnections,
-                    request.CookiePreferences,
-                    Now = DateTime.UtcNow
-                });
-
-            if (result?.Succeeded == true && result.Data != null)
-            {
-                await _auditLogService.LogAsync(userId, "PrivacyUpdated", "User", userId.ToString(), null, "Privacy updated");
-                return Response<PrivacySettingsResponse>.Success(result.Data);
-            }
-
-            return Response<PrivacySettingsResponse>.Success(new PrivacySettingsResponse
-            {
-                ProfileVisibility = request.ProfileVisibility,
-                DataSharing = request.DataSharing,
-                ThirdPartyConnections = request.ThirdPartyConnections,
-                CookiePreferences = request.CookiePreferences
-            });
-        }
-
         public async Task<IResponse> RequestPasswordResetAsync(string email)
         {
             var user = await GetUserByEmailAsync(email);
@@ -742,10 +622,10 @@ namespace Auth.API.Service.Implementation.Auth
                 ProcedureName,
                 new
                 {
-                    AuthType = DbConstants.AuthTypes.ResetPassword,
-                    FIDOOperation = "CreateResetToken",
-                    Email = email,
-                    TokenHash = token,
+                    AuthType = DbConstants.AuthTypes.EmailOtp,
+                    FIDOOperation = "CreateOtp",
+                    UserId = user.Data.Id,
+                    Otp = TokenHasher.HashToken(token),
                     ExpiresAt = expiresAt,
                     Now = DateTime.UtcNow
                 });
@@ -775,7 +655,7 @@ namespace Auth.API.Service.Implementation.Auth
                 new
                 {
                     AuthType = DbConstants.AuthTypes.ResetPassword,
-                    TokenHash = token,
+                    TokenHash = TokenHasher.HashToken(token),
                     PasswordHash = passwordHash,
                     Now = DateTime.UtcNow
                 });
@@ -815,167 +695,6 @@ namespace Auth.API.Service.Implementation.Auth
             }
 
             return Response.Fail("Failed to delete account");
-        }
-
-        public async Task<IResponse<SecuritySettingsResponse>> GetSecuritySettingsAsync(int userId)
-        {
-            var result = await _authRepository.QuerySingleAsync<SecuritySettingsResponse>(
-                ProcedureName,
-                new { AuthType = DbConstants.AuthTypes.GetSecurity, UserId = userId });
-
-            if (result?.Succeeded == true && result.Data != null)
-            {
-                return Response<SecuritySettingsResponse>.Success(result.Data);
-            }
-
-            return Response<SecuritySettingsResponse>.Success(new SecuritySettingsResponse());
-        }
-
-        public async Task<IResponse<SecuritySettingsResponse>> UpdateSecuritySettingsAsync(int userId, SecuritySettingsResponse request)
-        {
-            var result = await _authRepository.QuerySingleAsync<SecuritySettingsResponse>(
-                ProcedureName,
-                new
-                {
-                    AuthType = DbConstants.AuthTypes.UpdateSecurity,
-                    UserId = userId,
-                    request.AlertOnNewDevice,
-                    request.RequirePasswordForSensitive,
-                    Now = DateTime.UtcNow
-                });
-
-            if (result?.Succeeded == true && result.Data != null)
-            {
-                await _auditLogService.LogAsync(userId, "SecuritySettingsUpdated", "User", userId.ToString(), null, "Security settings updated");
-                return Response<SecuritySettingsResponse>.Success(result.Data);
-            }
-
-            return Response<SecuritySettingsResponse>.Success(request);
-        }
-
-        public async Task<IResponse<SecuritySettingsResponse>> EnableTwoFactorAsync(int userId)
-        {
-            var result = await _authRepository.QuerySingleAsync<SecuritySettingsResponse>(
-                ProcedureName,
-                new { AuthType = DbConstants.AuthTypes.Enable2Fa, UserId = userId, Now = DateTime.UtcNow });
-
-            if (result?.Succeeded == true && result.Data != null)
-            {
-                await _auditLogService.LogAsync(userId, "TwoFactorEnabled", "User", userId.ToString());
-                return Response<SecuritySettingsResponse>.Success(result.Data);
-            }
-
-            return Response<SecuritySettingsResponse>.Success(new SecuritySettingsResponse { TwoFactorEnabled = true });
-        }
-
-        public async Task<IResponse<SecuritySettingsResponse>> DisableTwoFactorAsync(int userId)
-        {
-            var result = await _authRepository.QuerySingleAsync<SecuritySettingsResponse>(
-                ProcedureName,
-                new { AuthType = DbConstants.AuthTypes.Disable2Fa, UserId = userId, Now = DateTime.UtcNow });
-
-            if (result?.Succeeded == true && result.Data != null)
-            {
-                await _auditLogService.LogAsync(userId, "TwoFactorDisabled", "User", userId.ToString());
-                return Response<SecuritySettingsResponse>.Success(result.Data);
-            }
-
-            return Response<SecuritySettingsResponse>.Success(new SecuritySettingsResponse { TwoFactorEnabled = false });
-        }
-
-        public async Task<IResponse<ActivityLogResponse>> GetActivityLogsAsync(int userId, ActivityQueryRequest query)
-        {
-            var result = await _authRepository.QueryAsync<AuditLog>(
-                ProcedureName,
-                new
-                {
-                    AuthType = DbConstants.AuthTypes.AuditLog,
-                    FIDOOperation = "GetByUser",
-                    UserId = userId
-                });
-
-            var entries = new List<ActivityLogEntry>();
-
-            if (result?.Succeeded == true && result.Data != null)
-            {
-                var filtered = result.Data.AsEnumerable();
-
-                if (query.From.HasValue)
-                    filtered = filtered.Where(a => a.CreatedAt >= query.From.Value);
-                if (query.To.HasValue)
-                    filtered = filtered.Where(a => a.CreatedAt <= query.To.Value.Date.AddDays(1).AddTicks(-1));
-                if (!string.IsNullOrWhiteSpace(query.Type) && query.Type != "all")
-                    filtered = filtered.Where(a => a.Action == query.Type);
-                if (!string.IsNullOrWhiteSpace(query.Search))
-                {
-                    var term = query.Search.Trim().ToLowerInvariant();
-                    filtered = filtered.Where(a =>
-                        a.Action.ToLowerInvariant().Contains(term) ||
-                        (a.EntityType ?? string.Empty).ToLowerInvariant().Contains(term));
-                }
-
-                entries = filtered.OrderByDescending(a => a.CreatedAt).Select(a => new ActivityLogEntry
-                {
-                    Id = (int)a.Id,
-                    Type = a.Action,
-                    Description = a.Action,
-                    Device = a.UserAgent ?? "Unknown",
-                    IpAddress = a.IpAddress ?? "Unknown",
-                    Timestamp = a.CreatedAt
-                }).ToList();
-            }
-
-            return Response<ActivityLogResponse>.Success(new ActivityLogResponse { Entries = entries });
-        }
-
-        public async Task<IResponse> VerifyDeviceAsync(int userId, VerifyDeviceRequest request)
-        {
-            if (string.IsNullOrWhiteSpace(request.Code))
-            {
-                return Response.Fail("Enter the verification code");
-            }
-
-            await _auditLogService.LogAsync(userId, "DeviceVerified", "User", userId.ToString(), null, request.TrustDevice ? "Device verified and trusted" : "Device verified");
-
-            return Response.Success(request.TrustDevice ? "Device verified and trusted" : "Device verified");
-        }
-
-        public async Task<IResponse> ChangePasswordAsync(int userId, ChangePasswordRequest request)
-        {
-            var user = await _authRepository.QuerySingleAsync<User>(ProcedureName, new { AuthType = DbConstants.AuthTypes.Login, UserId = userId });
-            if (user?.Succeeded != true || user.Data == null)
-            {
-                return Response.Fail("User not found");
-            }
-
-            if (!_passwordHash.VerifyPassword(request.CurrentPassword, user.Data.PasswordHash ?? string.Empty))
-            {
-                return Response.Fail("Current password is incorrect");
-            }
-
-            if (request.NewPassword != request.ConfirmPassword)
-            {
-                return Response.Fail("New password and confirmation do not match");
-            }
-
-            var newPasswordHash = _passwordHash.HashPassword(request.NewPassword);
-            var result = await _authRepository.ExecuteAsync(
-                ProcedureName,
-                new
-                {
-                    AuthType = DbConstants.AuthTypes.ChangePassword,
-                    UserId = userId,
-                    PasswordHash = newPasswordHash,
-                    Now = DateTime.UtcNow
-                });
-
-            if (result.Succeeded && result.Data > 0)
-            {
-                await _auditLogService.LogAsync(userId, "PasswordChanged", "User", userId.ToString());
-                return Response.Success("Password changed successfully");
-            }
-
-            return Response.Fail("Failed to change password");
         }
 
         private async Task<bool> HasFido2CredentialsAsync(int userId)

@@ -25,22 +25,8 @@ namespace Auth.API.Service.Interface.Auth
         Task<IResponse> RevokeAllSessionsAsync(int userId);
         Task<IResponse> RevokeSessionAsync(int sessionId, int userId);
         Task<IResponse> RequestPasswordResetAsync(string email);
-
-        Task<IResponse<UserProfileResponse?>> GetProfileAsync(int userId);
-        Task<IResponse<UserProfileResponse?>> UpdateProfileAsync(int userId, UpdateProfileRequest request);
-        Task<IResponse<AccountSettingsResponse>> GetAccountSettingsAsync(int userId);
-        Task<IResponse<AccountSettingsResponse>> UpdateAccountSettingsAsync(int userId, UpdateSettingsRequest request);
-        Task<IResponse<PrivacySettingsResponse>> GetPrivacySettingsAsync(int userId);
-        Task<IResponse<PrivacySettingsResponse>> UpdatePrivacySettingsAsync(int userId, UpdatePrivacyRequest request);
-        Task<IResponse<string>> GetUserDataExportAsync(int userId);
-        Task<IResponse<SecuritySettingsResponse>> GetSecuritySettingsAsync(int userId);
-        Task<IResponse<SecuritySettingsResponse>> UpdateSecuritySettingsAsync(int userId, SecuritySettingsResponse request);
-        Task<IResponse<SecuritySettingsResponse>> EnableTwoFactorAsync(int userId);
-        Task<IResponse<SecuritySettingsResponse>> DisableTwoFactorAsync(int userId);
-        Task<IResponse<ActivityLogResponse>> GetActivityLogsAsync(int userId, ActivityQueryRequest query);
-        Task<IResponse> ChangePasswordAsync(int userId, ChangePasswordRequest request);
         Task<IResponse> ResetPasswordAsync(string token, string newPassword);
-        Task<IResponse> VerifyDeviceAsync(int userId, VerifyDeviceRequest request);
+        Task<IResponse<string>> GetUserDataExportAsync(int userId);
         Task<IResponse> DeleteAccountAsync(int userId);
     }
 }

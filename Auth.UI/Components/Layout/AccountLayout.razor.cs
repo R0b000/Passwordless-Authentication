@@ -50,23 +50,19 @@ namespace Auth.UI.Components.Layout
             new MenuActionItem { Text = "Sign out", Icon = "x", Key = "logout" }
         };
 
-        protected override async Task OnInitializedAsync()
-        {
-            if (TokenStore.GetToken() is null)
-            {
-                _redirectToLogin = true;
-                return;
-            }
-
-            var result = await AccountManager.GetProfileAsync();
-            Profile = result.Succeeded ? result.Data : null;
-        }
-
         protected override async Task OnAfterRenderAsync(bool firstRender)
         {
-            if (_redirectToLogin)
+            if (firstRender)
             {
-                Navigation.NavigateTo("/login", replace: true);
+                if (await TokenStore.GetToken() is null)
+                {
+                    _redirectToLogin = true;
+                    Navigation.NavigateTo("/login", replace: true);
+                    return;
+                }
+
+                var result = await AccountManager.GetProfileAsync();
+                Profile = result.Succeeded ? result.Data : null;
             }
         }
 
@@ -82,9 +78,9 @@ namespace Auth.UI.Components.Layout
             }
         }
 
-        protected void Logout()
+        protected async void Logout()
         {
-            TokenStore.Clear();
+            await TokenStore.Clear();
             AccountMenuOpen = false;
             Navigation.NavigateTo("/login", replace: true, forceLoad: true);
         }

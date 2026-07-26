@@ -2,18 +2,31 @@
 {
     public interface ITokenStore
     {
-        void SetToken(string token);
-        string? GetToken();
-        void Clear();
+        Task SetToken(string token);
+        Task<string?> GetToken();
+        Task Clear();
     }
 
     public class TokenStore : ITokenStore
     {
         private string? _token;
 
-        public void SetToken(string token) => _token = token;
-        public string? GetToken() => _token;
-        public void Clear() => _token = null;
+        public Task SetToken(string token)
+        {
+            _token = token;
+            return Task.CompletedTask;
+        }
+
+        public Task<string?> GetToken()
+        {
+            return Task.FromResult(_token);
+        }
+
+        public Task Clear()
+        {
+            _token = null;
+            return Task.CompletedTask;
+        }
     }
 }
 
