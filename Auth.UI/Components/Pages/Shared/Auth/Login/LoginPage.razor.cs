@@ -134,7 +134,7 @@ namespace Auth.UI.Components.Pages.Shared.Login
             NavigationManager.NavigateTo("/profile");
         }
 
-        protected async void OnPasskeyCancel()
+        protected async Task OnPasskeyCancel()
         {
             var wasVerification = IsVerificationMode;
             PasskeyVisible = false;

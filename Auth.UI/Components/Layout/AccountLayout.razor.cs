@@ -54,9 +54,14 @@ namespace Auth.UI.Components.Layout
         {
             if (firstRender)
             {
-                if (await TokenStore.GetToken() is null)
+                if (!await TokenStore.IsAvailableAsync())
                 {
-                    _redirectToLogin = true;
+                    return;
+                }
+
+                var token = await TokenStore.GetToken();
+                if (token is null)
+                {
                     Navigation.NavigateTo("/login", replace: true);
                     return;
                 }
@@ -70,15 +75,15 @@ namespace Auth.UI.Components.Layout
 
         protected void CloseAccountMenu() => AccountMenuOpen = false;
 
-        protected void OnMenuAction(MenuActionItem item)
+        protected async Task OnMenuAction(MenuActionItem item)
         {
             if (item.Key == "logout")
             {
-                Logout();
+                await Logout();
             }
         }
 
-        protected async void Logout()
+        protected async Task Logout()
         {
             await TokenStore.Clear();
             AccountMenuOpen = false;

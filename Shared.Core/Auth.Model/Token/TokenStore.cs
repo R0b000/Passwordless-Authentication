@@ -5,6 +5,7 @@
         Task SetToken(string token);
         Task<string?> GetToken();
         Task Clear();
+        Task<bool> IsAvailableAsync();
     }
 
     public class TokenStore : ITokenStore
@@ -26,6 +27,11 @@
         {
             _token = null;
             return Task.CompletedTask;
+        }
+
+        public Task<bool> IsAvailableAsync()
+        {
+            return Task.FromResult(true);
         }
     }
 }

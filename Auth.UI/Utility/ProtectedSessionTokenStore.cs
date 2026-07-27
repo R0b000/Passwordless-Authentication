@@ -50,5 +50,18 @@ namespace Auth.UI.Utility
             {
             }
         }
+
+        public async Task<bool> IsAvailableAsync()
+        {
+            try
+            {
+                await _sessionStorage.GetAsync<string>("authToken");
+                return true;
+            }
+            catch (InvalidOperationException)
+            {
+                return false;
+            }
+        }
     }
 }

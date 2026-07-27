@@ -50,10 +50,14 @@ FOLDER STRUCTURE:
   📁 Service/
     📁 Implementation/
       📁 Auth/
+        📄 AccountSettingsService.cs
         📄 AuthService.cs
         📄 Fido2Service.cs
         📄 OtpService.cs
+        📄 PrivacySettingsService.cs
+        📄 SecurityService.cs
         📄 UserCredentialService.cs
+        📄 UserProfileService.cs
       📁 Rbac/
         📄 PermissionService.cs
         📄 RoleService.cs
@@ -64,10 +68,14 @@ FOLDER STRUCTURE:
         📄 LoggingEmailService.cs
     📁 Interface/
       📁 Auth/
+        📄 IAccountSettingsService.cs
         📄 IAuthService.cs
         📄 IFido2Service.cs
         📄 IOtpService.cs
+        📄 IPrivacySettingsService.cs
+        📄 ISecurityService.cs
         📄 IUserCredentialService.cs
+        📄 IUserProfileService.cs
       📁 Rbac/
         📄 IPermissionService.cs
         📄 IRoleService.cs
@@ -200,6 +208,8 @@ FOLDER STRUCTURE:
     📁 PublishProfiles/
   📁 Shared/
     📄 .gitkeep
+  📁 Utility/
+    📄 ProtectedSessionTokenStore.cs
 📁 HRM.API/
 📁 HRM.UI/
 📁 Shared.Core/
@@ -16299,10 +16309,14 @@ FOLDER STRUCTURE:
   📁 Service/
     📁 Implementation/
       📁 Auth/
+        📄 AccountSettingsService.cs
         📄 AuthService.cs
         📄 Fido2Service.cs
         📄 OtpService.cs
+        📄 PrivacySettingsService.cs
+        📄 SecurityService.cs
         📄 UserCredentialService.cs
+        📄 UserProfileService.cs
       📁 Rbac/
         📄 PermissionService.cs
         📄 RoleService.cs
@@ -16313,10 +16327,14 @@ FOLDER STRUCTURE:
         📄 LoggingEmailService.cs
     📁 Interface/
       📁 Auth/
+        📄 IAccountSettingsService.cs
         📄 IAuthService.cs
         📄 IFido2Service.cs
         📄 IOtpService.cs
+        📄 IPrivacySettingsService.cs
+        📄 ISecurityService.cs
         📄 IUserCredentialService.cs
+        📄 IUserProfileService.cs
       📁 Rbac/
         📄 IPermissionService.cs
         📄 IRoleService.cs
@@ -16449,6 +16467,8 @@ FOLDER STRUCTURE:
     📁 PublishProfiles/
   📁 Shared/
     📄 .gitkeep
+  📁 Utility/
+    📄 ProtectedSessionTokenStore.cs
 📁 HRM.API/
 📁 HRM.UI/
 📁 Shared.Core/
@@ -32846,6 +32866,10 @@ builder.Services.AddScoped<IPermissionService, PermissionService>();
 builder.Services.AddScoped<IUserRoleService, UserRoleService>();
 builder.Services.AddScoped<IAuditLogService, AuditLogService>();
 builder.Services.AddScoped<IEmailService, LoggingEmailService>();
+builder.Services.AddScoped<IUserProfileService, UserProfileService>();
+builder.Services.AddScoped<IAccountSettingsService, AccountSettingsService>();
+builder.Services.AddScoped<IPrivacySettingsService, PrivacySettingsService>();
+builder.Services.AddScoped<ISecurityService, SecurityService>();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddSingleton<IAuthorizationHandler, PermissionAuthorizationHandler>();
 builder.Services.Configure<RateLimitSettings>(builder.Configuration.GetSection(RateLimitSettings.SectionName));
@@ -33334,6 +33358,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using Auth.API.Config;
 using Auth.API.Middleware;
 using Auth.API.Service.Interface.Auth;
+using Auth.API.Service.Interface.Security;
 using Auth.Model.Models.Account;
 using Shared.Data.Wrapper;
 
@@ -33345,10 +33370,20 @@ namespace Auth.API.Controller.Account
     public class AccountController : ControllerBase
     {
         private readonly IAuthService _authService;
+        private readonly IUserProfileService _profileService;
+        private readonly IAccountSettingsService _settingsService;
+        private readonly IPrivacySettingsService _privacyService;
 
-        public AccountController(IAuthService authService)
+        public AccountController(
+            IAuthService authService,
+            IUserProfileService profileService,
+            IAccountSettingsService settingsService,
+            IPrivacySettingsService privacyService)
         {
             _authService = authService;
+            _profileService = profileService;
+            _settingsService = settingsService;
+            _privacyService = privacyService;
         }
 
         [HttpGet("profile")]
@@ -33357,20 +33392,11 @@ namespace Auth.API.Controller.Account
             var userId = User.GetUserId();
             if (userId == null) return Unauthorized();
 
-            var userResult = await _authService.GetUserByIdAsync(userId.Value);
-            var user = userResult.Data;
+            var result = await _profileService.GetProfileAsync(userId.Value);
+            var user = result.Data;
             if (user == null) return NotFound();
 
-            var result = new UserProfileResponse
-            {
-                UserId = user.Id,
-                Username = user.Username ?? string.Empty,
-                Email = user.Email ?? string.Empty,
-                DateJoined = user.CreatedAt,
-                AccountStatus = "active"
-            };
-
-            return Ok(result);
+            return Ok(result.Data);
         }
 
         [HttpPut("profile")]
@@ -33379,10 +33405,10 @@ namespace Auth.API.Controller.Account
             var userId = User.GetUserId();
             if (userId == null) return Unauthorized();
 
-            var result = await _authService.UpdateProfileAsync(userId.Value, request);
-            if (result == null) return NotFound();
+            var result = await _profileService.UpdateProfileAsync(userId.Value, request);
+            if (result.Data == null) return NotFound();
 
-            return Ok(result);
+            return Ok(result.Data);
         }
 
         [HttpGet("settings")]
@@ -33391,8 +33417,8 @@ namespace Auth.API.Controller.Account
             var userId = User.GetUserId();
             if (userId == null) return Unauthorized();
 
-            var result = await _authService.GetAccountSettingsAsync(userId.Value);
-            return Ok(result);
+            var result = await _settingsService.GetAccountSettingsAsync(userId.Value);
+            return Ok(result.Data);
         }
 
         [HttpPut("settings")]
@@ -33401,8 +33427,8 @@ namespace Auth.API.Controller.Account
             var userId = User.GetUserId();
             if (userId == null) return Unauthorized();
 
-            var result = await _authService.UpdateAccountSettingsAsync(userId.Value, request);
-            return Ok(result);
+            var result = await _settingsService.UpdateAccountSettingsAsync(userId.Value, request);
+            return Ok(result.Data);
         }
 
         [HttpGet("privacy")]
@@ -33411,8 +33437,8 @@ namespace Auth.API.Controller.Account
             var userId = User.GetUserId();
             if (userId == null) return Unauthorized();
 
-            var result = await _authService.GetPrivacySettingsAsync(userId.Value);
-            return Ok(result);
+            var result = await _privacyService.GetPrivacySettingsAsync(userId.Value);
+            return Ok(result.Data);
         }
 
         [HttpPut("privacy")]
@@ -33421,8 +33447,8 @@ namespace Auth.API.Controller.Account
             var userId = User.GetUserId();
             if (userId == null) return Unauthorized();
 
-            var result = await _authService.UpdatePrivacySettingsAsync(userId.Value, request);
-            return Ok(result);
+            var result = await _privacyService.UpdatePrivacySettingsAsync(userId.Value, request);
+            return Ok(result.Data);
         }
 
         [AllowAnonymous]
@@ -33961,12 +33987,10 @@ FILE: Auth.API\Controller\Security\SecurityController.cs
 --------------------------------------------------------------------------------
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Auth.Model.Models.Account;
-using Auth.Model.Models.Security;
-using Auth.Model.Models.Rbac;
-using Shared.Data.Wrapper;
 using Auth.API.Config;
 using Auth.API.Service.Interface.Auth;
+using Auth.Model.Models.Account;
+using Auth.Model.Models.Security;
 
 namespace Auth.API.Controller.Security
 {
@@ -33975,11 +33999,11 @@ namespace Auth.API.Controller.Security
     [Authorize]
     public class SecurityController : ControllerBase
     {
-        private readonly IAuthService _authService;
+        private readonly ISecurityService _securityService;
 
-        public SecurityController(IAuthService authService)
+        public SecurityController(ISecurityService securityService)
         {
-            _authService = authService;
+            _securityService = securityService;
         }
 
         [HttpGet("settings")]
@@ -33988,8 +34012,8 @@ namespace Auth.API.Controller.Security
             var userId = User.GetUserId();
             if (userId == null) return Unauthorized();
 
-            var result = await _authService.GetSecuritySettingsAsync(userId.Value);
-            return Ok(result);
+            var result = await _securityService.GetSecuritySettingsAsync(userId.Value);
+            return Ok(result.Data);
         }
 
         [HttpPut("settings")]
@@ -33998,8 +34022,8 @@ namespace Auth.API.Controller.Security
             var userId = User.GetUserId();
             if (userId == null) return Unauthorized();
 
-            var result = await _authService.UpdateSecuritySettingsAsync(userId.Value, request);
-            return Ok(result);
+            var result = await _securityService.UpdateSecuritySettingsAsync(userId.Value, request);
+            return Ok(result.Data);
         }
 
         [HttpPost("change-password")]
@@ -34008,7 +34032,7 @@ namespace Auth.API.Controller.Security
             var userId = User.GetUserId();
             if (userId == null) return Unauthorized();
 
-            var result = await _authService.ChangePasswordAsync(userId.Value, request);
+            var result = await _securityService.ChangePasswordAsync(userId.Value, request);
             if (!result.Succeeded) return BadRequest(result);
 
             return Ok(result);
@@ -34020,8 +34044,8 @@ namespace Auth.API.Controller.Security
             var userId = User.GetUserId();
             if (userId == null) return Unauthorized();
 
-            var result = await _authService.EnableTwoFactorAsync(userId.Value);
-            return Ok(result);
+            var result = await _securityService.EnableTwoFactorAsync(userId.Value);
+            return Ok(result.Data);
         }
 
         [HttpPost("2fa/disable")]
@@ -34030,8 +34054,8 @@ namespace Auth.API.Controller.Security
             var userId = User.GetUserId();
             if (userId == null) return Unauthorized();
 
-            var result = await _authService.DisableTwoFactorAsync(userId.Value);
-            return Ok(result);
+            var result = await _securityService.DisableTwoFactorAsync(userId.Value);
+            return Ok(result.Data);
         }
 
         [HttpGet("activity")]
@@ -34040,8 +34064,8 @@ namespace Auth.API.Controller.Security
             var userId = User.GetUserId();
             if (userId == null) return Unauthorized();
 
-            var result = await _authService.GetActivityLogsAsync(userId.Value, query);
-            return Ok(result);
+            var result = await _securityService.GetActivityLogsAsync(userId.Value, query);
+            return Ok(result.Data);
         }
 
         [HttpPost("device/verify")]
@@ -34050,7 +34074,7 @@ namespace Auth.API.Controller.Security
             var userId = User.GetUserId();
             if (userId == null) return Unauthorized();
 
-            var result = await _authService.VerifyDeviceAsync(userId.Value, request);
+            var result = await _securityService.VerifyDeviceAsync(userId.Value, request);
             return Ok(result);
         }
     }
@@ -34234,6 +34258,87 @@ FILE: Auth.API\Properties\launchSettings.json
       }
     }
   }
+}
+
+
+--------------------------------------------------------------------------------
+FILE: Auth.API\Service\Implementation\Auth\AccountSettingsService.cs
+--------------------------------------------------------------------------------
+using Auth.Model.Models.Account;
+using Auth.Model.Models.Entities;
+using Shared.Data.Repository.Interface;
+using Shared.Data.Wrapper;
+using Auth.API.Config;
+using Auth.API.Service.Interface.Auth;
+using Auth.API.Service.Interface.Security;
+
+namespace Auth.API.Service.Implementation.Auth
+{
+    public class AccountSettingsService : IAccountSettingsService
+    {
+        private readonly IGenericRepository<User> _userRepository;
+        private readonly IAuditLogService _auditLogService;
+        private const string ProcedureName = DbConstants.Procedures.Users;
+
+        public AccountSettingsService(IGenericRepository<User> userRepository, IAuditLogService auditLogService)
+        {
+            _userRepository = userRepository;
+            _auditLogService = auditLogService;
+        }
+
+        public async Task<IResponse<AccountSettingsResponse>> GetAccountSettingsAsync(int userId)
+        {
+            var result = await _userRepository.QuerySingleAsync<AccountSettingsResponse>(
+                ProcedureName,
+                new { AuthType = DbConstants.AuthTypes.GetSettings, UserId = userId });
+
+            if (result.Succeeded && result.Data != null)
+                return Response<AccountSettingsResponse>.Success(result.Data);
+
+            return Response<AccountSettingsResponse>.Success(new AccountSettingsResponse());
+        }
+
+        public async Task<IResponse<AccountSettingsResponse>> UpdateAccountSettingsAsync(int userId, UpdateSettingsRequest request)
+        {
+            var result = await _userRepository.QuerySingleAsync<AccountSettingsResponse>(
+                ProcedureName,
+                new
+                {
+                    AuthType = DbConstants.AuthTypes.UpdateSettings,
+                    UserId = userId,
+                    request.Username,
+                    request.Email,
+                    request.EmailPreferences,
+                    request.Timezone,
+                    request.Language,
+                    request.EmailNotifications,
+                    request.PushNotifications,
+                    request.SmsAlerts,
+                    request.MarketingEmails,
+                    Now = DateTime.UtcNow
+                });
+
+            if (result.Succeeded && result.Data != null)
+            {
+                await _auditLogService.LogAsync(userId, "SettingsUpdated", "User", userId.ToString(), null, "Settings updated");
+                return Response<AccountSettingsResponse>.Success(result.Data);
+            }
+
+            return Response<AccountSettingsResponse>.Success(new AccountSettingsResponse
+            {
+                DisplayName = request.Username,
+                Username = request.Username,
+                Email = request.Email,
+                EmailPreferences = request.EmailPreferences,
+                Timezone = request.Timezone,
+                Language = request.Language,
+                EmailNotifications = request.EmailNotifications,
+                PushNotifications = request.PushNotifications,
+                SmsAlerts = request.SmsAlerts,
+                MarketingEmails = request.MarketingEmails
+            });
+        }
+    }
 }
 
 
@@ -34824,54 +34929,6 @@ namespace Auth.API.Service.Implementation.Auth
             return Response.Success();
         }
 
-        public async Task<IResponse<UserProfileResponse?>> GetProfileAsync(int userId)
-        {
-            var user = await _authRepository.QuerySingleAsync<User>(ProcedureName, new { AuthType = DbConstants.AuthTypes.Login, UserId = userId });
-            if (user?.Succeeded != true || user.Data == null) return Response<UserProfileResponse?>.Fail("User not found");
-
-            var profile = await _authRepository.QuerySingleAsync<UserProfileResponse>(
-                ProcedureName,
-                new { AuthType = DbConstants.AuthTypes.GetProfile, UserId = userId });
-
-            if (profile?.Succeeded == true && profile.Data != null)
-            {
-                return Response<UserProfileResponse?>.Success(profile.Data);
-            }
-
-            return Response<UserProfileResponse?>.Success(new UserProfileResponse
-            {
-                UserId = user.Data.Id,
-                Username = user.Data.Username ?? string.Empty,
-                Email = user.Data.Email ?? string.Empty,
-                DateJoined = user.Data.CreatedAt,
-                AccountStatus = "active"
-            });
-        }
-
-        public async Task<IResponse<UserProfileResponse?>> UpdateProfileAsync(int userId, UpdateProfileRequest request)
-        {
-            var result = await _authRepository.QuerySingleAsync<UserProfileResponse>(
-                ProcedureName,
-                new
-                {
-                    AuthType = DbConstants.AuthTypes.UpdateProfile,
-                    UserId = userId,
-                    request.Username,
-                    request.Email,
-                    request.Phone,
-                    request.Bio,
-                    Now = DateTime.UtcNow
-                });
-
-            if (result?.Succeeded == true && result.Data != null)
-            {
-                await _auditLogService.LogAsync(userId, "ProfileUpdated", "User", userId.ToString(), null, "Profile updated");
-                return Response<UserProfileResponse?>.Success(result.Data);
-            }
-
-            return Response<UserProfileResponse?>.Fail("Failed to update profile");
-        }
-
         public async Task<IResponse<AccountSettingsResponse>> GetAccountSettingsAsync(int userId)
         {
             var result = await _authRepository.QuerySingleAsync<AccountSettingsResponse>(
@@ -34884,48 +34941,6 @@ namespace Auth.API.Service.Implementation.Auth
             }
 
             return Response<AccountSettingsResponse>.Success(new AccountSettingsResponse());
-        }
-
-        public async Task<IResponse<AccountSettingsResponse>> UpdateAccountSettingsAsync(int userId, UpdateSettingsRequest request)
-        {
-            var result = await _authRepository.QuerySingleAsync<AccountSettingsResponse>(
-                ProcedureName,
-                new
-                {
-                    AuthType = DbConstants.AuthTypes.UpdateSettings,
-                    UserId = userId,
-                    request.DisplayName,
-                    request.Username,
-                    request.Email,
-                    request.EmailPreferences,
-                    request.Timezone,
-                    request.Language,
-                    request.EmailNotifications,
-                    request.PushNotifications,
-                    request.SmsAlerts,
-                    request.MarketingEmails,
-                    Now = DateTime.UtcNow
-                });
-
-            if (result?.Succeeded == true && result.Data != null)
-            {
-                await _auditLogService.LogAsync(userId, "SettingsUpdated", "User", userId.ToString(), null, "Settings updated");
-                return Response<AccountSettingsResponse>.Success(result.Data);
-            }
-
-            return Response<AccountSettingsResponse>.Success(new AccountSettingsResponse
-            {
-                DisplayName = request.DisplayName,
-                Username = request.Username,
-                Email = request.Email,
-                EmailPreferences = request.EmailPreferences,
-                Timezone = request.Timezone,
-                Language = request.Language,
-                EmailNotifications = request.EmailNotifications,
-                PushNotifications = request.PushNotifications,
-                SmsAlerts = request.SmsAlerts,
-                MarketingEmails = request.MarketingEmails
-            });
         }
 
         public async Task<IResponse<PrivacySettingsResponse>> GetPrivacySettingsAsync(int userId)
@@ -34942,36 +34957,6 @@ namespace Auth.API.Service.Implementation.Auth
             return Response<PrivacySettingsResponse>.Success(new PrivacySettingsResponse());
         }
 
-        public async Task<IResponse<PrivacySettingsResponse>> UpdatePrivacySettingsAsync(int userId, UpdatePrivacyRequest request)
-        {
-            var result = await _authRepository.QuerySingleAsync<PrivacySettingsResponse>(
-                ProcedureName,
-                new
-                {
-                    AuthType = DbConstants.AuthTypes.UpdatePrivacy,
-                    UserId = userId,
-                    request.ProfileVisibility,
-                    request.DataSharing,
-                    request.ThirdPartyConnections,
-                    request.CookiePreferences,
-                    Now = DateTime.UtcNow
-                });
-
-            if (result?.Succeeded == true && result.Data != null)
-            {
-                await _auditLogService.LogAsync(userId, "PrivacyUpdated", "User", userId.ToString(), null, "Privacy updated");
-                return Response<PrivacySettingsResponse>.Success(result.Data);
-            }
-
-            return Response<PrivacySettingsResponse>.Success(new PrivacySettingsResponse
-            {
-                ProfileVisibility = request.ProfileVisibility,
-                DataSharing = request.DataSharing,
-                ThirdPartyConnections = request.ThirdPartyConnections,
-                CookiePreferences = request.CookiePreferences
-            });
-        }
-
         public async Task<IResponse> RequestPasswordResetAsync(string email)
         {
             var user = await GetUserByEmailAsync(email);
@@ -34984,10 +34969,10 @@ namespace Auth.API.Service.Implementation.Auth
                 ProcedureName,
                 new
                 {
-                    AuthType = DbConstants.AuthTypes.ResetPassword,
-                    FIDOOperation = "CreateResetToken",
-                    Email = email,
-                    TokenHash = token,
+                    AuthType = DbConstants.AuthTypes.EmailOtp,
+                    FIDOOperation = "CreateOtp",
+                    UserId = user.Data.Id,
+                    Otp = TokenHasher.HashToken(token),
                     ExpiresAt = expiresAt,
                     Now = DateTime.UtcNow
                 });
@@ -35017,7 +35002,7 @@ namespace Auth.API.Service.Implementation.Auth
                 new
                 {
                     AuthType = DbConstants.AuthTypes.ResetPassword,
-                    TokenHash = token,
+                    TokenHash = TokenHasher.HashToken(token),
                     PasswordHash = passwordHash,
                     Now = DateTime.UtcNow
                 });
@@ -35057,167 +35042,6 @@ namespace Auth.API.Service.Implementation.Auth
             }
 
             return Response.Fail("Failed to delete account");
-        }
-
-        public async Task<IResponse<SecuritySettingsResponse>> GetSecuritySettingsAsync(int userId)
-        {
-            var result = await _authRepository.QuerySingleAsync<SecuritySettingsResponse>(
-                ProcedureName,
-                new { AuthType = DbConstants.AuthTypes.GetSecurity, UserId = userId });
-
-            if (result?.Succeeded == true && result.Data != null)
-            {
-                return Response<SecuritySettingsResponse>.Success(result.Data);
-            }
-
-            return Response<SecuritySettingsResponse>.Success(new SecuritySettingsResponse());
-        }
-
-        public async Task<IResponse<SecuritySettingsResponse>> UpdateSecuritySettingsAsync(int userId, SecuritySettingsResponse request)
-        {
-            var result = await _authRepository.QuerySingleAsync<SecuritySettingsResponse>(
-                ProcedureName,
-                new
-                {
-                    AuthType = DbConstants.AuthTypes.UpdateSecurity,
-                    UserId = userId,
-                    request.AlertOnNewDevice,
-                    request.RequirePasswordForSensitive,
-                    Now = DateTime.UtcNow
-                });
-
-            if (result?.Succeeded == true && result.Data != null)
-            {
-                await _auditLogService.LogAsync(userId, "SecuritySettingsUpdated", "User", userId.ToString(), null, "Security settings updated");
-                return Response<SecuritySettingsResponse>.Success(result.Data);
-            }
-
-            return Response<SecuritySettingsResponse>.Success(request);
-        }
-
-        public async Task<IResponse<SecuritySettingsResponse>> EnableTwoFactorAsync(int userId)
-        {
-            var result = await _authRepository.QuerySingleAsync<SecuritySettingsResponse>(
-                ProcedureName,
-                new { AuthType = DbConstants.AuthTypes.Enable2Fa, UserId = userId, Now = DateTime.UtcNow });
-
-            if (result?.Succeeded == true && result.Data != null)
-            {
-                await _auditLogService.LogAsync(userId, "TwoFactorEnabled", "User", userId.ToString());
-                return Response<SecuritySettingsResponse>.Success(result.Data);
-            }
-
-            return Response<SecuritySettingsResponse>.Success(new SecuritySettingsResponse { TwoFactorEnabled = true });
-        }
-
-        public async Task<IResponse<SecuritySettingsResponse>> DisableTwoFactorAsync(int userId)
-        {
-            var result = await _authRepository.QuerySingleAsync<SecuritySettingsResponse>(
-                ProcedureName,
-                new { AuthType = DbConstants.AuthTypes.Disable2Fa, UserId = userId, Now = DateTime.UtcNow });
-
-            if (result?.Succeeded == true && result.Data != null)
-            {
-                await _auditLogService.LogAsync(userId, "TwoFactorDisabled", "User", userId.ToString());
-                return Response<SecuritySettingsResponse>.Success(result.Data);
-            }
-
-            return Response<SecuritySettingsResponse>.Success(new SecuritySettingsResponse { TwoFactorEnabled = false });
-        }
-
-        public async Task<IResponse<ActivityLogResponse>> GetActivityLogsAsync(int userId, ActivityQueryRequest query)
-        {
-            var result = await _authRepository.QueryAsync<AuditLog>(
-                ProcedureName,
-                new
-                {
-                    AuthType = DbConstants.AuthTypes.AuditLog,
-                    FIDOOperation = "GetByUser",
-                    UserId = userId
-                });
-
-            var entries = new List<ActivityLogEntry>();
-
-            if (result?.Succeeded == true && result.Data != null)
-            {
-                var filtered = result.Data.AsEnumerable();
-
-                if (query.From.HasValue)
-                    filtered = filtered.Where(a => a.CreatedAt >= query.From.Value);
-                if (query.To.HasValue)
-                    filtered = filtered.Where(a => a.CreatedAt <= query.To.Value.Date.AddDays(1).AddTicks(-1));
-                if (!string.IsNullOrWhiteSpace(query.Type) && query.Type != "all")
-                    filtered = filtered.Where(a => a.Action == query.Type);
-                if (!string.IsNullOrWhiteSpace(query.Search))
-                {
-                    var term = query.Search.Trim().ToLowerInvariant();
-                    filtered = filtered.Where(a =>
-                        a.Action.ToLowerInvariant().Contains(term) ||
-                        (a.EntityType ?? string.Empty).ToLowerInvariant().Contains(term));
-                }
-
-                entries = filtered.OrderByDescending(a => a.CreatedAt).Select(a => new ActivityLogEntry
-                {
-                    Id = (int)a.Id,
-                    Type = a.Action,
-                    Description = a.Action,
-                    Device = a.UserAgent ?? "Unknown",
-                    IpAddress = a.IpAddress ?? "Unknown",
-                    Timestamp = a.CreatedAt
-                }).ToList();
-            }
-
-            return Response<ActivityLogResponse>.Success(new ActivityLogResponse { Entries = entries });
-        }
-
-        public async Task<IResponse> VerifyDeviceAsync(int userId, VerifyDeviceRequest request)
-        {
-            if (string.IsNullOrWhiteSpace(request.Code))
-            {
-                return Response.Fail("Enter the verification code");
-            }
-
-            await _auditLogService.LogAsync(userId, "DeviceVerified", "User", userId.ToString(), null, request.TrustDevice ? "Device verified and trusted" : "Device verified");
-
-            return Response.Success(request.TrustDevice ? "Device verified and trusted" : "Device verified");
-        }
-
-        public async Task<IResponse> ChangePasswordAsync(int userId, ChangePasswordRequest request)
-        {
-            var user = await _authRepository.QuerySingleAsync<User>(ProcedureName, new { AuthType = DbConstants.AuthTypes.Login, UserId = userId });
-            if (user?.Succeeded != true || user.Data == null)
-            {
-                return Response.Fail("User not found");
-            }
-
-            if (!_passwordHash.VerifyPassword(request.CurrentPassword, user.Data.PasswordHash ?? string.Empty))
-            {
-                return Response.Fail("Current password is incorrect");
-            }
-
-            if (request.NewPassword != request.ConfirmPassword)
-            {
-                return Response.Fail("New password and confirmation do not match");
-            }
-
-            var newPasswordHash = _passwordHash.HashPassword(request.NewPassword);
-            var result = await _authRepository.ExecuteAsync(
-                ProcedureName,
-                new
-                {
-                    AuthType = DbConstants.AuthTypes.ChangePassword,
-                    UserId = userId,
-                    PasswordHash = newPasswordHash,
-                    Now = DateTime.UtcNow
-                });
-
-            if (result.Succeeded && result.Data > 0)
-            {
-                await _auditLogService.LogAsync(userId, "PasswordChanged", "User", userId.ToString());
-                return Response.Success("Password changed successfully");
-            }
-
-            return Response.Fail("Failed to change password");
         }
 
         private async Task<bool> HasFido2CredentialsAsync(int userId)
@@ -35859,6 +35683,7 @@ using Shared.Data.Wrapper;
 using Auth.API.Config;
 using Auth.API.Utility.Jwt;
 using Auth.API.Utility.OtpGenerator;
+using Auth.API.Utility.TokenHash;
 using Auth.API.Service.Interface.Auth;
 using Auth.API.Service.Interface.Rbac;
 
@@ -35921,7 +35746,7 @@ namespace Auth.API.Service.Implementation.Auth
                     AuthType = DbConstants.AuthTypes.EmailOtp,
                     FIDOOperation = "CreateOtp",
                     UserId = user.Id,
-                    Otp = otp,
+                    Otp = TokenHasher.HashToken(otp),
                     ExpiresAt = expiresAt
                 });
 
@@ -35959,7 +35784,7 @@ namespace Auth.API.Service.Implementation.Auth
                     AuthType = DbConstants.AuthTypes.EmailOtp,
                     FIDOOperation = "ConsumeOtp",
                     UserId = user.Id,
-                    Otp = request.Otp,
+                    Otp = TokenHasher.HashToken(request.Otp),
                     Now = DateTime.UtcNow
                 }));
 
@@ -35992,7 +35817,8 @@ namespace Auth.API.Service.Implementation.Auth
         private async Task<string> CreateRefreshTokenAsync(int userId)
         {
             var now = DateTime.UtcNow;
-            var refreshToken = _jwtHelper.GenerateRefreshToken();
+            var rawToken = _jwtHelper.GenerateRefreshToken();
+            var tokenHash = TokenHasher.HashToken(rawToken);
             var refreshExpiryDays = _jwtHelper.GetRefreshTokenExpiryDays();
 
             await _dapperRepository.ExecuteAsync(
@@ -36002,12 +35828,12 @@ namespace Auth.API.Service.Implementation.Auth
                     AuthType = DbConstants.AuthTypes.RefreshToken,
                     FIDOOperation = DbConstants.FidoOperations.CreateRefreshToken,
                     UserId = userId,
-                    Token = refreshToken,
+                    TokenHash = tokenHash,
                     ExpiresAt = now.AddDays(refreshExpiryDays),
                     Now = now
                 });
 
-            return refreshToken;
+            return rawToken;
         }
 
         private async Task AssignDefaultRoleIfMissingAsync(int userId)
@@ -36040,6 +35866,265 @@ namespace Auth.API.Service.Implementation.Auth
 }
 
 
+
+
+--------------------------------------------------------------------------------
+FILE: Auth.API\Service\Implementation\Auth\PrivacySettingsService.cs
+--------------------------------------------------------------------------------
+using Auth.Model.Models.Account;
+using Auth.Model.Models.Entities;
+using Shared.Data.Repository.Interface;
+using Shared.Data.Wrapper;
+using Auth.API.Config;
+using Auth.API.Service.Interface.Auth;
+using Auth.API.Service.Interface.Security;
+
+namespace Auth.API.Service.Implementation.Auth
+{
+    public class PrivacySettingsService : IPrivacySettingsService
+    {
+        private readonly IGenericRepository<User> _userRepository;
+        private readonly IAuditLogService _auditLogService;
+        private const string ProcedureName = DbConstants.Procedures.Users;
+
+        public PrivacySettingsService(IGenericRepository<User> userRepository, IAuditLogService auditLogService)
+        {
+            _userRepository = userRepository;
+            _auditLogService = auditLogService;
+        }
+
+        public async Task<IResponse<PrivacySettingsResponse>> GetPrivacySettingsAsync(int userId)
+        {
+            var result = await _userRepository.QuerySingleAsync<PrivacySettingsResponse>(
+                ProcedureName,
+                new { AuthType = DbConstants.AuthTypes.GetPrivacy, UserId = userId });
+
+            if (result.Succeeded && result.Data != null)
+                return Response<PrivacySettingsResponse>.Success(result.Data);
+
+            return Response<PrivacySettingsResponse>.Success(new PrivacySettingsResponse());
+        }
+
+        public async Task<IResponse<PrivacySettingsResponse>> UpdatePrivacySettingsAsync(int userId, UpdatePrivacyRequest request)
+        {
+            var result = await _userRepository.QuerySingleAsync<PrivacySettingsResponse>(
+                ProcedureName,
+                new
+                {
+                    AuthType = DbConstants.AuthTypes.UpdatePrivacy,
+                    UserId = userId,
+                    request.ProfileVisibility,
+                    request.DataSharing,
+                    request.ThirdPartyConnections,
+                    request.CookiePreferences,
+                    Now = DateTime.UtcNow
+                });
+
+            if (result.Succeeded && result.Data != null)
+            {
+                await _auditLogService.LogAsync(userId, "PrivacyUpdated", "User", userId.ToString(), null, "Privacy updated");
+                return Response<PrivacySettingsResponse>.Success(result.Data);
+            }
+
+            return Response<PrivacySettingsResponse>.Success(new PrivacySettingsResponse
+            {
+                ProfileVisibility = request.ProfileVisibility,
+                DataSharing = request.DataSharing,
+                ThirdPartyConnections = request.ThirdPartyConnections,
+                CookiePreferences = request.CookiePreferences
+            });
+        }
+    }
+}
+
+
+--------------------------------------------------------------------------------
+FILE: Auth.API\Service\Implementation\Auth\SecurityService.cs
+--------------------------------------------------------------------------------
+using Auth.Model.Models.Security;
+using Auth.Model.Models.Account;
+using Auth.Model.Models.Entities;
+using Shared.Data.Repository.Interface;
+using Shared.Data.Wrapper;
+using Auth.API.Config;
+using Auth.API.Utility.PasswordHash;
+using Auth.API.Service.Interface.Auth;
+using Auth.API.Service.Interface.Security;
+
+namespace Auth.API.Service.Implementation.Auth
+{
+    public class SecurityService : ISecurityService
+    {
+        private readonly IGenericRepository<User> _userRepository;
+        private readonly IPasswordHash _passwordHash;
+        private readonly IAuditLogService _auditLogService;
+        private const string ProcedureName = DbConstants.Procedures.Users;
+
+        public SecurityService(
+            IGenericRepository<User> userRepository,
+            IPasswordHash passwordHash,
+            IAuditLogService auditLogService)
+        {
+            _userRepository = userRepository;
+            _passwordHash = passwordHash;
+            _auditLogService = auditLogService;
+        }
+
+        public async Task<IResponse<SecuritySettingsResponse>> GetSecuritySettingsAsync(int userId)
+        {
+            var result = await _userRepository.QuerySingleAsync<SecuritySettingsResponse>(
+                ProcedureName,
+                new { AuthType = DbConstants.AuthTypes.GetSecurity, UserId = userId });
+
+            if (result.Succeeded && result.Data != null)
+                return Response<SecuritySettingsResponse>.Success(result.Data);
+
+            return Response<SecuritySettingsResponse>.Success(new SecuritySettingsResponse());
+        }
+
+        public async Task<IResponse<SecuritySettingsResponse>> UpdateSecuritySettingsAsync(int userId, SecuritySettingsResponse request)
+        {
+            var result = await _userRepository.QuerySingleAsync<SecuritySettingsResponse>(
+                ProcedureName,
+                new
+                {
+                    AuthType = DbConstants.AuthTypes.UpdateSecurity,
+                    UserId = userId,
+                    request.AlertOnNewDevice,
+                    request.RequirePasswordForSensitive,
+                    Now = DateTime.UtcNow
+                });
+
+            if (result.Succeeded && result.Data != null)
+            {
+                await _auditLogService.LogAsync(userId, "SecuritySettingsUpdated", "User", userId.ToString(), null, "Security settings updated");
+                return Response<SecuritySettingsResponse>.Success(result.Data);
+            }
+
+            return Response<SecuritySettingsResponse>.Success(request);
+        }
+
+        public async Task<IResponse> ChangePasswordAsync(int userId, ChangePasswordRequest request)
+        {
+            var userResult = await _userRepository.QuerySingleAsync<User>(
+                ProcedureName,
+                new { AuthType = DbConstants.AuthTypes.Login, UserId = userId });
+
+            if (userResult.Succeeded && userResult.Data != null)
+            {
+                if (!_passwordHash.VerifyPassword(request.CurrentPassword, userResult.Data.PasswordHash ?? string.Empty))
+                    return Response.Fail("Current password is incorrect");
+
+                if (request.NewPassword != request.ConfirmPassword)
+                    return Response.Fail("New password and confirmation do not match");
+
+                var newPasswordHash = _passwordHash.HashPassword(request.NewPassword);
+                var result = await _userRepository.ExecuteAsync(
+                    ProcedureName,
+                    new
+                    {
+                        AuthType = DbConstants.AuthTypes.ChangePassword,
+                        UserId = userId,
+                        PasswordHash = newPasswordHash,
+                        Now = DateTime.UtcNow
+                    });
+
+                if (result.Succeeded && result.Data > 0)
+                {
+                    await _auditLogService.LogAsync(userId, "PasswordChanged", "User", userId.ToString());
+                    return Response.Success("Password changed successfully");
+                }
+            }
+
+            return Response.Fail("Failed to change password");
+        }
+
+        public async Task<IResponse<SecuritySettingsResponse>> EnableTwoFactorAsync(int userId)
+        {
+            var result = await _userRepository.QuerySingleAsync<SecuritySettingsResponse>(
+                ProcedureName,
+                new { AuthType = DbConstants.AuthTypes.Enable2Fa, UserId = userId, Now = DateTime.UtcNow });
+
+            if (result.Succeeded && result.Data != null)
+            {
+                await _auditLogService.LogAsync(userId, "TwoFactorEnabled", "User", userId.ToString());
+                return Response<SecuritySettingsResponse>.Success(result.Data);
+            }
+
+            return Response<SecuritySettingsResponse>.Success(new SecuritySettingsResponse { TwoFactorEnabled = true });
+        }
+
+        public async Task<IResponse<SecuritySettingsResponse>> DisableTwoFactorAsync(int userId)
+        {
+            var result = await _userRepository.QuerySingleAsync<SecuritySettingsResponse>(
+                ProcedureName,
+                new { AuthType = DbConstants.AuthTypes.Disable2Fa, UserId = userId, Now = DateTime.UtcNow });
+
+            if (result.Succeeded && result.Data != null)
+            {
+                await _auditLogService.LogAsync(userId, "TwoFactorDisabled", "User", userId.ToString());
+                return Response<SecuritySettingsResponse>.Success(result.Data);
+            }
+
+            return Response<SecuritySettingsResponse>.Success(new SecuritySettingsResponse { TwoFactorEnabled = false });
+        }
+
+        public async Task<IResponse<ActivityLogResponse>> GetActivityLogsAsync(int userId, ActivityQueryRequest query)
+        {
+            var result = await _userRepository.QueryAsync<AuditLog>(
+                ProcedureName,
+                new
+                {
+                    AuthType = DbConstants.AuthTypes.AuditLog,
+                    FIDOOperation = "GetByUser",
+                    UserId = userId
+                });
+
+            var entries = new List<ActivityLogEntry>();
+
+            if (result.Succeeded && result.Data != null)
+            {
+                var filtered = result.Data.AsEnumerable();
+
+                if (query.From.HasValue)
+                    filtered = filtered.Where(a => a.CreatedAt >= query.From.Value);
+                if (query.To.HasValue)
+                    filtered = filtered.Where(a => a.CreatedAt <= query.To.Value.Date.AddDays(1).AddTicks(-1));
+                if (!string.IsNullOrWhiteSpace(query.Type) && query.Type != "all")
+                    filtered = filtered.Where(a => a.Action == query.Type);
+                if (!string.IsNullOrWhiteSpace(query.Search))
+                {
+                    var term = query.Search.Trim().ToLowerInvariant();
+                    filtered = filtered.Where(a =>
+                        a.Action.ToLowerInvariant().Contains(term) ||
+                        (a.EntityType ?? string.Empty).ToLowerInvariant().Contains(term));
+                }
+
+                entries = filtered.OrderByDescending(a => a.CreatedAt).Select(a => new ActivityLogEntry
+                {
+                    Id = (int)a.Id,
+                    Type = a.Action,
+                    Description = a.Action,
+                    Device = a.UserAgent ?? "Unknown",
+                    IpAddress = a.IpAddress ?? "Unknown",
+                    Timestamp = a.CreatedAt
+                }).ToList();
+            }
+
+            return Response<ActivityLogResponse>.Success(new ActivityLogResponse { Entries = entries });
+        }
+
+        public async Task<IResponse> VerifyDeviceAsync(int userId, VerifyDeviceRequest request)
+        {
+            if (string.IsNullOrWhiteSpace(request.Code))
+                return Response.Fail("Enter the verification code");
+
+            await _auditLogService.LogAsync(userId, "DeviceVerified", "User", userId.ToString(), null, request.TrustDevice ? "Device verified and trusted" : "Device verified");
+
+            return Response.Success(request.TrustDevice ? "Device verified and trusted" : "Device verified");
+        }
+    }
+}
 
 
 --------------------------------------------------------------------------------
@@ -36080,6 +36165,86 @@ namespace Auth.API.Service.Implementation.Auth
 }
 
 
+
+
+--------------------------------------------------------------------------------
+FILE: Auth.API\Service\Implementation\Auth\UserProfileService.cs
+--------------------------------------------------------------------------------
+using Auth.Model.Models.Account;
+using Auth.Model.Models.Entities;
+using Shared.Data.Repository.Interface;
+using Shared.Data.Wrapper;
+using Auth.API.Config;
+using Auth.API.Service.Interface.Auth;
+using Auth.API.Service.Interface.Security;
+
+namespace Auth.API.Service.Implementation.Auth
+{
+    public class UserProfileService : IUserProfileService
+    {
+        private readonly IGenericRepository<User> _userRepository;
+        private readonly IAuditLogService _auditLogService;
+        private const string ProcedureName = DbConstants.Procedures.Users;
+
+        public UserProfileService(IGenericRepository<User> userRepository, IAuditLogService auditLogService)
+        {
+            _userRepository = userRepository;
+            _auditLogService = auditLogService;
+        }
+
+        public async Task<IResponse<UserProfileResponse?>> GetProfileAsync(int userId)
+        {
+            var userResult = await _userRepository.QuerySingleAsync<User>(
+                ProcedureName,
+                new { AuthType = DbConstants.AuthTypes.Login, UserId = userId });
+
+            if (userResult.Succeeded && userResult.Data != null)
+            {
+                var profileResult = await _userRepository.QuerySingleAsync<UserProfileResponse>(
+                    ProcedureName,
+                    new { AuthType = DbConstants.AuthTypes.GetProfile, UserId = userId });
+
+                if (profileResult.Succeeded && profileResult.Data != null)
+                    return Response<UserProfileResponse?>.Success(profileResult.Data);
+
+                return Response<UserProfileResponse?>.Success(new UserProfileResponse
+                {
+                    UserId = userResult.Data.Id,
+                    Username = userResult.Data.Username ?? string.Empty,
+                    Email = userResult.Data.Email ?? string.Empty,
+                    DateJoined = userResult.Data.CreatedAt,
+                    AccountStatus = "active"
+                });
+            }
+
+            return Response<UserProfileResponse?>.Fail("User not found");
+        }
+
+        public async Task<IResponse<UserProfileResponse?>> UpdateProfileAsync(int userId, UpdateProfileRequest request)
+        {
+            var result = await _userRepository.QuerySingleAsync<UserProfileResponse>(
+                ProcedureName,
+                new
+                {
+                    AuthType = DbConstants.AuthTypes.UpdateProfile,
+                    UserId = userId,
+                    request.Username,
+                    request.Email,
+                    request.Phone,
+                    request.Bio,
+                    Now = DateTime.UtcNow
+                });
+
+            if (result.Succeeded && result.Data != null)
+            {
+                await _auditLogService.LogAsync(userId, "ProfileUpdated", "User", userId.ToString(), null, "Profile updated");
+                return Response<UserProfileResponse?>.Success(result.Data);
+            }
+
+            return Response<UserProfileResponse?>.Fail("Failed to update profile");
+        }
+    }
+}
 
 
 --------------------------------------------------------------------------------
@@ -36608,6 +36773,22 @@ namespace Auth.API.Service.Implementation.Security
 
 
 --------------------------------------------------------------------------------
+FILE: Auth.API\Service\Interface\Auth\IAccountSettingsService.cs
+--------------------------------------------------------------------------------
+using Shared.Data.Wrapper;
+using Auth.Model.Models.Account;
+
+namespace Auth.API.Service.Interface.Auth
+{
+    public interface IAccountSettingsService
+    {
+        Task<IResponse<AccountSettingsResponse>> GetAccountSettingsAsync(int userId);
+        Task<IResponse<AccountSettingsResponse>> UpdateAccountSettingsAsync(int userId, UpdateSettingsRequest request);
+    }
+}
+
+
+--------------------------------------------------------------------------------
 FILE: Auth.API\Service\Interface\Auth\IAuthService.cs
 --------------------------------------------------------------------------------
 using Auth.Model.Models.Common;
@@ -36637,22 +36818,8 @@ namespace Auth.API.Service.Interface.Auth
         Task<IResponse> RevokeAllSessionsAsync(int userId);
         Task<IResponse> RevokeSessionAsync(int sessionId, int userId);
         Task<IResponse> RequestPasswordResetAsync(string email);
-
-        Task<IResponse<UserProfileResponse?>> GetProfileAsync(int userId);
-        Task<IResponse<UserProfileResponse?>> UpdateProfileAsync(int userId, UpdateProfileRequest request);
-        Task<IResponse<AccountSettingsResponse>> GetAccountSettingsAsync(int userId);
-        Task<IResponse<AccountSettingsResponse>> UpdateAccountSettingsAsync(int userId, UpdateSettingsRequest request);
-        Task<IResponse<PrivacySettingsResponse>> GetPrivacySettingsAsync(int userId);
-        Task<IResponse<PrivacySettingsResponse>> UpdatePrivacySettingsAsync(int userId, UpdatePrivacyRequest request);
-        Task<IResponse<string>> GetUserDataExportAsync(int userId);
-        Task<IResponse<SecuritySettingsResponse>> GetSecuritySettingsAsync(int userId);
-        Task<IResponse<SecuritySettingsResponse>> UpdateSecuritySettingsAsync(int userId, SecuritySettingsResponse request);
-        Task<IResponse<SecuritySettingsResponse>> EnableTwoFactorAsync(int userId);
-        Task<IResponse<SecuritySettingsResponse>> DisableTwoFactorAsync(int userId);
-        Task<IResponse<ActivityLogResponse>> GetActivityLogsAsync(int userId, ActivityQueryRequest query);
-        Task<IResponse> ChangePasswordAsync(int userId, ChangePasswordRequest request);
         Task<IResponse> ResetPasswordAsync(string token, string newPassword);
-        Task<IResponse> VerifyDeviceAsync(int userId, VerifyDeviceRequest request);
+        Task<IResponse<string>> GetUserDataExportAsync(int userId);
         Task<IResponse> DeleteAccountAsync(int userId);
     }
 }
@@ -36697,6 +36864,47 @@ namespace Auth.API.Service.Interface.Auth
 
 
 --------------------------------------------------------------------------------
+FILE: Auth.API\Service\Interface\Auth\IPrivacySettingsService.cs
+--------------------------------------------------------------------------------
+using Shared.Data.Wrapper;
+using Auth.Model.Models.Account;
+
+namespace Auth.API.Service.Interface.Auth
+{
+    public interface IPrivacySettingsService
+    {
+        Task<IResponse<PrivacySettingsResponse>> GetPrivacySettingsAsync(int userId);
+        Task<IResponse<PrivacySettingsResponse>> UpdatePrivacySettingsAsync(int userId, UpdatePrivacyRequest request);
+    }
+}
+
+
+--------------------------------------------------------------------------------
+FILE: Auth.API\Service\Interface\Auth\ISecurityService.cs
+--------------------------------------------------------------------------------
+using Auth.Model.Models.Security;
+using Auth.Model.Models.Account;
+using Shared.Data.Wrapper;
+using Auth.API.Config;
+using Auth.API.Utility.PasswordHash;
+using Auth.API.Service.Interface.Security;
+
+namespace Auth.API.Service.Interface.Auth
+{
+    public interface ISecurityService
+    {
+        Task<IResponse<SecuritySettingsResponse>> GetSecuritySettingsAsync(int userId);
+        Task<IResponse<SecuritySettingsResponse>> UpdateSecuritySettingsAsync(int userId, SecuritySettingsResponse request);
+        Task<IResponse> ChangePasswordAsync(int userId, ChangePasswordRequest request);
+        Task<IResponse<SecuritySettingsResponse>> EnableTwoFactorAsync(int userId);
+        Task<IResponse<SecuritySettingsResponse>> DisableTwoFactorAsync(int userId);
+        Task<IResponse<ActivityLogResponse>> GetActivityLogsAsync(int userId, ActivityQueryRequest query);
+        Task<IResponse> VerifyDeviceAsync(int userId, VerifyDeviceRequest request);
+    }
+}
+
+
+--------------------------------------------------------------------------------
 FILE: Auth.API\Service\Interface\Auth\IUserCredentialService.cs
 --------------------------------------------------------------------------------
 using Auth.Model.Models.Entities;
@@ -36712,6 +36920,22 @@ namespace Auth.API.Service.Interface.Auth
 }
 
 
+
+
+--------------------------------------------------------------------------------
+FILE: Auth.API\Service\Interface\Auth\IUserProfileService.cs
+--------------------------------------------------------------------------------
+using Shared.Data.Wrapper;
+using Auth.Model.Models.Account;
+
+namespace Auth.API.Service.Interface.Auth
+{
+    public interface IUserProfileService
+    {
+        Task<IResponse<UserProfileResponse?>> GetProfileAsync(int userId);
+        Task<IResponse<UserProfileResponse?>> UpdateProfileAsync(int userId, UpdateProfileRequest request);
+    }
+}
 
 
 --------------------------------------------------------------------------------
@@ -36860,9 +37084,9 @@ namespace Auth.API.Utility.Auth
         {
             _tokenStore = tokenStore;
         }
-        public Task<object> GetToken()
+        public async Task<object> GetToken()
         {
-            return Task.FromResult<object>(_tokenStore.GetToken() ?? string.Empty);
+            return await _tokenStore.GetToken() ?? string.Empty;
         }
     }
 }
@@ -37101,6 +37325,7 @@ using global::Auth.API.Utility.Auth;
 using global::Shared.UI.Http;
 using global::Auth.UI.Manager.Implementation.Auth;
 using global::Auth.UI.Manager.Interface.Auth;
+using global::Auth.UI.Utility;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -37116,7 +37341,7 @@ builder.Services.AddHttpClient("ApiGateway", client =>
 
 // 3. Register your services
 builder.Services.AddScoped<ITokenHelper, TokenHelper>();
-builder.Services.AddScoped<ITokenStore, TokenStore>();
+builder.Services.AddScoped<ITokenStore, ProtectedSessionTokenStore>();
 builder.Services.AddScoped<IHttpServices, HttpServices>();
 builder.Services.AddScoped<IAuthManager, AuthManager>();
 builder.Services.AddScoped<IAccountManager, AccountManager>();
@@ -37404,23 +37629,19 @@ namespace Auth.UI.Components.Layout
             new MenuActionItem { Text = "Sign out", Icon = "x", Key = "logout" }
         };
 
-        protected override async Task OnInitializedAsync()
-        {
-            if (TokenStore.GetToken() is null)
-            {
-                _redirectToLogin = true;
-                return;
-            }
-
-            var result = await AccountManager.GetProfileAsync();
-            Profile = result.Succeeded ? result.Data : null;
-        }
-
         protected override async Task OnAfterRenderAsync(bool firstRender)
         {
-            if (_redirectToLogin)
+            if (firstRender)
             {
-                Navigation.NavigateTo("/login", replace: true);
+                if (await TokenStore.GetToken() is null)
+                {
+                    _redirectToLogin = true;
+                    Navigation.NavigateTo("/login", replace: true);
+                    return;
+                }
+
+                var result = await AccountManager.GetProfileAsync();
+                Profile = result.Succeeded ? result.Data : null;
             }
         }
 
@@ -37436,9 +37657,9 @@ namespace Auth.UI.Components.Layout
             }
         }
 
-        protected void Logout()
+        protected async void Logout()
         {
-            TokenStore.Clear();
+            await TokenStore.Clear();
             AccountMenuOpen = false;
             Navigation.NavigateTo("/login", replace: true, forceLoad: true);
         }
@@ -39033,9 +39254,9 @@ namespace Auth.UI.Components.Pages.Customer.Account.Profile
             Toaster.ShowInfo("Profile picture updated (demo)");
         }
 
-        protected void Logout()
+        protected async void Logout()
         {
-            TokenStore.Clear();
+            await TokenStore.Clear();
             Navigation.NavigateTo("/login", replace: true, forceLoad: true);
         }
     }
@@ -40371,19 +40592,15 @@ namespace Auth.UI.Components.Pages.Shared.Login
         protected string LoggedInUsername { get; set; } = string.Empty;
         protected bool _redirectToProfile;
 
-        protected override void OnInitialized()
-        {
-            if (TokenStore.GetToken() is not null)
-            {
-                _redirectToProfile = true;
-            }
-        }
-
         protected override async Task OnAfterRenderAsync(bool firstRender)
         {
-            if (_redirectToProfile)
+            if (firstRender && !_redirectToProfile)
             {
-                NavigationManager.NavigateTo("/profile", replace: true);
+                if (await TokenStore.GetToken() is not null)
+                {
+                    _redirectToProfile = true;
+                    NavigationManager.NavigateTo("/profile", replace: true);
+                }
             }
         }
 
@@ -40480,7 +40697,7 @@ namespace Auth.UI.Components.Pages.Shared.Login
             NavigationManager.NavigateTo("/profile");
         }
 
-        protected void OnPasskeyCancel()
+        protected async void OnPasskeyCancel()
         {
             var wasVerification = IsVerificationMode;
             PasskeyVisible = false;
@@ -40490,7 +40707,7 @@ namespace Auth.UI.Components.Pages.Shared.Login
 
             if (wasVerification)
             {
-                TokenStore.Clear();
+                await TokenStore.Clear();
             }
             else
             {
@@ -42462,7 +42679,7 @@ namespace Auth.UI.Manager.Implementation.Auth
                 var result = await _httpService.PostAsJsonAsync<AuthResponse>(AuthRoute.Register, request);
                 if (result.Succeeded && result.Data?.Token is not null)
                 {
-                    _tokenStore.SetToken(result.Data.Token);
+                    await _tokenStore.SetToken(result.Data.Token);
                     return Response<AuthResponse>.Success(result.Data, "Registration successful");
                 }
                 else
@@ -42594,7 +42811,7 @@ namespace Auth.UI.Manager.Implementation.Auth
                 var result = await _httpService.PostAsJsonAsync<AuthResponse>(AuthRoute.Register, request);
                 if (result.Succeeded && result.Data?.Token is not null)
                 {
-                    _tokenStore.SetToken(result.Data.Token);
+                    await _tokenStore.SetToken(result.Data.Token);
                     return Response<AuthResponse>.Success(result.Data, "Registration successful");
                 }
                 else
@@ -42615,7 +42832,7 @@ namespace Auth.UI.Manager.Implementation.Auth
                 var result = await _httpService.PostAsJsonAsync<AuthResponse>(AuthRoute.Login, request);
                 if (result.Succeeded && result.Data?.Token is not null)
                 {
-                    _tokenStore.SetToken(result.Data.Token);
+                    await _tokenStore.SetToken(result.Data.Token);
                     return Response<AuthResponse>.Success(result.Data, "Login successful");
                 }
                 else if (result.Succeeded && result.Data?.RequiresFido2 == true)
@@ -42748,7 +42965,7 @@ namespace Auth.UI.Manager.Implementation.Auth
                 var result = await _httpService.PostAsJsonAsync<Fido2VerifyResponse>(AuthRoute.Fido2Verify, request);
                 if (result.Succeeded && result.Data?.Token is not null)
                 {
-                    _tokenStore.SetToken(result.Data.Token);
+                    await _tokenStore.SetToken(result.Data.Token);
                     return Response<Fido2VerifyResponse>.Success(result.Data, "Assertion verified");
                 }
                 else if (result.Succeeded && result.Data is not null)
@@ -42793,7 +43010,7 @@ namespace Auth.UI.Manager.Implementation.Auth
                 var result = await _httpService.PostAsJsonAsync<AuthResponse>(AuthRoute.OtpVerify, request);
                 if (result.Succeeded && result.Data?.Token is not null)
                 {
-                    _tokenStore.SetToken(result.Data.Token);
+                    await _tokenStore.SetToken(result.Data.Token);
                     return Response<AuthResponse>.Success(result.Data, "OTP verified");
                 }
                 else if (result.Succeeded && result.Data is not null)
@@ -43281,6 +43498,65 @@ FILE: Auth.UI\Properties\launchSettings.json
 FILE: Auth.UI\Shared\.gitkeep
 --------------------------------------------------------------------------------
 
+
+
+--------------------------------------------------------------------------------
+FILE: Auth.UI\Utility\ProtectedSessionTokenStore.cs
+--------------------------------------------------------------------------------
+using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage;
+using Auth.Model.Token;
+
+namespace Auth.UI.Utility
+{
+    public class ProtectedSessionTokenStore : ITokenStore
+    {
+        private readonly ProtectedSessionStorage _sessionStorage;
+        private string? _cachedToken;
+
+        public ProtectedSessionTokenStore(ProtectedSessionStorage sessionStorage)
+        {
+            _sessionStorage = sessionStorage;
+        }
+
+        public async Task SetToken(string token)
+        {
+            _cachedToken = token;
+            try
+            {
+                await _sessionStorage.SetAsync("authToken", token);
+            }
+            catch (InvalidOperationException)
+            {
+            }
+        }
+
+        public async Task<string?> GetToken()
+        {
+            if (_cachedToken != null) return _cachedToken;
+            try
+            {
+                var result = await _sessionStorage.GetAsync<string>("authToken");
+                _cachedToken = result.Success ? result.Value : null;
+            }
+            catch (InvalidOperationException)
+            {
+            }
+            return _cachedToken;
+        }
+
+        public async Task Clear()
+        {
+            _cachedToken = null;
+            try
+            {
+                await _sessionStorage.DeleteAsync("authToken");
+            }
+            catch (InvalidOperationException)
+            {
+            }
+        }
+    }
+}
 
 
 --------------------------------------------------------------------------------
@@ -44141,18 +44417,31 @@ FILE: Shared.Core\Auth.Model\Token\TokenStore.cs
 {
     public interface ITokenStore
     {
-        void SetToken(string token);
-        string? GetToken();
-        void Clear();
+        Task SetToken(string token);
+        Task<string?> GetToken();
+        Task Clear();
     }
 
     public class TokenStore : ITokenStore
     {
         private string? _token;
 
-        public void SetToken(string token) => _token = token;
-        public string? GetToken() => _token;
-        public void Clear() => _token = null;
+        public Task SetToken(string token)
+        {
+            _token = token;
+            return Task.CompletedTask;
+        }
+
+        public Task<string?> GetToken()
+        {
+            return Task.FromResult(_token);
+        }
+
+        public Task Clear()
+        {
+            _token = null;
+            return Task.CompletedTask;
+        }
     }
 }
 
@@ -45197,12 +45486,22 @@ BEGIN
     END
     ELSE IF @AuthType = 'ResetPassword'
     BEGIN
-        UPDATE dbo.Users
-        SET PasswordHash = @PasswordHash,
-            UpdatedAt = @Now
-        WHERE Id = @UserId;
+        DECLARE @ResetUserId INT;
 
-        SELECT @@ROWCOUNT AS RowsAffected;
+        SELECT TOP 1 @ResetUserId = UserId 
+        FROM dbo.EmailOtps 
+        WHERE Otp = @TokenHash AND UsedAt IS NULL AND ExpiresAt > @Now;
+
+        IF @ResetUserId IS NOT NULL
+        BEGIN
+            UPDATE dbo.Users SET PasswordHash = @PasswordHash, UpdatedAt = @Now WHERE Id = @ResetUserId;
+            UPDATE dbo.EmailOtps SET UsedAt = @Now WHERE Otp = @TokenHash;
+            SELECT @@ROWCOUNT AS RowsAffected;
+        END
+        ELSE
+        BEGIN
+            SELECT 0 AS RowsAffected;
+        END
     END
     ELSE IF @AuthType = 'DeleteAccount'
     BEGIN
@@ -45543,8 +45842,9 @@ BEGIN
         ELSE IF @UserRoleAction = 'IsInRole'
         BEGIN
             SELECT CASE WHEN EXISTS (
-                SELECT 1 FROM dbo.UserRoles
-                WHERE UserId = @UserId AND RevokedAt IS NULL
+                SELECT 1 FROM dbo.UserRoles ur
+                INNER JOIN dbo.Roles r ON ur.RoleId = r.Id
+                WHERE ur.UserId = @UserId AND ur.RevokedAt IS NULL AND r.Name = @RoleName
             ) THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT) END AS Result;
         END
         ELSE IF @UserRoleAction = 'GetUsersInRole'
