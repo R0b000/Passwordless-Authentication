@@ -1,4 +1,4 @@
-using Shared.Core.Wrapper;
+using Shared.Data.Wrapper;
 
 namespace Shared.UI.Http
 {
@@ -9,3 +9,5 @@ namespace Shared.UI.Http
         Task<IResponse<T>> DeleteAsync<T>(string url);
     }
 }
+
+

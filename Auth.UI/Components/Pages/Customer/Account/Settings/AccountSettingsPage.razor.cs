@@ -1,7 +1,7 @@
 using global::Shared.UI.Components.Toaster;
-using global::Shared.Core.UIModels.Account;
 using Microsoft.AspNetCore.Components;
-using global::Shared.UI.Manager.Interface.Auth;
+using global::Auth.UI.Manager.Interface.Auth;
+using Auth.Model.Models.Account;
 
 namespace Auth.UI.Components.Pages.Customer.Account.Settings
 {
@@ -38,3 +38,5 @@ namespace Auth.UI.Components.Pages.Customer.Account.Settings
         }
     }
 }
+
+

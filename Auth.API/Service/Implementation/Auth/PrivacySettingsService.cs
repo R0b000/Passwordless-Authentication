@@ -1,0 +1,65 @@
+using Auth.Model.Models.Account;
+using Auth.Model.Models.Entities;
+using Shared.Data.Repository.Interface;
+using Shared.Data.Wrapper;
+using Auth.API.Config;
+using Auth.API.Service.Interface.Auth;
+using Auth.API.Service.Interface.Security;
+
+namespace Auth.API.Service.Implementation.Auth
+{
+    public class PrivacySettingsService : IPrivacySettingsService
+    {
+        private readonly IGenericRepository<User> _userRepository;
+        private readonly IAuditLogService _auditLogService;
+        private const string ProcedureName = DbConstants.Procedures.Users;
+
+        public PrivacySettingsService(IGenericRepository<User> userRepository, IAuditLogService auditLogService)
+        {
+            _userRepository = userRepository;
+            _auditLogService = auditLogService;
+        }
+
+        public async Task<IResponse<PrivacySettingsResponse>> GetPrivacySettingsAsync(int userId)
+        {
+            var result = await _userRepository.QuerySingleAsync<PrivacySettingsResponse>(
+                ProcedureName,
+                new { AuthType = DbConstants.AuthTypes.GetPrivacy, UserId = userId });
+
+            if (result.Succeeded && result.Data != null)
+                return Response<PrivacySettingsResponse>.Success(result.Data);
+
+            return Response<PrivacySettingsResponse>.Success(new PrivacySettingsResponse());
+        }
+
+        public async Task<IResponse<PrivacySettingsResponse>> UpdatePrivacySettingsAsync(int userId, UpdatePrivacyRequest request)
+        {
+            var result = await _userRepository.QuerySingleAsync<PrivacySettingsResponse>(
+                ProcedureName,
+                new
+                {
+                    AuthType = DbConstants.AuthTypes.UpdatePrivacy,
+                    UserId = userId,
+                    request.ProfileVisibility,
+                    request.DataSharing,
+                    request.ThirdPartyConnections,
+                    request.CookiePreferences,
+                    Now = DateTime.UtcNow
+                });
+
+            if (result.Succeeded && result.Data != null)
+            {
+                await _auditLogService.LogAsync(userId, "PrivacyUpdated", "User", userId.ToString(), null, "Privacy updated");
+                return Response<PrivacySettingsResponse>.Success(result.Data);
+            }
+
+            return Response<PrivacySettingsResponse>.Success(new PrivacySettingsResponse
+            {
+                ProfileVisibility = request.ProfileVisibility,
+                DataSharing = request.DataSharing,
+                ThirdPartyConnections = request.ThirdPartyConnections,
+                CookiePreferences = request.CookiePreferences
+            });
+        }
+    }
+}

@@ -1,8 +1,10 @@
-using global::Shared.UI.Components.Toaster;
-using global::Shared.Core.Token;
+﻿using global::Shared.UI.Components.Toaster;
+using global::Auth.Model.Token;
+using global::Auth.API.Utility.Auth;
 using global::Shared.UI.Http;
-using global::Shared.UI.Manager.Implementation.Auth;
-using global::Shared.UI.Manager.Interface.Auth;
+using global::Auth.UI.Manager.Implementation.Auth;
+using global::Auth.UI.Manager.Interface.Auth;
+using global::Auth.UI.Utility;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -18,7 +20,7 @@ builder.Services.AddHttpClient("ApiGateway", client =>
 
 // 3. Register your services
 builder.Services.AddScoped<ITokenHelper, TokenHelper>();
-builder.Services.AddScoped<ITokenStore, TokenStore>();
+builder.Services.AddScoped<ITokenStore, ProtectedSessionTokenStore>();
 builder.Services.AddScoped<IHttpServices, HttpServices>();
 builder.Services.AddScoped<IAuthManager, AuthManager>();
 builder.Services.AddScoped<IAccountManager, AccountManager>();
@@ -41,3 +43,4 @@ app.MapRazorComponents<Auth.UI.Components.App>()
     .AddInteractiveServerRenderMode();
 
 app.Run();
+

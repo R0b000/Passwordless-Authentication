@@ -3,7 +3,6 @@
 @layout AccountLayout
 @using global::Shared.UI.Components.Toaster
 @using global::Shared.UI.Components.Switch
-@using global::Shared.UI.Components.Toaster
 
 <PageTitle>Account Settings - Passwordless Auth</PageTitle>
 
@@ -53,7 +52,7 @@
                 </select>
             </div>
             <div class="account-field">
-                <label class="d-flex align-items-center gap-2" style="font-weight:600;">
+                <label class="d-flex align-items-center gap-2 account-label-bold">
                     <input type="checkbox" @bind="Settings!.EmailPreferences" /> Email preferences
                 </label>
             </div>

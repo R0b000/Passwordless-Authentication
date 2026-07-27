@@ -1,0 +1,64 @@
+@page "/signup"
+@namespace Auth.UI.Components.Pages.Shared.Register
+@layout LoginLayout
+@using global::Shared.UI.Components.Toaster
+@using global::Shared.UI.Components.Icons
+
+<PageTitle>Create account - Passwordless Auth</PageTitle>
+
+<section class="lp-panel">
+    <div class="lp-card">
+        <h1 class="lp-title">Create account</h1>
+        <p class="lp-sub">Join Passwordless Auth in a few seconds.</p>
+
+        @if (!string.IsNullOrEmpty(StatusMessage))
+        {
+            <div class="lp-alert @(Succeeded ? "lp-alert-success" : "lp-alert-danger")" role="alert">@StatusMessage</div>
+        }
+
+        <div class="lp-field">
+            <label class="lp-label" for="su-user">Username</label>
+            <div class="lp-input">
+                <Icon Name="user" Size="Icon.IconSize.Small" />
+                <input id="su-user" class="lp-control" @bind="Model.Username" placeholder="jdoe" />
+            </div>
+        </div>
+
+        <div class="lp-field">
+            <label class="lp-label" for="su-email">Email</label>
+            <div class="lp-input">
+                <Icon Name="user" Size="Icon.IconSize.Small" />
+                <input id="su-email" type="email" class="lp-control" @bind="Model.Email" placeholder="name@example.com" />
+            </div>
+        </div>
+
+        <div class="lp-field">
+            <label class="lp-label" for="su-pw">Password</label>
+            <div class="lp-input">
+                <Icon Name="lock" Size="Icon.IconSize.Small" />
+                <input id="su-pw" type="@(ShowPassword ? "text" : "password")" class="lp-control" @bind="Model.Password" placeholder="Create a password" />
+            </div>
+        </div>
+
+        <div class="lp-field">
+            <label class="lp-label" for="su-pwc">Confirm password</label>
+            <div class="lp-input">
+                <Icon Name="lock" Size="Icon.IconSize.Small" />
+                <input id="su-pwc" type="@(ShowPassword ? "text" : "password")" class="lp-control" @bind="ConfirmPassword" placeholder="Repeat password" />
+            </div>
+        </div>
+
+        <label class="lp-check">
+            <input type="checkbox" @bind="AcceptTerms" /> I agree to the Terms &amp; Conditions
+        </label>
+
+        <Button Variant="Button.ButtonVariant.Primary" Block="true" OnClick="SubmitAsync">Create account</Button>
+
+        <p class="lp-note">We'll send a verification email to confirm your address.</p>
+
+        <div class="lp-divider"><span>or</span></div>
+        <p class="text-center mb-0">Already have an account? <a href="/login">Sign in</a></p>
+    </div>
+</section>
+
+<Toaster Position="ToastPosition.TopRight" />
