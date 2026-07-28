@@ -51,6 +51,10 @@ namespace Shared.UI.Http
                 });
                 return responseObject!;
             }
+            catch (NavigationException)
+            {
+                throw;
+            }
             catch (Exception ex)
             {
                 _toastService.ShowWarning(ex.Message);
@@ -82,6 +86,10 @@ namespace Shared.UI.Http
                 });
                 return responseObject!;
             }
+            catch (NavigationException)
+            {
+                throw;
+            }
             catch (Exception ex)
             {
                 _toastService.ShowWarning(ex.Message);
@@ -112,6 +120,10 @@ namespace Shared.UI.Http
                     ReferenceHandler = ReferenceHandler.Preserve
                 });
                 return responseObject!;
+            }
+            catch (NavigationException)
+            {
+                throw;
             }
             catch (Exception ex)
             {

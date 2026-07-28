@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Components;
 using Shared.Data.Wrapper;
 using Auth.Model.Token;
 using Auth.UI.Manager.Interface.Auth;
@@ -33,6 +34,10 @@ namespace Auth.UI.Manager.Implementation.Auth
                     return Response<SecuritySettingsResponse>.Fail(result.Messages ?? "Failed to retrieve security settings");
                 }
             }
+            catch (NavigationException)
+            {
+                throw;
+            }
             catch (Exception ex)
             {
                 return Response<SecuritySettingsResponse>.Fail($"An error occurred while retrieving the security settings: {ex.Message}");
@@ -52,6 +57,10 @@ namespace Auth.UI.Manager.Implementation.Auth
                 {
                     return Response<SecuritySettingsResponse>.Fail(result.Messages ?? "Failed to update security settings");
                 }
+            }
+            catch (NavigationException)
+            {
+                throw;
             }
             catch (Exception ex)
             {
@@ -73,6 +82,10 @@ namespace Auth.UI.Manager.Implementation.Auth
                     return Response<bool>.Fail(result.Messages ?? "Failed to change password");
                 }
             }
+            catch (NavigationException)
+            {
+                throw;
+            }
             catch (Exception ex)
             {
                 return Response<bool>.Fail($"An error occurred while changing the password: {ex.Message}");
@@ -93,6 +106,10 @@ namespace Auth.UI.Manager.Implementation.Auth
                     return Response<SecuritySettingsResponse>.Fail(result.Messages ?? "Failed to enable two-factor authentication");
                 }
             }
+            catch (NavigationException)
+            {
+                throw;
+            }
             catch (Exception ex)
             {
                 return Response<SecuritySettingsResponse>.Fail($"An error occurred while enabling two-factor authentication: {ex.Message}");
@@ -112,6 +129,10 @@ namespace Auth.UI.Manager.Implementation.Auth
                 {
                     return Response<SecuritySettingsResponse>.Fail(result.Messages ?? "Failed to disable two-factor authentication");
                 }
+            }
+            catch (NavigationException)
+            {
+                throw;
             }
             catch (Exception ex)
             {
@@ -145,6 +166,10 @@ namespace Auth.UI.Manager.Implementation.Auth
                     return Response<List<SessionInfo>>.Fail(result.Messages ?? "Failed to load sessions");
                 }
             }
+            catch (NavigationException)
+            {
+                throw;
+            }
             catch (Exception ex)
             {
                 return Response<List<SessionInfo>>.Fail($"An error occurred while loading the sessions: {ex.Message}");
@@ -170,6 +195,10 @@ namespace Auth.UI.Manager.Implementation.Auth
                     return Response<bool>.Fail(result.Messages ?? "Failed to revoke session");
                 }
             }
+            catch (NavigationException)
+            {
+                throw;
+            }
             catch (Exception ex)
             {
                 return Response<bool>.Fail($"An error occurred while revoking the session: {ex.Message}");
@@ -190,6 +219,10 @@ namespace Auth.UI.Manager.Implementation.Auth
                 {
                     return Response<bool>.Fail(result.Messages ?? "Failed to revoke sessions");
                 }
+            }
+            catch (NavigationException)
+            {
+                throw;
             }
             catch (Exception ex)
             {
@@ -223,6 +256,10 @@ namespace Auth.UI.Manager.Implementation.Auth
                     return Response<List<ActivityLogEntry>>.Fail(result.Messages ?? "Failed to load activity");
                 }
             }
+            catch (NavigationException)
+            {
+                throw;
+            }
             catch (Exception ex)
             {
                 return Response<List<ActivityLogEntry>>.Fail($"An error occurred while loading the activity: {ex.Message}");
@@ -242,6 +279,10 @@ namespace Auth.UI.Manager.Implementation.Auth
                 {
                     return Response<bool>.Fail(result.Messages ?? "Failed to verify device");
                 }
+            }
+            catch (NavigationException)
+            {
+                throw;
             }
             catch (Exception ex)
             {

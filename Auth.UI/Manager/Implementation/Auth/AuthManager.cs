@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Components;
 using Shared.Data.Wrapper;
 using Auth.Model.Token;
 using Auth.UI.Manager.Interface.Auth;
@@ -33,6 +34,10 @@ namespace Auth.UI.Manager.Implementation.Auth
                     return Response<AuthResponse>.Fail(result.Messages ?? "Registration failed");
                 }
             }
+            catch (NavigationException)
+            {
+                throw;
+            }
             catch (Exception ex)
             {
                 return Response<AuthResponse>.Fail($"An error occurred during registration: {ex.Message}");
@@ -58,6 +63,10 @@ namespace Auth.UI.Manager.Implementation.Auth
                     return Response<AuthResponse>.Fail(result.Messages ?? "Login failed");
                 }
             }
+            catch (NavigationException)
+            {
+                throw;
+            }
             catch (Exception ex)
             {
                 return Response<AuthResponse>.Fail($"An error occurred during login: {ex.Message}");
@@ -77,6 +86,10 @@ namespace Auth.UI.Manager.Implementation.Auth
                 {
                     return Response<AuthResponse>.Fail(result.Messages ?? "Failed to retrieve current user");
                 }
+            }
+            catch (NavigationException)
+            {
+                throw;
             }
             catch (Exception ex)
             {
@@ -98,6 +111,10 @@ namespace Auth.UI.Manager.Implementation.Auth
                     return Response<AuthResponse>.Fail(result.Messages ?? "User not found");
                 }
             }
+            catch (NavigationException)
+            {
+                throw;
+            }
             catch (Exception ex)
             {
                 return Response<AuthResponse>.Fail($"An error occurred while looking up the user: {ex.Message}");
@@ -118,6 +135,10 @@ namespace Auth.UI.Manager.Implementation.Auth
                     return Response<Fido2ChallengeResponse>.Fail(result.Messages ?? "Failed to request attestation options");
                 }
             }
+            catch (NavigationException)
+            {
+                throw;
+            }
             catch (Exception ex)
             {
                 return Response<Fido2ChallengeResponse>.Fail($"An error occurred while requesting attestation options: {ex.Message}");
@@ -137,6 +158,10 @@ namespace Auth.UI.Manager.Implementation.Auth
                 {
                     return Response<Fido2VerifyResponse>.Fail(result.Messages ?? "Failed to register credential");
                 }
+            }
+            catch (NavigationException)
+            {
+                throw;
             }
             catch (Exception ex)
             {
@@ -166,6 +191,10 @@ namespace Auth.UI.Manager.Implementation.Auth
                     return Response<Fido2ChallengeResponse>.Fail(result.Messages ?? "Failed to create challenge");
                 }
             }
+            catch (NavigationException)
+            {
+                throw;
+            }
             catch (Exception ex)
             {
                 return Response<Fido2ChallengeResponse>.Fail($"An error occurred while creating the challenge: {ex.Message}");
@@ -191,6 +220,10 @@ namespace Auth.UI.Manager.Implementation.Auth
                     return Response<Fido2VerifyResponse>.Fail(result.Messages ?? "Failed to verify assertion");
                 }
             }
+            catch (NavigationException)
+            {
+                throw;
+            }
             catch (Exception ex)
             {
                 return Response<Fido2VerifyResponse>.Fail($"An error occurred while verifying the assertion: {ex.Message}");
@@ -210,6 +243,10 @@ namespace Auth.UI.Manager.Implementation.Auth
                 {
                     return Response<OtpResponse>.Fail(result.Messages ?? "Failed to request OTP");
                 }
+            }
+            catch (NavigationException)
+            {
+                throw;
             }
             catch (Exception ex)
             {
@@ -235,6 +272,10 @@ namespace Auth.UI.Manager.Implementation.Auth
                 {
                     return Response<AuthResponse>.Fail(result.Messages ?? "Failed to verify OTP");
                 }
+            }
+            catch (NavigationException)
+            {
+                throw;
             }
             catch (Exception ex)
             {
