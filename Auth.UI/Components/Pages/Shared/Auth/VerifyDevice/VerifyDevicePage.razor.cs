@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Components;
 using global::Auth.UI.Manager.Interface.Auth;
 using Auth.Model.Models.Security;
 
-namespace Auth.UI.Components.Pages.Shared.VerifyDevice
+namespace Auth.UI.Components.Pages.Shared.Auth.VerifyDevice
 {
     public partial class VerifyDevicePage : ComponentBase
     {

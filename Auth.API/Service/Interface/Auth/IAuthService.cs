@@ -12,6 +12,8 @@ namespace Auth.API.Service.Interface.Auth
     {
         Task<IResponse<AuthResponse>> RegisterAsync(RegisterRequest request);
         Task<IResponse<AuthResponse>> LoginAsync(LoginRequest request, string? ipAddress = null, string? userAgent = null);
+        Task<IResponse<AuthResponse>> GetCurrentUserAsync(int userId);
+        Task<IResponse<AuthResponse>> LookupUserByEmailAsync(string email);
         Task<IResponse<User?>> GetUserByIdAsync(int userId);
         Task<IResponse<User?>> GetUserByEmailAsync(string email);
         Task<IResponse<OtpResponse>> RequestOtpAsync(OtpRequest request);
@@ -24,8 +26,8 @@ namespace Auth.API.Service.Interface.Auth
         Task<IResponse<ActiveSessionsResponse>> GetActiveSessionsAsync(int userId, int currentRefreshTokenId = 0);
         Task<IResponse> RevokeAllSessionsAsync(int userId);
         Task<IResponse> RevokeSessionAsync(int sessionId, int userId);
-        Task<IResponse> RequestPasswordResetAsync(string email);
-        Task<IResponse> ResetPasswordAsync(string token, string newPassword);
+        Task<IResponse<bool>> RequestPasswordResetAsync(string email);
+        Task<IResponse<bool>> ResetPasswordAsync(string email, string otp, string newPassword);
         Task<IResponse<string>> GetUserDataExportAsync(int userId);
         Task<IResponse> DeleteAccountAsync(int userId);
     }

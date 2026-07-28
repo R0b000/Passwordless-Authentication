@@ -7,7 +7,7 @@ using System.Text.Json.Serialization;
 using global::Auth.UI.Manager.Interface.Auth;
 using Auth.Model.Models.Auth;
 
-namespace Auth.UI.Components.Pages.Shared.Login
+namespace Auth.UI.Components.Pages.Shared.Auth.Login
 {
     public partial class LoginPage : ComponentBase
     {

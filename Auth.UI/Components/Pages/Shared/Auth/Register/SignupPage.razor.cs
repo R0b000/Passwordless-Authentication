@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Components;
 using global::Auth.UI.Manager.Interface.Auth;
 using Auth.Model.Models.Auth;
 
-namespace Auth.UI.Components.Pages.Shared.Register
+namespace Auth.UI.Components.Pages.Shared.Auth.Register
 {
     public partial class SignupPage : ComponentBase
     {

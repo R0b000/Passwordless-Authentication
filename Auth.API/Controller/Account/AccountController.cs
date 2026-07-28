@@ -4,8 +4,8 @@ using Microsoft.AspNetCore.RateLimiting;
 using Auth.API.Config;
 using Auth.API.Middleware;
 using Auth.API.Service.Interface.Auth;
-using Auth.API.Service.Interface.Security;
 using Auth.Model.Models.Account;
+using Auth.Model.Models.Auth;
 using Shared.Data.Wrapper;
 
 namespace Auth.API.Controller.Account
@@ -33,92 +33,89 @@ namespace Auth.API.Controller.Account
         }
 
         [HttpGet("profile")]
-        public async Task<ActionResult<UserProfileResponse>> GetProfile()
+        public async Task<IActionResult> GetProfile()
         {
             var userId = User.GetUserId();
             if (userId == null) return Unauthorized();
 
             var result = await _profileService.GetProfileAsync(userId.Value);
-            var user = result.Data;
-            if (user == null) return NotFound();
+            if (!result.Succeeded || result.Data == null) return NotFound(result);
 
-            return Ok(result.Data);
+            return Ok(result);
         }
 
         [HttpPut("profile")]
-        public async Task<ActionResult<UserProfileResponse>> UpdateProfile([FromBody] UpdateProfileRequest request)
+        public async Task<IActionResult> UpdateProfile([FromBody] UpdateProfileRequest request)
         {
             var userId = User.GetUserId();
             if (userId == null) return Unauthorized();
 
             var result = await _profileService.UpdateProfileAsync(userId.Value, request);
-            if (result.Data == null) return NotFound();
-
-            return Ok(result.Data);
+            return Ok(result);
         }
 
         [HttpGet("settings")]
-        public async Task<ActionResult<AccountSettingsResponse>> GetSettings()
+        public async Task<IActionResult> GetSettings()
         {
             var userId = User.GetUserId();
             if (userId == null) return Unauthorized();
 
             var result = await _settingsService.GetAccountSettingsAsync(userId.Value);
-            return Ok(result.Data);
+            return Ok(result);
         }
 
         [HttpPut("settings")]
-        public async Task<ActionResult<AccountSettingsResponse>> UpdateSettings([FromBody] UpdateSettingsRequest request)
+        public async Task<IActionResult> UpdateSettings([FromBody] UpdateSettingsRequest request)
         {
             var userId = User.GetUserId();
             if (userId == null) return Unauthorized();
 
             var result = await _settingsService.UpdateAccountSettingsAsync(userId.Value, request);
-            return Ok(result.Data);
+            return Ok(result);
         }
 
         [HttpGet("privacy")]
-        public async Task<ActionResult<PrivacySettingsResponse>> GetPrivacy()
+        public async Task<IActionResult> GetPrivacy()
         {
             var userId = User.GetUserId();
             if (userId == null) return Unauthorized();
 
             var result = await _privacyService.GetPrivacySettingsAsync(userId.Value);
-            return Ok(result.Data);
+            return Ok(result);
         }
 
         [HttpPut("privacy")]
-        public async Task<ActionResult<PrivacySettingsResponse>> UpdatePrivacy([FromBody] UpdatePrivacyRequest request)
+        public async Task<IActionResult> UpdatePrivacy([FromBody] UpdatePrivacyRequest request)
         {
             var userId = User.GetUserId();
             if (userId == null) return Unauthorized();
 
             var result = await _privacyService.UpdatePrivacySettingsAsync(userId.Value, request);
-            return Ok(result.Data);
+            return Ok(result);
         }
 
         [AllowAnonymous]
         [HttpPost("password-reset")]
         [EnableRateLimiting(SecurityRateLimiting.GeneralPolicy)]
-        public async Task<ActionResult> RequestPasswordReset([FromBody] PasswordResetRequest request)
+        public async Task<IActionResult> RequestPasswordReset([FromBody] ForgotPasswordRequest request)
         {
-            await _authService.RequestPasswordResetAsync(request.Email);
-            return Ok(new { succeeded = true, message = "If an account with that email exists, a reset link was sent." });
+            var result = await _authService.RequestPasswordResetAsync(request.Email);
+            return Ok(result);
         }
 
         [AllowAnonymous]
         [HttpPost("password-reset/confirm")]
         [EnableRateLimiting(SecurityRateLimiting.GeneralPolicy)]
-        public async Task<ActionResult> ConfirmPasswordReset([FromBody] ConfirmPasswordResetRequest request)
+        public async Task<IActionResult> ConfirmPasswordReset([FromBody] ResetPasswordRequest request)
         {
-            var result = await _authService.ResetPasswordAsync(request.Token, request.NewPassword);
+            var result = await _authService.ResetPasswordAsync(request.Email, request.Otp, request.NewPassword);
             if (!result.Succeeded) return BadRequest(result);
 
             return Ok(result);
         }
 
         [HttpGet("data-export")]
-        public async Task<ActionResult> DownloadData()
+        public async Task<IActionResult> DownloadData()
         {
             var userId = User.GetUserId();
             if (userId == null) return Unauthorized();
@@ -128,7 +125,7 @@ namespace Auth.API.Controller.Account
         }
 
         [HttpDelete]
-        public async Task<ActionResult> DeleteAccount()
+        public async Task<IActionResult> DeleteAccount()
         {
             var userId = User.GetUserId();
             if (userId == null) return Unauthorized();
@@ -140,5 +137,3 @@ namespace Auth.API.Controller.Account
         }
     }
 }
-
-

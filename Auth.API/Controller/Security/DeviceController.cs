@@ -2,6 +2,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Auth.API.Config;
 using Auth.API.Service.Interface.Auth;
+using Auth.Model.Models.Common;
+using Shared.Data.Wrapper;
 
 namespace Auth.API.Controller.Security
 {
@@ -23,8 +25,8 @@ namespace Auth.API.Controller.Security
             var userId = User.GetUserId();
             if (userId == null) return Unauthorized();
 
-            var sessions = await _authService.GetActiveSessionsAsync(userId.Value);
-            return Ok(sessions.Data?.Sessions);
+            var result = await _authService.GetActiveSessionsAsync(userId.Value);
+            return Ok(result);
         }
 
         [HttpPost("logout-all")]
@@ -33,8 +35,8 @@ namespace Auth.API.Controller.Security
             var userId = User.GetUserId();
             if (userId == null) return Unauthorized();
 
-            await _authService.RevokeAllSessionsAsync(userId.Value);
-            return Ok(new { succeeded = true, message = "All sessions have been revoked" });
+            var result = await _authService.RevokeAllSessionsAsync(userId.Value);
+            return Ok(result);
         }
 
         [HttpDelete("{sessionId:int}")]
@@ -43,8 +45,8 @@ namespace Auth.API.Controller.Security
             var userId = User.GetUserId();
             if (userId == null) return Unauthorized();
 
-            await _authService.RevokeSessionAsync(sessionId, userId.Value);
-            return Ok(new { succeeded = true, message = "Session has been revoked" });
+            var result = await _authService.RevokeSessionAsync(sessionId, userId.Value);
+            return Ok(result);
         }
     }
 }

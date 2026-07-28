@@ -75,6 +75,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 builder.Services.Configure<ApiSettings>(builder.Configuration.GetSection(ApiSettings.SectionName));
 builder.Services.Configure<SecuritySettings>(builder.Configuration.GetSection(nameof(SecuritySettings)));
+builder.Services.Configure<SmtpSettings>(builder.Configuration.GetSection(nameof(SmtpSettings)));
 
 builder.Services.AddCors(options =>
 {
@@ -119,7 +120,7 @@ builder.Services.AddScoped<IRoleService, RoleService>();
 builder.Services.AddScoped<IPermissionService, PermissionService>();
 builder.Services.AddScoped<IUserRoleService, UserRoleService>();
 builder.Services.AddScoped<IAuditLogService, AuditLogService>();
-builder.Services.AddScoped<IEmailService, LoggingEmailService>();
+builder.Services.AddScoped<IEmailService, SmtpEmailService>();
 builder.Services.AddScoped<IUserProfileService, UserProfileService>();
 builder.Services.AddScoped<IAccountSettingsService, AccountSettingsService>();
 builder.Services.AddScoped<IPrivacySettingsService, PrivacySettingsService>();

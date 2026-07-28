@@ -161,18 +161,18 @@ namespace Auth.UI.Manager.Implementation.Auth
             }
         }
 
-        public async Task<IResponse<bool>> RequestPasswordResetAsync(string email)
+        public async Task<IResponse<bool>> RequestPasswordResetAsync(ForgotPasswordRequest request)
         {
             try
             {
-                var result = await _httpService.PostAsJsonAsync<ActionResponse>(AccountRoute.PasswordReset, new { email });
+                var result = await _httpService.PostAsJsonAsync<ActionResponse>(AccountRoute.PasswordReset, request);
                 if (result.Succeeded)
                 {
-                    return Response<bool>.Success(true, result.Messages ?? "Request sent");
+                    return Response<bool>.Success(true, result.Data?.Message ?? "If an account with that email exists, a verification code has been sent.");
                 }
                 else
                 {
-                    return Response<bool>.Fail(result.Messages ?? "Failed to request password reset");
+                    return Response<bool>.Fail(result.Data?.Message ?? "Failed to request password reset");
                 }
             }
             catch (Exception ex)
@@ -181,19 +181,19 @@ namespace Auth.UI.Manager.Implementation.Auth
             }
         }
 
-        public async Task<IResponse<bool>> ResetPasswordAsync(string token, string newPassword)
+        public async Task<IResponse<bool>> ResetPasswordAsync(ResetPasswordRequest request)
         {
             try
             {
                 var result = await _httpService.PostAsJsonAsync<ActionResponse>(
-                    AccountRoute.PasswordResetConfirm, new { token, newPassword });
+                    AccountRoute.PasswordResetConfirm, request);
                 if (result.Succeeded)
                 {
-                    return Response<bool>.Success(true, result.Messages ?? "Password reset");
+                    return Response<bool>.Success(true, result.Data?.Message ?? "Password reset successful");
                 }
                 else
                 {
-                    return Response<bool>.Fail(result.Messages ?? "Failed to reset password");
+                    return Response<bool>.Fail(result.Data?.Message ?? "Failed to reset password");
                 }
             }
             catch (Exception ex)

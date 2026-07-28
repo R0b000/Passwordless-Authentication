@@ -4,6 +4,7 @@ using Auth.API.Config;
 using Auth.API.Service.Interface.Auth;
 using Auth.Model.Models.Account;
 using Auth.Model.Models.Security;
+using Shared.Data.Wrapper;
 
 namespace Auth.API.Controller.Security
 {
@@ -20,27 +21,27 @@ namespace Auth.API.Controller.Security
         }
 
         [HttpGet("settings")]
-        public async Task<ActionResult<SecuritySettingsResponse>> GetSettings()
+        public async Task<IActionResult> GetSettings()
         {
             var userId = User.GetUserId();
             if (userId == null) return Unauthorized();
 
             var result = await _securityService.GetSecuritySettingsAsync(userId.Value);
-            return Ok(result.Data);
+            return Ok(result);
         }
 
         [HttpPut("settings")]
-        public async Task<ActionResult<SecuritySettingsResponse>> UpdateSettings([FromBody] SecuritySettingsResponse request)
+        public async Task<IActionResult> UpdateSettings([FromBody] SecuritySettingsResponse request)
         {
             var userId = User.GetUserId();
             if (userId == null) return Unauthorized();
 
             var result = await _securityService.UpdateSecuritySettingsAsync(userId.Value, request);
-            return Ok(result.Data);
+            return Ok(result);
         }
 
         [HttpPost("change-password")]
-        public async Task<ActionResult> ChangePassword([FromBody] ChangePasswordRequest request)
+        public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest request)
         {
             var userId = User.GetUserId();
             if (userId == null) return Unauthorized();
@@ -52,37 +53,37 @@ namespace Auth.API.Controller.Security
         }
 
         [HttpPost("2fa/enable")]
-        public async Task<ActionResult<SecuritySettingsResponse>> EnableTwoFactor()
+        public async Task<IActionResult> EnableTwoFactor()
         {
             var userId = User.GetUserId();
             if (userId == null) return Unauthorized();
 
             var result = await _securityService.EnableTwoFactorAsync(userId.Value);
-            return Ok(result.Data);
+            return Ok(result);
         }
 
         [HttpPost("2fa/disable")]
-        public async Task<ActionResult<SecuritySettingsResponse>?> DisableTwoFactor()
+        public async Task<IActionResult> DisableTwoFactor()
         {
             var userId = User.GetUserId();
             if (userId == null) return Unauthorized();
 
             var result = await _securityService.DisableTwoFactorAsync(userId.Value);
-            return Ok(result.Data);
+            return Ok(result);
         }
 
         [HttpGet("activity")]
-        public async Task<ActionResult<ActivityLogResponse>> GetActivity([FromQuery] ActivityQueryRequest query)
+        public async Task<IActionResult> GetActivity([FromQuery] ActivityQueryRequest query)
         {
             var userId = User.GetUserId();
             if (userId == null) return Unauthorized();
 
             var result = await _securityService.GetActivityLogsAsync(userId.Value, query);
-            return Ok(result.Data);
+            return Ok(result);
         }
 
         [HttpPost("device/verify")]
-        public async Task<ActionResult> VerifyDevice([FromBody] VerifyDeviceRequest request)
+        public async Task<IActionResult> VerifyDevice([FromBody] VerifyDeviceRequest request)
         {
             var userId = User.GetUserId();
             if (userId == null) return Unauthorized();
@@ -92,5 +93,3 @@ namespace Auth.API.Controller.Security
         }
     }
 }
-
-

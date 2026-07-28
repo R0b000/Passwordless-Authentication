@@ -4,7 +4,7 @@ using System.Text.Json.Serialization;
 using global::Auth.UI.Manager.Interface.Auth;
 using Auth.Model.Models.Auth;
 
-namespace Auth.UI.Components.Pages.Shared.Fido
+namespace Auth.UI.Components.Pages.Shared.Auth.Fido
 {
     public partial class Fido2Page : ComponentBase
     {
