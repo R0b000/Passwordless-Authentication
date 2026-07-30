@@ -77,10 +77,10 @@
 
                 <EditForm Model="@LoginModel" OnValidSubmit="@LoginAsync" FormName="login">
                     <div class="lp-field">
-                        <label class="lp-label" for="login-id">Login, email or phone number</label>
+                        <label class="lp-label" for="login-id">Email</label>
                         <div class="lp-input">
                             <Icon Name="user" Size="Icon.IconSize.Small" />
-                            <InputText id="login-id" class="lp-control" @bind-Value="LoginModel.Username" placeholder="name@example.com" />
+                            <InputText id="login-id" class="lp-control" @bind-Value="LoginModel.Email" placeholder="you@example.com" />
                         </div>
                     </div>
 

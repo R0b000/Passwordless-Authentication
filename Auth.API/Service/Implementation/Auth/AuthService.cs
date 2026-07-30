@@ -126,16 +126,16 @@ namespace Auth.API.Service.Implementation.Auth
         {
             var userDetails = await _authRepository.QuerySingleAsync<User>(
                 ProcedureName,
-                new { AuthType = DbConstants.AuthTypes.Login, Username = request.Username });
+                new { AuthType = DbConstants.AuthTypes.Login, Email = request.Email });
 
             if (userDetails == null || !userDetails.Succeeded || userDetails.Data == null || string.IsNullOrEmpty(userDetails.Data.PasswordHash))
             {
-                return Response<AuthResponse>.Fail("Invalid username or password");
+                return Response<AuthResponse>.Fail("Invalid email or password");
             }
 
             if (!_passwordHash.VerifyPassword(request.Password, userDetails.Data.PasswordHash))
             {
-                return Response<AuthResponse>.Fail("Invalid username or password");
+                return Response<AuthResponse>.Fail("Invalid email or password");
             }
 
             bool hasFido2 = await HasFido2CredentialsAsync(userDetails.Data.Id);
