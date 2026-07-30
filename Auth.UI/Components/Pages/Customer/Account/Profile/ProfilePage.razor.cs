@@ -38,6 +38,14 @@ namespace Auth.UI.Components.Pages.Customer.Account.Profile
             Model = result.Succeeded ? result.Data : new UserProfile();
         }
 
+        protected override async Task OnAfterRenderAsync(bool firstRender)  
+        {
+            if(firstRender && (Model is null || string.IsNullOrEmpty(Model.Username))){
+                await ReloadAsync();
+                StateHasChanged();
+            }
+        }
+
         protected void EnterEdit() => EditMode = true;
 
         protected void CancelEdit()
