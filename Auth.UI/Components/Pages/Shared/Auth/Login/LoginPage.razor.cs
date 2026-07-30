@@ -114,6 +114,7 @@ namespace Auth.UI.Components.Pages.Shared.Auth.Login
 
         protected void OpenPasskeyModal()
         {
+            IsVerificationMode = true;
             PasskeyVisible = true;
         }
 
