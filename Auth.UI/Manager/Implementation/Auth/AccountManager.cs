@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Components;
 using Shared.Data.Wrapper;
 using Auth.Model.Token;
 using Auth.UI.Manager.Interface.Auth;
@@ -34,6 +35,10 @@ namespace Auth.UI.Manager.Implementation.Auth
                     return Response<UserProfile>.Fail(result.Messages ?? "Failed to retrieve profile");
                 }
             }
+            catch (NavigationException)
+            {
+                throw;
+            }
             catch (Exception ex)
             {
                 return Response<UserProfile>.Fail($"An error occurred while retrieving the profile: {ex.Message}");
@@ -53,6 +58,10 @@ namespace Auth.UI.Manager.Implementation.Auth
                 {
                     return Response<UserProfile>.Fail(result.Messages ?? "Failed to update profile");
                 }
+            }
+            catch (NavigationException)
+            {
+                throw;
             }
             catch (Exception ex)
             {
@@ -74,6 +83,10 @@ namespace Auth.UI.Manager.Implementation.Auth
                     return Response<AccountSettings>.Fail(result.Messages ?? "Failed to retrieve settings");
                 }
             }
+            catch (NavigationException)
+            {
+                throw;
+            }
             catch (Exception ex)
             {
                 return Response<AccountSettings>.Fail($"An error occurred while retrieving the settings: {ex.Message}");
@@ -93,6 +106,10 @@ namespace Auth.UI.Manager.Implementation.Auth
                 {
                     return Response<AccountSettings>.Fail(result.Messages ?? "Failed to update settings");
                 }
+            }
+            catch (NavigationException)
+            {
+                throw;
             }
             catch (Exception ex)
             {
@@ -114,6 +131,10 @@ namespace Auth.UI.Manager.Implementation.Auth
                     return Response<PrivacySettings>.Fail(result.Messages ?? "Failed to retrieve privacy settings");
                 }
             }
+            catch (NavigationException)
+            {
+                throw;
+            }
             catch (Exception ex)
             {
                 return Response<PrivacySettings>.Fail($"An error occurred while retrieving the privacy settings: {ex.Message}");
@@ -133,6 +154,10 @@ namespace Auth.UI.Manager.Implementation.Auth
                 {
                     return Response<PrivacySettings>.Fail(result.Messages ?? "Failed to update privacy settings");
                 }
+            }
+            catch (NavigationException)
+            {
+                throw;
             }
             catch (Exception ex)
             {
@@ -155,6 +180,10 @@ namespace Auth.UI.Manager.Implementation.Auth
                     return Response<AuthResponse>.Fail(result.Messages ?? "Registration failed");
                 }
             }
+            catch (NavigationException)
+            {
+                throw;
+            }
             catch (Exception ex)
             {
                 return Response<AuthResponse>.Fail($"An error occurred during registration: {ex.Message}");
@@ -174,6 +203,10 @@ namespace Auth.UI.Manager.Implementation.Auth
                 {
                     return Response<bool>.Fail(result.Data?.Message ?? "Failed to request password reset");
                 }
+            }
+            catch (NavigationException)
+            {
+                throw;
             }
             catch (Exception ex)
             {
@@ -196,6 +229,10 @@ namespace Auth.UI.Manager.Implementation.Auth
                     return Response<bool>.Fail(result.Data?.Message ?? "Failed to reset password");
                 }
             }
+            catch (NavigationException)
+            {
+                throw;
+            }
             catch (Exception ex)
             {
                 return Response<bool>.Fail($"An error occurred while resetting the password: {ex.Message}");
@@ -216,6 +253,10 @@ namespace Auth.UI.Manager.Implementation.Auth
                     return Response<string>.Fail(result.Messages ?? "Failed to download data");
                 }
             }
+            catch (NavigationException)
+            {
+                throw;
+            }
             catch (Exception ex)
             {
                 return Response<string>.Fail($"An error occurred while downloading the data: {ex.Message}");
@@ -235,6 +276,10 @@ namespace Auth.UI.Manager.Implementation.Auth
                 {
                     return Response<bool>.Fail(result.Messages ?? "Failed to delete account");
                 }
+            }
+            catch (NavigationException)
+            {
+                throw;
             }
             catch (Exception ex)
             {
