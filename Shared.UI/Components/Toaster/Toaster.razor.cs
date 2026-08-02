@@ -11,7 +11,7 @@ public partial class Toaster : ComponentBase, IDisposable
 
     [Parameter] public string? Message { get; set; }
     [Parameter] public ToastType Type { get; set; } = ToastType.Info;
-    [Parameter] public int DurationMs { get; set; } = 4000;
+    [Parameter] public int DurationMs { get; set; } = 3000;
 
     private IReadOnlyList<Toast> Toasts => Service.Toasts.Where(t => t.Position == Position).ToList();
     private readonly HashSet<Guid> _scheduled = new();
@@ -33,13 +33,19 @@ public partial class Toaster : ComponentBase, IDisposable
             _scheduled.Add(toast.Id);
             var id = toast.Id;
             var delay = toast.DurationMs;
-            _ = Task.Delay(delay).ContinueWith(_ =>
-            {
-                Service.Remove(id);
-                _scheduled.Remove(id);
-            });
+            _ = DismissAfterDelay(id, delay);
         }
         await Task.CompletedTask;
+    }
+
+    private async Task DismissAfterDelay(Guid id, int delay)
+    {
+        await Task.Delay(delay);
+        await InvokeAsync(() =>
+        {
+            Service.Remove(id);
+            _scheduled.Remove(id);
+        });
     }
 
     private static string IconFor(ToastType type) => type switch

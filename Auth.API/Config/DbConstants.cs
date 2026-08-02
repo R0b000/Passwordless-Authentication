@@ -45,6 +45,10 @@ namespace Auth.API.Config
             public const string RevokeAllForUser = "RevokeAllForUser";
             public const string GetRefreshTokenById = "GetRefreshTokenById";
             public const string GetActiveTokensForUser = "GetActiveTokensForUser";
+            public const string CreateOtp = "CreateOtp";
+            public const string GetOtp = "GetOtp";
+            public const string ConsumeOtp = "ConsumeOtp";
+            public const string LogEmail = "LogEmail";
         }
 
         public static class RbacActions

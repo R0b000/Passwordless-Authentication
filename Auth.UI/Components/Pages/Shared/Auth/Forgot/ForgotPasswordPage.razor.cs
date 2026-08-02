@@ -1,28 +1,33 @@
 using global::Shared.UI.Components.Toaster;
 using Microsoft.AspNetCore.Components;
 using global::Auth.UI.Manager.Interface.Auth;
+using Auth.Model.Models.Auth;
 
-namespace Auth.UI.Components.Pages.Shared.Forgot
+namespace Auth.UI.Components.Pages.Shared.Auth.Forgot
 {
     public partial class ForgotPasswordPage : ComponentBase
     {
         [Inject] private IAccountManager AccountManager { get; set; } = default!;
         [Inject] private ToasterService Toaster { get; set; } = default!;
 
-        protected string Email { get; set; } = string.Empty;
+        protected ForgotPasswordRequest RequestModel { get; set; } = new();
         protected string StatusMessage { get; set; } = string.Empty;
         protected bool Succeeded { get; set; }
+        protected bool IsSubmitting { get; set; }
 
         protected async Task SubmitAsync()
         {
-            if (string.IsNullOrWhiteSpace(Email))
+            if (string.IsNullOrWhiteSpace(RequestModel.Email))
             {
                 Succeeded = false;
                 StatusMessage = "Please enter your email address.";
                 return;
             }
 
-            var result = await AccountManager.RequestPasswordResetAsync(Email);
+            IsSubmitting = true;
+            var result = await AccountManager.RequestPasswordResetAsync(RequestModel);
+            IsSubmitting = false;
+
             Succeeded = result.Succeeded;
             StatusMessage = result.Messages ?? string.Empty;
             if (result.Succeeded) Toaster.ShowSuccess(StatusMessage);
@@ -30,4 +35,3 @@ namespace Auth.UI.Components.Pages.Shared.Forgot
         }
     }
 }
-

@@ -4,7 +4,7 @@ using System.Text.Json;
 using global::Auth.UI.Manager.Interface.Auth;
 using Auth.Model.Models.Auth;
 
-namespace Auth.UI.Components.Pages.Shared.Passkey
+namespace Auth.UI.Components.Pages.Shared.Auth.Passkey
 {
     public partial class PasskeySetupPage : ComponentBase
     {

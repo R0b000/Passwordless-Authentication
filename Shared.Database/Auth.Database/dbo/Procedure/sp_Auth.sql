@@ -17,6 +17,9 @@ CREATE OR ALTER PROCEDURE dbo.sp_Auth
     @SignCount BIGINT = NULL,
     @Transports NVARCHAR(500) = NULL,
     @Otp NVARCHAR(10) = NULL,
+    @OtpCode NVARCHAR(10) = NULL,
+    @Subject NVARCHAR(500) = NULL,
+    @Body NVARCHAR(MAX) = NULL,
     @Now DATETIME2 = NULL,
     @TokenHash NVARCHAR(500) = NULL,
     @IpAddress NVARCHAR(45) = NULL,
@@ -232,6 +235,13 @@ BEGIN
                   AND UsedAt IS NOT NULL
                   AND ExpiresAt > @Now
             ) THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT) END AS Consumed;
+        END
+        ELSE IF @FIDOOperation = 'LogEmail'
+        BEGIN
+            INSERT INTO dbo.MailLogs (ToEmail, Subject, Body, OtpCode, Status, CreatedAt)
+            VALUES (@Email, @Subject, @Body, @OtpCode, 'Sent', @Now);
+
+            SELECT SCOPE_IDENTITY() AS Id;
         END
     END
     ELSE IF @AuthType = 'RefreshToken'

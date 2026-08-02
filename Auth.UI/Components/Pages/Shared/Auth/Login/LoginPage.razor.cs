@@ -7,7 +7,7 @@ using System.Text.Json.Serialization;
 using global::Auth.UI.Manager.Interface.Auth;
 using Auth.Model.Models.Auth;
 
-namespace Auth.UI.Components.Pages.Shared.Login
+namespace Auth.UI.Components.Pages.Shared.Auth.Login
 {
     public partial class LoginPage : ComponentBase
     {
@@ -66,7 +66,7 @@ namespace Auth.UI.Components.Pages.Shared.Login
             if (result.Succeeded && result.Data is not null)
             {
                 Mode = "login";
-                LoginModel.Username = RegisterModel.Username;
+                LoginModel.Email = RegisterModel.Email;
                 StatusMessage = "Registration successful. You can now sign in with your credentials and add a passkey from your profile.";
             }
         }
@@ -92,7 +92,7 @@ namespace Auth.UI.Components.Pages.Shared.Login
                 {
                     // NEW: User doesn't have passkey, needs to REGISTER
                     LoggedInUserId = result.Data.UserId;
-                    LoggedInUsername = LoginModel.Username;
+                    LoggedInUsername = LoginModel.Email;
                     IsVerificationMode = false;
                     PasskeyVisible = true;
                 }
@@ -114,6 +114,7 @@ namespace Auth.UI.Components.Pages.Shared.Login
 
         protected void OpenPasskeyModal()
         {
+            IsVerificationMode = true;
             PasskeyVisible = true;
         }
 

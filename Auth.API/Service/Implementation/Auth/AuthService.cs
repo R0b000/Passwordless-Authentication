@@ -11,15 +11,16 @@ using Auth.Model.Models.Security;
 using Auth.Model.Models.Rbac;
 using Shared.Data.Repository.Interface;
 using Shared.Data.Wrapper;
-using Auth.API.Config;
-using Auth.API.Configuration;
-using Auth.API.Utility.Jwt;
-using Auth.API.Utility.PasswordHash;
-using Auth.API.Utility.TokenHash;
 using Auth.API.Service.Interface.Auth;
 using Auth.API.Service.Interface.Rbac;
 using Auth.API.Service.Interface.Security;
+using Auth.API.Config;
+using Auth.API.Configuration;
 using Auth.API.Utility.Http;
+using Auth.API.Utility.Jwt;
+using Auth.API.Utility.OtpGenerator;
+using Auth.API.Utility.PasswordHash;
+using Auth.API.Utility.TokenHash;
 
 namespace Auth.API.Service.Implementation.Auth
 {
@@ -38,11 +39,10 @@ namespace Auth.API.Service.Implementation.Auth
         private readonly IHttpContextAccessor _httpContextAccessor;
         private readonly IEmailService _emailService;
         private readonly SecuritySettings _securitySettings;
-        private readonly ApiSettings _apiSettings;
 
         private const string ProcedureName = DbConstants.Procedures.Users;
 
-        public AuthService(IGenericRepository<User> authRepository, IPasswordHash passwordHash, IJwtHelper jwtHelper, IFido2Service fido2Service, IDapperRepository dapperRepository, IUserRoleService userRoleService, IRoleService roleService, IOtpService otpService, IAuditLogService auditLogService, ILocationResolver locationResolver, IHttpContextAccessor httpContextAccessor, IEmailService emailService, IOptions<SecuritySettings> securitySettings, IOptions<ApiSettings> apiSettings)
+        public AuthService(IGenericRepository<User> authRepository, IPasswordHash passwordHash, IJwtHelper jwtHelper, IFido2Service fido2Service, IDapperRepository dapperRepository, IUserRoleService userRoleService, IRoleService roleService, IOtpService otpService, IAuditLogService auditLogService, ILocationResolver locationResolver, IHttpContextAccessor httpContextAccessor, IEmailService emailService, IOptions<SecuritySettings> securitySettings)
         {
             _authRepository = authRepository;
             _passwordHash = passwordHash;
@@ -57,7 +57,6 @@ namespace Auth.API.Service.Implementation.Auth
             _httpContextAccessor = httpContextAccessor;
             _emailService = emailService;
             _securitySettings = securitySettings.Value;
-            _apiSettings = apiSettings.Value;
         }
 
         public async Task<IResponse<AuthResponse>> RegisterAsync(RegisterRequest request)
@@ -127,16 +126,16 @@ namespace Auth.API.Service.Implementation.Auth
         {
             var userDetails = await _authRepository.QuerySingleAsync<User>(
                 ProcedureName,
-                new { AuthType = DbConstants.AuthTypes.Login, Username = request.Username });
+                new { AuthType = DbConstants.AuthTypes.Login, Email = request.Email });
 
             if (userDetails == null || !userDetails.Succeeded || userDetails.Data == null || string.IsNullOrEmpty(userDetails.Data.PasswordHash))
             {
-                return Response<AuthResponse>.Fail("Invalid username or password");
+                return Response<AuthResponse>.Fail("Invalid email or password");
             }
 
             if (!_passwordHash.VerifyPassword(request.Password, userDetails.Data.PasswordHash))
             {
-                return Response<AuthResponse>.Fail("Invalid username or password");
+                return Response<AuthResponse>.Fail("Invalid email or password");
             }
 
             bool hasFido2 = await HasFido2CredentialsAsync(userDetails.Data.Id);
@@ -223,6 +222,44 @@ namespace Auth.API.Service.Implementation.Auth
             {
                 return Response<User?>.Fail(userResult.Messages ?? "User not found");
             }
+        }
+
+        public async Task<IResponse<AuthResponse>> GetCurrentUserAsync(int userId)
+        {
+            var userWithRolesResult = await _userRoleService.GetUserWithRolesAndPermissionsAsync(userId);
+            var userWithRoles = userWithRolesResult.Data;
+            if (userWithRoles == null)
+            {
+                return Response<AuthResponse>.Fail("User not found");
+            }
+
+            return Response<AuthResponse>.Success(new AuthResponse
+            {
+                UserId = userWithRoles.Id,
+                Username = userWithRoles.Username,
+                Email = userWithRoles.Email,
+                Message = "Authenticated",
+                Role = userWithRoles.Role,
+                Permissions = userWithRoles.Permissions ?? new List<string>()
+            });
+        }
+
+        public async Task<IResponse<AuthResponse>> LookupUserByEmailAsync(string email)
+        {
+            var userResult = await GetUserByEmailAsync(email);
+            var user = userResult.Data;
+            if (user == null)
+            {
+                return Response<AuthResponse>.Fail("User not found");
+            }
+
+            return Response<AuthResponse>.Success(new AuthResponse
+            {
+                UserId = user.Id,
+                Username = user.Username,
+                Email = user.Email,
+                Message = "User resolved"
+            });
         }
 
         public async Task<IResponse<OtpResponse>> RequestOtpAsync(OtpRequest request)
@@ -610,62 +647,105 @@ namespace Auth.API.Service.Implementation.Auth
             return Response<PrivacySettingsResponse>.Success(new PrivacySettingsResponse());
         }
 
-        public async Task<IResponse> RequestPasswordResetAsync(string email)
+        public async Task<IResponse<bool>> RequestPasswordResetAsync(string email)
         {
-            var user = await GetUserByEmailAsync(email);
-            if (user == null || user.Data == null) return Response.Success();
-
-            var token = Guid.NewGuid().ToString("N") + Guid.NewGuid().ToString("N");
-            var expiresAt = DateTime.UtcNow.AddHours(1);
-
-            await _authRepository.ExecuteAsync(
-                ProcedureName,
-                new
-                {
-                    AuthType = DbConstants.AuthTypes.EmailOtp,
-                    FIDOOperation = "CreateOtp",
-                    UserId = user.Data.Id,
-                    Otp = TokenHasher.HashToken(token),
-                    ExpiresAt = expiresAt,
-                    Now = DateTime.UtcNow
-                });
-
-            var frontendBaseUrl = _apiSettings.FrontendBaseUrl;
-            if (string.IsNullOrWhiteSpace(frontendBaseUrl))
+            try
             {
-                frontendBaseUrl = _apiSettings.BaseUrl;
+                var user = await GetUserByEmailAsync(email);
+                if (user == null || user.Data == null) return Response<bool>.Success(false);
+
+                var otp = GenerateSecureOtp.GenerateSecureOtpCode();
+                var expiresAt = DateTime.UtcNow.AddMinutes(5);
+                var otpHash = TokenHasher.HashToken(otp);
+                var now = DateTime.UtcNow;
+
+                await _authRepository.ExecuteAsync(
+                    ProcedureName,
+                    new
+                    {
+                        AuthType = DbConstants.AuthTypes.EmailOtp,
+                        FIDOOperation = DbConstants.FidoOperations.CreateOtp,
+                        UserId = user.Data.Id,
+                        Otp = otpHash,
+                        ExpiresAt = expiresAt,
+                        Now = now
+                    });
+
+                await _authRepository.ExecuteAsync(
+                    ProcedureName,
+                    new
+                    {
+                        AuthType = DbConstants.AuthTypes.EmailOtp,
+                        FIDOOperation = DbConstants.FidoOperations.LogEmail,
+                        Email = email,
+                        Subject = DbConstants.Email.PasswordResetSubject,
+                        Body = string.Format(DbConstants.Email.PasswordResetBodyTemplate, otp),
+                        OtpCode = otp,
+                        Now = now
+                    });
+
+                await _emailService.SendAsync(
+                    email,
+                    DbConstants.Email.PasswordResetSubject,
+                    string.Format(DbConstants.Email.PasswordResetBodyTemplate, otp));
+
+                await _auditLogService.LogAsync(user.Data.Id, "PasswordResetRequested", "User", user.Data.Id.ToString(), null, "Password reset OTP requested");
+
+                return Response<bool>.Success(true);
             }
-
-            var resetLink = $"{frontendBaseUrl.TrimEnd('/')}/reset-password?token={token}&email={Uri.EscapeDataString(email)}";
-            await _emailService.SendAsync(
-                email,
-                DbConstants.Email.PasswordResetSubject,
-                string.Format(DbConstants.Email.PasswordResetBodyTemplate, resetLink));
-
-            await _auditLogService.LogAsync(user.Data.Id, "PasswordResetRequested", "User", user.Data.Id.ToString(), null, "Password reset requested");
-
-            return Response.Success();
+            catch (Exception ex)
+            {
+                return Response<bool>.Fail(ex.Message);
+            }
         }
 
-        public async Task<IResponse> ResetPasswordAsync(string token, string newPassword)
+        public async Task<IResponse<bool>> ResetPasswordAsync(string email, string otp, string newPassword)
         {
-            var passwordHash = _passwordHash.HashPassword(newPassword);
-            var result = await _authRepository.ExecuteAsync(
-                ProcedureName,
-                new
-                {
-                    AuthType = DbConstants.AuthTypes.ResetPassword,
-                    TokenHash = TokenHasher.HashToken(token),
-                    PasswordHash = passwordHash,
-                    Now = DateTime.UtcNow
-                });
-
-            if (result.Succeeded && result.Data > 0)
+            try
             {
-                return Response.Success("Password has been reset successfully");
-            }
+                var user = await GetUserByEmailAsync(email);
+                if (user == null || user.Data == null) return Response<bool>.Fail("User not found");
 
-            return Response.Fail("Invalid or expired reset token");
+                var passwordHash = _passwordHash.HashPassword(newPassword);
+                var otpHash = TokenHasher.HashToken(otp);
+                var now = DateTime.UtcNow;
+
+                using var scope = new TransactionScope(TransactionScopeOption.Required, TransactionScopeAsyncFlowOption.Enabled);
+
+                var consumeResult = await _authRepository.QuerySingleAsync<bool>(
+                    ProcedureName,
+                    new
+                    {
+                        AuthType = DbConstants.AuthTypes.EmailOtp,
+                        FIDOOperation = DbConstants.FidoOperations.ConsumeOtp,
+                        UserId = user.Data.Id,
+                        Otp = otpHash,
+                        Now = now
+                    });
+
+                if (!consumeResult.Succeeded || consumeResult.Data != true)
+                {
+                    return Response<bool>.Fail("Invalid or expired OTP");
+                }
+
+                await _authRepository.ExecuteAsync(
+                    ProcedureName,
+                    new
+                    {
+                        AuthType = DbConstants.AuthTypes.ChangePassword,
+                        UserId = user.Data.Id,
+                        PasswordHash = passwordHash,
+                        Now = now
+                    });
+
+                scope.Complete();
+
+                return Response<bool>.Success(true, "Password has been reset successfully");
+            }
+            catch (Exception ex)
+            {
+                return Response<bool>.Fail(ex.Message);
+            }
         }
 
         public async Task<IResponse<string>> GetUserDataExportAsync(int userId)

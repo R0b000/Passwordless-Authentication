@@ -13,18 +13,25 @@ public class Toast
     public string Message { get; init; } = string.Empty;
     public ToastType Type { get; init; } = ToastType.Info;
     public ToastPosition Position { get; init; } = ToastPosition.TopRight;
-    public int DurationMs { get; init; } = 4000;
+    public int DurationMs { get; init; } = 3000;
 }
 
 public class ToasterService
 {
+    public static ToasterService? Current { get; private set; }
+
     private readonly List<Toast> _toasts = new();
     public IReadOnlyList<Toast> Toasts => _toasts.AsReadOnly();
 
     public event Action? OnChanged;
 
+    public ToasterService()
+    {
+        Current = this;
+    }
+
     public void Show(string message, ToastType type = ToastType.Info,
-        ToastPosition position = ToastPosition.TopRight, int durationMs = 4000)
+        ToastPosition position = ToastPosition.TopRight, int durationMs = 3000)
     {
         _toasts.Add(new Toast
         {
@@ -47,6 +54,12 @@ public class ToasterService
 
     public void ShowInfo(string message, ToastPosition position = ToastPosition.TopRight)
         => Show(message, ToastType.Info, position);
+
+    public void Notify(Toast toast)
+    {
+        _toasts.Add(toast);
+        OnChanged?.Invoke();
+    }
 
     public void Remove(Guid id)
     {

@@ -13,13 +13,9 @@ namespace Auth.UI.Manager.Interface.Auth
         Task<IResponse<PrivacySettings>> GetPrivacyAsync();
         Task<IResponse<PrivacySettings>> UpdatePrivacyAsync(PrivacySettings privacy);
         Task<IResponse<AuthResponse>> RegisterAsync(RegisterRequest request);
-        Task<IResponse<bool>> RequestPasswordResetAsync(string email);
-        Task<IResponse<bool>> ResetPasswordAsync(string token, string newPassword);
+        Task<IResponse<bool>> RequestPasswordResetAsync(ForgotPasswordRequest request);
+        Task<IResponse<bool>> ResetPasswordAsync(ResetPasswordRequest request);
         Task<IResponse<string>> DownloadDataAsync();
         Task<IResponse<bool>> DeleteAccountAsync();
     }
 }
-
-
-
-

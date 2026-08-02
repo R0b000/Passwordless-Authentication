@@ -28,7 +28,7 @@ namespace Auth.API.Controller.Rbac
 
         [HttpPost("roles")]
         [Authorize(Policy = "ManageRoles")]
-        public async Task<ActionResult<RoleResponse>> CreateRole([FromBody] CreateRoleRequest request)
+        public async Task<IActionResult> CreateRole([FromBody] CreateRoleRequest request)
         {
             var roleResult = await _roleService.CreateRoleAsync(request.Name, request.Description);
             var role = roleResult.Data;
@@ -48,18 +48,11 @@ namespace Auth.API.Controller.Rbac
 
             var roleDtoResult = await _roleService.GetRoleWithPermissionsAsync(role.Id);
             var roleDto = roleDtoResult.Data;
-            return Ok(new RoleResponse
-            {
-                Id = roleDto!.Id,
-                Name = roleDto.Name,
-                Description = roleDto.Description,
-                Permissions = roleDto.Permissions,
-                Message = "Role created successfully"
-            });
+            return Ok(Response<RoleDto?>.Success(roleDto, "Role created successfully"));
         }
 
         [HttpGet("roles")]
-        public async Task<ActionResult<PaginatedResponse<RoleDto>>> GetAllRoles([FromQuery] int page = 1, [FromQuery] int pageSize = 20)
+        public async Task<IActionResult> GetAllRoles([FromQuery] int page = 1, [FromQuery] int pageSize = 20)
         {
             var allRoles = (await _roleService.GetAllRolesAsync()).Data ?? Enumerable.Empty<Role>();
             var totalCount = allRoles.Count();
@@ -77,17 +70,17 @@ namespace Auth.API.Controller.Rbac
                 }
             }
 
-            return Ok(new PaginatedResponse<RoleDto>
+            return Ok(Response<PaginatedResponse<RoleDto>>.Success(new PaginatedResponse<RoleDto>
             {
                 TotalCount = totalCount,
                 Page = page,
                 PageSize = pageSize,
                 Data = result
-            });
+            }));
         }
 
         [HttpGet("roles/{roleId}")]
-        public async Task<ActionResult<RoleDto>> GetRole(int roleId)
+        public async Task<IActionResult> GetRole(int roleId)
         {
             var roleDto = (await _roleService.GetRoleWithPermissionsAsync(roleId)).Data;
             if (roleDto == null)
@@ -95,12 +88,12 @@ namespace Auth.API.Controller.Rbac
                 return NotFound(WrapperResponse.Fail("Role not found"));
             }
 
-            return Ok(roleDto);
+            return Ok(Response<RoleDto?>.Success(roleDto));
         }
 
         [HttpPost("roles/permissions")]
         [Authorize(Policy = "ManageRoles")]
-        public async Task<ActionResult<IResponse>> AssignPermission([FromBody] AssignPermissionRequest request)
+        public async Task<IActionResult> AssignPermission([FromBody] AssignPermissionRequest request)
         {
             var assigned = await _roleService.AssignPermissionToRoleAsync(request.RoleId, request.PermissionId);
             if (!assigned.Data)
@@ -113,7 +106,7 @@ namespace Auth.API.Controller.Rbac
 
         [HttpDelete("roles/permissions")]
         [Authorize(Policy = "ManageRoles")]
-        public async Task<ActionResult<IResponse>> RemovePermission([FromBody] AssignPermissionRequest request)
+        public async Task<IActionResult> RemovePermission([FromBody] AssignPermissionRequest request)
         {
             var removed = await _roleService.RemovePermissionFromRoleAsync(request.RoleId, request.PermissionId);
             if (!removed.Data)
@@ -126,7 +119,7 @@ namespace Auth.API.Controller.Rbac
 
         [HttpPost("users/roles")]
         [Authorize(Policy = "ManageUsers")]
-        public async Task<ActionResult<IResponse>> AssignRoleToUser([FromBody] AssignRoleRequest request)
+        public async Task<IActionResult> AssignRoleToUser([FromBody] AssignRoleRequest request)
         {
             var assigned = await _userRoleService.AssignRoleToUserAsync(request.UserId, request.RoleId);
             if (!assigned.Data)
@@ -139,7 +132,7 @@ namespace Auth.API.Controller.Rbac
 
         [HttpDelete("users/roles")]
         [Authorize(Policy = "ManageUsers")]
-        public async Task<ActionResult<IResponse>> RemoveRoleFromUser([FromBody] AssignRoleRequest request)
+        public async Task<IActionResult> RemoveRoleFromUser([FromBody] AssignRoleRequest request)
         {
             var removed = await _userRoleService.RemoveRoleFromUserAsync(request.UserId, request.RoleId);
             if (!removed.Data)
@@ -151,21 +144,21 @@ namespace Auth.API.Controller.Rbac
         }
 
         [HttpGet("users/{userId}/roles")]
-        public async Task<ActionResult<IEnumerable<string>>> GetUserRoles(int userId)
+        public async Task<IActionResult> GetUserRoles(int userId)
         {
             var roles = await _userRoleService.GetUserRoleNamesAsync(userId);
-            return Ok(roles.Data);
+            return Ok(Response<IEnumerable<string>?>.Success(roles.Data));
         }
 
         [HttpGet("users/{userId}/permissions")]
-        public async Task<ActionResult<IEnumerable<string>>> GetUserPermissions(int userId)
+        public async Task<IActionResult> GetUserPermissions(int userId)
         {
             var permissions = await _userRoleService.GetUserPermissionNamesAsync(userId);
-            return Ok(permissions.Data);
+            return Ok(Response<IEnumerable<string>?>.Success(permissions.Data));
         }
 
         [HttpGet("users")]
-        public async Task<ActionResult<PaginatedResponse<UserRoleResponse>>> GetAllUsersWithRoles([FromQuery] int page = 1, [FromQuery] int pageSize = 20)
+        public async Task<IActionResult> GetAllUsersWithRoles([FromQuery] int page = 1, [FromQuery] int pageSize = 20)
         {
             var allUsers = (await _userRoleService.GetAllUsersWithRolesAsync()).Data ?? Enumerable.Empty<User>();
             var totalCount = allUsers.Count();
@@ -189,17 +182,17 @@ namespace Auth.API.Controller.Rbac
                 }
             }
 
-            return Ok(new PaginatedResponse<UserRoleResponse>
+            return Ok(Response<PaginatedResponse<UserRoleResponse>>.Success(new PaginatedResponse<UserRoleResponse>
             {
                 TotalCount = totalCount,
                 Page = page,
                 PageSize = pageSize,
                 Data = result
-            });
+            }));
         }
 
         [HttpGet("permissions")]
-        public async Task<ActionResult<PaginatedResponse<PermissionDto>>> GetAllPermissions([FromQuery] int page = 1, [FromQuery] int pageSize = 20)
+        public async Task<IActionResult> GetAllPermissions([FromQuery] int page = 1, [FromQuery] int pageSize = 20)
         {
             var allPermissions = (await _permissionService.GetAllPermissionsAsync()).Data ?? Enumerable.Empty<Permission>();
             var totalCount = allPermissions.Count();
@@ -214,39 +207,13 @@ namespace Auth.API.Controller.Rbac
                 Module = p.Module
             }).ToList();
 
-            return Ok(new PaginatedResponse<PermissionDto>
+            return Ok(Response<PaginatedResponse<PermissionDto>>.Success(new PaginatedResponse<PermissionDto>
             {
                 TotalCount = totalCount,
                 Page = page,
                 PageSize = pageSize,
                 Data = result
-            });
+            }));
         }
     }
-
-    public class RoleResponse
-    {
-        public int Id { get; set; }
-        public string Name { get; set; } = string.Empty;
-        public string? Description { get; set; }
-        public List<string> Permissions { get; set; } = new();
-        public string? Message { get; set; }
-    }
-
-    public class UserRoleResponse
-    {
-        public int UserId { get; set; }
-        public string Username { get; set; } = string.Empty;
-        public string Email { get; set; } = string.Empty;
-        public string? Role { get; set; }
-        public List<string>? Permissions { get; set; }
-    }
-
-    public class AssignPermissionRequest
-    {
-        public int RoleId { get; set; }
-        public int PermissionId { get; set; }
-    }
 }
-
-
