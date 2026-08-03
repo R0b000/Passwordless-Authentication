@@ -1,25 +1,18 @@
 ```
 # Build artifacts
-obj/
 bin/
+obj/
 *.dll
 *.exe
 *.pdb
-*.config
-*.manifest
-*.nupkg
-*.snupkg
-packages/
+*.runtimeconfig.dev.json
 
 # Dependencies
-node_modules/
 packages/
-lib/
-vendor/
+node_modules/
 
 # Logs
 *.log
-logs/
 
 # Environment
 .env
@@ -27,7 +20,6 @@ logs/
 *.env.*
 
 # Editors
-.vs/
 .vscode/
 .idea/
 *.userprefs
@@ -39,8 +31,15 @@ logs/
 # OS generated files
 .DS_Store
 Thumbs.db
-desktop.ini
-$RECYCLE.BIN/
 ehthumbs.db
 Icon?
+desktop.ini
+
+# Testing
+TestResults/
+
+# User-specific files
+.vs/
+*.VC.db
+*.VC.VC.opendb
 ```
