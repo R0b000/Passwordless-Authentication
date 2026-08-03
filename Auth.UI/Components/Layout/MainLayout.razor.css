@@ -1,0 +1,74 @@
+.main-layout {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+.layout-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 2rem;
+    background-color: var(--background-color, #f8f9fa);
+    border-bottom: 1px solid #dee2e6;
+}
+
+.page-title {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--text-color, #212529);
+}
+
+.account-menu-container {
+    position: relative;
+}
+
+.account-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-color: var(--primary-color, #0d6efd);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    cursor: pointer;
+    user-select: none;
+}
+
+.account-avatar:hover {
+    opacity: 0.9;
+}
+
+.account-dropdown {
+    position: absolute;
+    top: 50px;
+    right: 0;
+    background-color: white;
+    border: 1px solid #dee2e6;
+    border-radius: 0.5rem;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    z-index: 1000;
+    min-width: 200px;
+}
+
+.layout-content {
+    flex: 1;
+    padding: 2rem;
+}
+
+@media (max-width: 768px) {
+    .layout-header {
+        padding: 1rem;
+    }
+
+    .page-title {
+        font-size: 1.25rem;
+    }
+
+    .layout-content {
+        padding: 1rem;
+    }
+}
