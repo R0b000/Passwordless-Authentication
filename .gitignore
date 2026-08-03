@@ -1,85 +1,46 @@
-## A streamlined .gitignore for modern .NET projects
-## Optimized for Visual Studio, VS Code, and dotnet CLI tools.
-
-# ==========================================
-# Build results & Output Directories
-# ==========================================
-[Dd]ebug/
-[Dd]ebugPublic/
-[Rr]elease/
-[Rr]eleases/
-x64/
-x86/
-[Ww][Ii][Nn]32/
-[Aa][Rr][Mm]/
-[Aa][Rr][Mm]64/
-bld/
-[Bb]in/
-[Oo]bj/
-[Ll]og/
-[Ll]ogs/
-artifacts/
-
-# ==========================================
-# Tooling & IDE Specifics
-# ==========================================
-# Visual Studio Cache and user preferences
-.vs/
-*.user
-*.userosscache
-*.sln.docstates
-*.suo
-
-# VS Code
-.vscode/
-!.vscode/extensions.json
-!.vscode/launch.json
-
-# JetBrains Rider
-.idea/
-*.sln.iml
-
-# ==========================================
-# .NET Core & Modern .NET Features
-# ==========================================
-project.lock.json
-project.fragment.lock.json
-ScaffoldingReadMe.txt
-
-# .NET User Secrets configuration pointer
-secrets.json
-
-# Local environment variables
-.env
-.env.*
-!.env.example
-
-# ==========================================
-# NuGet Packages & Artifacts
-# ==========================================
+```
+# Build artifacts
+obj/
+bin/
+*.dll
+*.exe
+*.pdb
+*.config
+*.manifest
 *.nupkg
 *.snupkg
-# Include this if you restore packages locally to a project folder
 packages/
 
-# ==========================================
-# Testing & Code Coverage
-# ==========================================
-[Tt]est[Rr]esult*/
-[Bb]uild[Ll]og.*
-*.binlog
-CodeCoverage/
-*.VisualState.xml
-TestResult.xml
-nunit-*.xml
+# Dependencies
+node_modules/
+packages/
+lib/
+vendor/
 
-# ==========================================
-# OS / Miscellaneous
-# ==========================================
-~$*
-*~
+# Logs
+*.log
+logs/
+
+# Environment
+.env
+.env.local
+*.env.*
+
+# Editors
+.vs/
+.vscode/
+.idea/
+*.userprefs
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# OS generated files
 .DS_Store
 Thumbs.db
-.blackboxrules
-.gitignore
-TODO.md
+desktop.ini
+$RECYCLE.BIN/
+ehthumbs.db
+Icon?
+```

@@ -1,16 +1,130 @@
 @namespace Auth.UI.Components.Layout
 @inherits LayoutComponentBase
+@using global::Shared.UI.Components.Menu
+@using global::Shared.UI.Components.Icons
+@using global::Auth.Model.Token
+@using global::Auth.UI.Manager.Interface.Auth
+@using Auth.Model.Models.Account
 
-<nav class="navbar navbar-expand-lg navbar-dark bg-dark px-3">
-    <a class="navbar-brand" href="/">Passwordless Auth</a>
-    <div class="navbar-nav">
-        <a class="nav-link" href="/">Sign in</a>
-        <a class="nav-link" href="/fido2">Passkeys</a>
-        <a class="nav-link" href="/profile">Profile</a>
-        <a class="nav-link" href="/showcase">UI library</a>
+<div class="app-shell">
+    <aside class="app-sidebar">
+        <div class="app-brand">
+            <Icon Name="shield" Size="Icon.IconSize.Small" />
+            <span>Passwordless Auth</span>
+        </div>
+
+        <Menu Items="@MenuItems" OnAction="OnMenuAction" />
+    </aside>
+
+    <div class="app-main">
+        <header class="app-header">
+            <h1 class="app-header-title">@Title</h1>
+
+            <div class="app-account">
+                <button type="button" class="app-account-badge" @onclick="ToggleAccountMenu" aria-haspopup="true" aria-expanded="@AccountMenuOpen">
+                    <span class="app-account-avatar">@AccountInitial</span>
+                    <span>@(Profile?.DisplayName ?? Profile?.Username ?? "Account")</span>
+                </button>
+
+                @if (AccountMenuOpen)
+                {
+                    <div class="app-dropdown-backdrop" @onclick="CloseAccountMenu"></div>
+                    <div class="app-account-dropdown" role="menu">
+                        <button type="button" class="app-dropdown-item" role="menuitem" @onclick="Logout">
+                            <Icon Name="x" Size="Icon.IconSize.Small" />
+                            <span>Sign out</span>
+                        </button>
+                    </div>
+                }
+            </div>
+        </header>
+
+        <main class="app-content">
+            @Body
+        </main>
     </div>
-</nav>
+</div>
 
-<main class="container py-4">
-    @Body
-</main>
+@code {
+    [Inject] private IAccountManager AccountManager { get; set; } = default!;
+    [Inject] private NavigationManager Navigation { get; set; } = default!;
+    [Inject] private ITokenStore TokenStore { get; set; } = default!;
+
+    protected UserProfile? Profile { get; set; }
+    protected bool AccountMenuOpen { get; set; }
+    protected bool _redirectToLogin;
+
+    protected string AccountInitial =>
+        string.IsNullOrEmpty(Profile?.DisplayName) ? "?" : Profile!.DisplayName[0].ToString().ToUpperInvariant();
+
+    protected string Title
+    {
+        get
+        {
+            var path = Navigation.Uri.Replace(Navigation.BaseUri, "/").Split('?')[0];
+            return path switch
+            {
+                "/profile" => "Profile",
+                "/account/settings" => "Account Settings",
+                "/account/security" => "Security",
+                "/account/sessions" => "Active Sessions & Devices",
+                "/account/activity" => "Security Activity",
+                "/account/privacy" => "Privacy",
+                _ => "Account"
+            };
+        }
+    }
+
+    protected List<object> MenuItems { get; set; } = new()
+    {
+        new MenuHeaderItem { Text = "Account" },
+        new MenuLinkItem { Text = "Profile", Url = "/profile", Icon = "user" },
+        new MenuLinkItem { Text = "Settings", Url = "/account/settings", Icon = "sliders" },
+        new MenuLinkItem { Text = "Security", Url = "/account/security", Icon = "shield" },
+        new MenuLinkItem { Text = "Sessions & Devices", Url = "/account/sessions", Icon = "usb" },
+        new MenuLinkItem { Text = "Activity Log", Url = "/account/activity", Icon = "eye" },
+        new MenuLinkItem { Text = "Privacy", Url = "/account/privacy", Icon = "lock" },
+        new MenuDivider(),
+        new MenuActionItem { Text = "Sign out", Icon = "x", Key = "logout" }
+    };
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            if (!await TokenStore.IsAvailableAsync())
+            {
+                return;
+            }
+
+            var token = await TokenStore.GetToken();
+            if (token is null)
+            {
+                Navigation.NavigateTo("/login", replace: true);
+                return;
+            }
+
+            var result = await AccountManager.GetProfileAsync();
+            Profile = result.Succeeded ? result.Data : null;
+        }
+    }
+
+    protected void ToggleAccountMenu() => AccountMenuOpen = !AccountMenuOpen;
+
+    protected void CloseAccountMenu() => AccountMenuOpen = false;
+
+    protected async Task OnMenuAction(MenuActionItem item)
+    {
+        if (item.Key == "logout")
+        {
+            await Logout();
+        }
+    }
+
+    protected async Task Logout()
+    {
+        await TokenStore.Clear();
+        AccountMenuOpen = false;
+        Navigation.NavigateTo("/login", replace: true, forceLoad: true);
+    }
+}
