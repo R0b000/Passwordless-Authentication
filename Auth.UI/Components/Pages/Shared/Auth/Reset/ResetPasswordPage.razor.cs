@@ -1,15 +1,11 @@
-using global::Shared.UI.Components.Toaster;
 using Microsoft.AspNetCore.Components;
 using global::Auth.UI.Manager.Interface.Auth;
 using Auth.Model.Models.Auth;
 
 namespace Auth.UI.Components.Pages.Shared.Auth.Reset
 {
-    public partial class ResetPasswordPage : ComponentBase
+    public partial class ResetPasswordPage 
     {
-        [Inject] private IAccountManager AccountManager { get; set; } = default!;
-        [Inject] private ToasterService Toaster { get; set; } = default!;
-        [Inject] private NavigationManager Navigation { get; set; } = default!;
 
         [SupplyParameterFromQuery]
         public string Email { get; set; } = string.Empty;
@@ -122,7 +118,7 @@ namespace Auth.UI.Components.Pages.Shared.Auth.Reset
 
             if (result.Succeeded)
             {
-                Toaster.ShowSuccess("Password reset successful. Please sign in.");
+Toaster.ShowSuccess("Password reset successful. Please sign in.");
                 Navigation.NavigateTo("/login");
             }
             else

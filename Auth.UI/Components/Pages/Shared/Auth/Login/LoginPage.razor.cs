@@ -1,21 +1,13 @@
-using global::Shared.UI.Components.Modal;
+using global::Auth.UI.Components.Pages.Shared.Auth.Passkey;
+using global::Auth.Model.Models.Auth;
+using static Microsoft.AspNetCore.Components.Web.RenderMode;
 using global::Shared.UI.Components.Toaster;
-using global::Auth.Model.Token;
-using Microsoft.AspNetCore.Components;
-using Microsoft.JSInterop;
-using System.Text.Json.Serialization;
-using global::Auth.UI.Manager.Interface.Auth;
-using Auth.Model.Models.Auth;
+using global::Shared.UI.Components.Modal;
 
 namespace Auth.UI.Components.Pages.Shared.Auth.Login
 {
-    public partial class LoginPage : ComponentBase
+    public partial class LoginPage 
     {
-        [Inject] private IAuthManager AuthManager { get; set; } = default!;
-        [Inject] private NavigationManager NavigationManager { get; set; } = default!;
-        [Inject] private IJSRuntime JsRuntime { get; set; } = default!;
-        [Inject] private ToasterService Toaster { get; set; } = default!;
-        [Inject] private ITokenStore TokenStore { get; set; } = default!;
 
         protected string Mode { get; set; } = "login";
         protected RegisterRequest RegisterModel { get; set; } = new();
@@ -35,8 +27,8 @@ namespace Auth.UI.Components.Pages.Shared.Auth.Login
             {
                 if (await TokenStore.GetToken() is not null)
                 {
-                    _redirectToProfile = true;
-                    NavigationManager.NavigateTo("/profile", replace: true);
+_redirectToProfile = true;
+                    Navigation.NavigateTo("/profile", replace: true);
                 }
             }
         }
@@ -98,8 +90,8 @@ namespace Auth.UI.Components.Pages.Shared.Auth.Login
                 }
                 else
                 {
-                    // Standard login without FIDO2
-                    NavigationManager.NavigateTo("/profile");
+// Standard login without FIDO2
+                    Navigation.NavigateTo("/profile");
                 }
             }
         }
@@ -122,8 +114,8 @@ namespace Auth.UI.Components.Pages.Shared.Auth.Login
         {
             PasskeyVisible = false;
             StatusMessage = string.Empty;
-            // Redirect to profile after successful setup or verification
-            NavigationManager.NavigateTo("/profile");
+// Redirect to profile after successful setup or verification
+            Navigation.NavigateTo("/profile");
         }
 
         protected void HandlePasskeySkipped()
@@ -131,8 +123,8 @@ namespace Auth.UI.Components.Pages.Shared.Auth.Login
             PasskeyVisible = false;
             StatusMessage = string.Empty;
             LoggedInUserId = 0;
-            IsVerificationMode = false;
-            NavigationManager.NavigateTo("/profile");
+IsVerificationMode = false;
+            Navigation.NavigateTo("/profile");
         }
 
         protected async Task OnPasskeyCancel()
@@ -147,9 +139,9 @@ namespace Auth.UI.Components.Pages.Shared.Auth.Login
             {
                 await TokenStore.Clear();
             }
-            else
+else
             {
-                NavigationManager.NavigateTo("/profile");
+                Navigation.NavigateTo("/profile");
             }
         }
     }

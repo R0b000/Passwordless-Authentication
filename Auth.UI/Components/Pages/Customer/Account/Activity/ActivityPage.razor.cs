@@ -1,15 +1,12 @@
 using Microsoft.AspNetCore.Components;
 using global::Shared.UI.Components.Timeline;
-using global::Shared.UI.Components.Toaster;
 using global::Auth.UI.Manager.Interface.Auth;
 using Auth.Model.Models.Security;
 
 namespace Auth.UI.Components.Pages.Customer.Account.Activity
 {
-    public partial class ActivityPage : ComponentBase
+    public partial class ActivityPage 
     {
-        [Inject] private ISecurityManager SecurityManager { get; set; } = default!;
-        [Inject] private ToasterService Toaster { get; set; } = default!;
 
         protected ActivityQuery Query { get; set; } = new();
         protected List<ActivityLogEntry> Entries { get; set; } = new();

@@ -1,4 +1,3 @@
-using global::Shared.UI.Components.Toaster;
 using Microsoft.AspNetCore.Components;
 using global::Auth.UI.Manager.Interface.Auth;
 using Auth.Model.Models.Security;
@@ -6,10 +5,8 @@ using Auth.Model.Models.Account;
 
 namespace Auth.UI.Components.Pages.Customer.Account.Security
 {
-    public partial class SecurityPage : ComponentBase
+    public partial class SecurityPage 
     {
-        [Inject] private ISecurityManager SecurityManager { get; set; } = default!;
-        [Inject] private ToasterService Toaster { get; set; } = default!;
 
         protected SecuritySettingsResponse Settings { get; set; } = new();
         protected ChangePasswordRequest Pw { get; set; } = new();

@@ -1,16 +1,13 @@
-﻿using global::Shared.UI.Components.Menu;
+using global::Shared.UI.Components.Menu;
 using global::Auth.Model.Token;
-using Microsoft.AspNetCore.Components;
 using global::Auth.UI.Manager.Interface.Auth;
 using Auth.Model.Models.Account;
+using Microsoft.AspNetCore.Components;
 
 namespace Auth.UI.Components.Layout
 {
-    public partial class AccountLayout : LayoutComponentBase
+    public partial class MainLayout : LayoutComponentBase
     {
-        [Inject] private IAccountManager AccountManager { get; set; } = default!;
-        [Inject] private NavigationManager Navigation { get; set; } = default!;
-        [Inject] private ITokenStore TokenStore { get; set; } = default!;
 
         protected UserProfile? Profile { get; set; }
         protected bool AccountMenuOpen { get; set; }
@@ -91,6 +88,3 @@ namespace Auth.UI.Components.Layout
         }
     }
 }
-
-
-

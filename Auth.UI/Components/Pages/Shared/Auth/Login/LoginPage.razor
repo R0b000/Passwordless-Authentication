@@ -2,7 +2,7 @@
 @page "/login"
 @namespace Auth.UI.Components.Pages.Shared.Auth.Login
 @using global::Auth.UI.Components.Pages.Shared.Auth.Passkey
-@layout LoginLayout
+@using global::Auth.UI.Components.Pages.Shared.Auth.Login
 @using static Microsoft.AspNetCore.Components.Web.RenderMode
 @rendermode InteractiveServer
 @using global::Shared.UI.Components.Toaster
@@ -27,10 +27,6 @@
 
     <section class="lp-panel">
         <div class="lp-card">
-            @* <div class="lp-brand">
-                <Icon Name="shield" Size="Icon.IconSize.Small" />
-                <span>Passwordless Auth</span>
-            </div> *@
 
             <ul class="lp-tabs" role="tablist">
                 <li>
@@ -40,11 +36,6 @@
                     <button class="lp-tab @(Mode == "register" ? "is-active" : "")" @onclick="@(() => Mode = "register")" type="button">Create account</button>
                 </li>
             </ul>
-
-            @if (!string.IsNullOrEmpty(StatusMessage))
-            {
-                <div class="lp-alert @(Succeeded ? "lp-alert-success" : "lp-alert-danger")" role="alert">@StatusMessage</div>
-            }
 
             @if (Mode == "login")
             {
@@ -74,6 +65,11 @@
                 </div>
 
                 <div class="lp-divider"><span>or log in with</span></div>
+
+                @* @if (!string.IsNullOrEmpty(StatusMessage))
+                {
+                    <div class="lp-alert @(Succeeded ? "lp-alert-success" : "lp-alert-danger")" role="alert">@StatusMessage</div>
+                } *@
 
                 <EditForm Model="@LoginModel" OnValidSubmit="@LoginAsync" FormName="login">
                     <div class="lp-field">

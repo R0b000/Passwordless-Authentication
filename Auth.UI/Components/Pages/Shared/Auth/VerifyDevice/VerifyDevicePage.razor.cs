@@ -1,15 +1,11 @@
-using global::Shared.UI.Components.Toaster;
 using Microsoft.AspNetCore.Components;
 using global::Auth.UI.Manager.Interface.Auth;
 using Auth.Model.Models.Security;
 
 namespace Auth.UI.Components.Pages.Shared.Auth.VerifyDevice
 {
-    public partial class VerifyDevicePage : ComponentBase
+    public partial class VerifyDevicePage 
     {
-        [Inject] private ISecurityManager SecurityManager { get; set; } = default!;
-        [Inject] private ToasterService Toaster { get; set; } = default!;
-        [Inject] private NavigationManager Navigation { get; set; } = default!;
 
         protected string Code { get; set; } = string.Empty;
         protected bool TrustDevice { get; set; }
@@ -34,7 +30,7 @@ namespace Auth.UI.Components.Pages.Shared.Auth.VerifyDevice
 
             if (result.Succeeded)
             {
-                Toaster.ShowSuccess(StatusMessage);
+Toaster.ShowSuccess(StatusMessage);
                 Navigation.NavigateTo("/");
             }
             else

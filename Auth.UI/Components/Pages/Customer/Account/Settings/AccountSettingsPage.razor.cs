@@ -1,14 +1,11 @@
-using global::Shared.UI.Components.Toaster;
 using Microsoft.AspNetCore.Components;
 using global::Auth.UI.Manager.Interface.Auth;
 using Auth.Model.Models.Account;
 
 namespace Auth.UI.Components.Pages.Customer.Account.Settings
 {
-    public partial class AccountSettingsPage : ComponentBase
+    public partial class AccountSettingsPage 
     {
-        [Inject] private IAccountManager AccountManager { get; set; } = default!;
-        [Inject] private ToasterService Toaster { get; set; } = default!;
 
         protected AccountSettings? Settings { get; set; }
         protected string StatusMessage { get; set; } = string.Empty;

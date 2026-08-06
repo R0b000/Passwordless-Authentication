@@ -1,18 +1,13 @@
-using global::Shared.UI.Components.Toaster;
-using global::Auth.Model.Token;
-using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Forms;
-using global::Auth.UI.Manager.Interface.Auth;
+using global::Shared.UI.Components.Upload;
+using global::Shared.UI.Components.Tag;
 using Auth.Model.Models.Account;
+using global::Auth.Model.Models.Auth;
 
 namespace Auth.UI.Components.Pages.Customer.Account.Profile
 {
-    public partial class ProfilePage : ComponentBase
+    public partial class ProfilePage 
     {
-        [Inject] private IAccountManager AccountManager { get; set; } = default!;
-        [Inject] private ToasterService Toaster { get; set; } = default!;
-        [Inject] private ITokenStore TokenStore { get; set; } = default!;
-        [Inject] private NavigationManager Navigation { get; set; } = default!;
 
         protected UserProfile? Model { get; set; }
         protected bool EditMode { get; set; }
@@ -79,7 +74,7 @@ namespace Auth.UI.Components.Pages.Customer.Account.Profile
 
         protected async Task Logout()
         {
-            await TokenStore.Clear();
+await TokenStore.Clear();
             Navigation.NavigateTo("/login", replace: true, forceLoad: true);
         }
     }

@@ -1,14 +1,11 @@
-using global::Shared.UI.Components.Toaster;
 using Microsoft.AspNetCore.Components;
 using global::Auth.UI.Manager.Interface.Auth;
 using Auth.Model.Models.Auth;
 
 namespace Auth.UI.Components.Pages.Shared.Auth.Forgot
 {
-    public partial class ForgotPasswordPage : ComponentBase
+    public partial class ForgotPasswordPage 
     {
-        [Inject] private IAccountManager AccountManager { get; set; } = default!;
-        [Inject] private ToasterService Toaster { get; set; } = default!;
 
         protected ForgotPasswordRequest RequestModel { get; set; } = new();
         protected string StatusMessage { get; set; } = string.Empty;
