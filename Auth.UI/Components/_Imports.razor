@@ -1,10 +1,13 @@
 @using Microsoft.AspNetCore.Components.Web
 @using Microsoft.AspNetCore.Components.Routing
 @using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.AspNetCore.Components
+@using Microsoft.JSInterop
 @using global::Auth.UI.Components
 @using global::Auth.UI.Components.Layout
 @using global::Auth.UI.Components.Pages.Shared
 @using global::Auth.UI.Components.Pages.Customer
+@using global::Auth.UI.Manager.Interface.Auth
 @using global::Shared.UI.Components
 @using global::Shared.UI.Components.Icons
 @using global::Shared.UI.Components.Button
@@ -37,3 +40,12 @@
 @using global::Shared.UI.Components.Drawer
 @using global::Shared.UI.Components.Progress
 @using global::Shared.UI.Components.Skeleton
+@using global::Auth.Model.Token
+
+@inject IAccountManager AccountManager
+@inject IAuthManager AuthManager
+@inject ISecurityManager SecurityManager
+@inject ITokenStore TokenStore
+@inject ToasterService Toaster
+@inject NavigationManager Navigation
+@inject IJSRuntime _js

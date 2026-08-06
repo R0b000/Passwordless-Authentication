@@ -1,18 +1,12 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
+using global::Auth.Model.Models.Auth;
 using System.Text.Json;
-using global::Auth.UI.Manager.Interface.Auth;
-using Auth.Model.Models.Auth;
 
 namespace Auth.UI.Components.Pages.Shared.Auth.Passkey
 {
-    public partial class PasskeySetupPage : ComponentBase
+    public partial class PasskeySetupPage 
     {
-        public enum SetupState { Idle, Processing, Success, Error }
-
-        [Inject] private IAuthManager AuthManager { get; set; } = default!;
-        [Inject] private NavigationManager NavigationManager { get; set; } = default!;
-        [Inject] private IJSRuntime JsRuntime { get; set; } = default!;
 
         [Parameter] public int UserId { get; set; }
         [Parameter] public string Username { get; set; } = string.Empty;
@@ -29,7 +23,7 @@ namespace Auth.UI.Components.Pages.Shared.Auth.Passkey
         {
             if (firstRender)
             {
-                _webAuthnModule = await JsRuntime.InvokeAsync<IJSObjectReference>("import", "./js/webauthn.js");
+                _webAuthnModule = await _js.InvokeAsync<IJSObjectReference>("import", "./js/webauthn.js");
 
                 // Pre-fetch the attestation options so the WebAuthn prompt can run inside the
                 // user gesture that triggers StartRegistrationAsync. Any awaited work between
@@ -43,7 +37,7 @@ namespace Auth.UI.Components.Pages.Shared.Auth.Passkey
         {
             try
             {
-                var origin = new Uri(NavigationManager.BaseUri).GetLeftPart(UriPartial.Authority);
+var origin = new Uri(Navigation.BaseUri).GetLeftPart(UriPartial.Authority);
                 var result = await AuthManager.RequestAttestationOptionsAsync(new Fido2AttestationOptionsRequest
                 {
                     UserId = UserId,
@@ -75,9 +69,9 @@ namespace Auth.UI.Components.Pages.Shared.Auth.Passkey
             State = SetupState.Processing;
             StatusDetail = "Contacting server...";
 
-            var origin = new Uri(NavigationManager.BaseUri).GetLeftPart(UriPartial.Authority);
+var origin = new Uri(Navigation.BaseUri).GetLeftPart(UriPartial.Authority);
 
-            // Options are normally pre-fetched; fall back to a synchronous request only if missing.
+            // Options are normally pre-fetched
             if (_attestationOptions is null)
             {
                 await LoadAttestationOptionsAsync();

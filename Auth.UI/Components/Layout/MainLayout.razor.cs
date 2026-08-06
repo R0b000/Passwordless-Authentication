@@ -8,9 +8,6 @@ namespace Auth.UI.Components.Layout
 {
     public partial class MainLayout : LayoutComponentBase
     {
-        [Inject] private IAccountManager AccountManager { get; set; } = default!;
-        [Inject] private NavigationManager Navigation { get; set; } = default!;
-        [Inject] private ITokenStore TokenStore { get; set; } = default!;
 
         protected UserProfile? Profile { get; set; }
         protected bool AccountMenuOpen { get; set; }

@@ -5,13 +5,8 @@ using Auth.Model.Models.Auth;
 
 namespace Auth.UI.Components.Pages.Shared.Auth.Passkey
 {
-    public partial class PasskeyLoginPage : ComponentBase
+    public partial class PasskeyLoginPage 
     {
-        public enum PasskeyState { Idle, Requesting, Awaiting, Verifying, Success, Error }
-
-        [Inject] private IAuthManager AuthManager { get; set; } = default!;
-        [Inject] private NavigationManager NavigationManager { get; set; } = default!;
-        [Inject] private IJSRuntime JsRuntime { get; set; } = default!;
 
         [Parameter] public int? UserId { get; set; }
         [Parameter] public bool AutoStart { get; set; } = true;
@@ -49,7 +44,7 @@ namespace Auth.UI.Components.Pages.Shared.Auth.Passkey
         {
             if (firstRender)
             {
-                _webAuthnModule = await JsRuntime.InvokeAsync<IJSObjectReference>("import", "./js/webauthn.js");
+                _webAuthnModule = await _js.InvokeAsync<IJSObjectReference>("import", "./js/webauthn.js");
 
                 if (AutoStart && UserId.HasValue)
                 {
@@ -217,7 +212,7 @@ namespace Auth.UI.Components.Pages.Shared.Auth.Passkey
 
             State = PasskeyState.Requesting;
             StatusDetail = "Contacting the server to prepare your passkey challengeâ€¦";
-            var origin = new Uri(NavigationManager.BaseUri).GetLeftPart(UriPartial.Authority);
+var origin = new Uri(Navigation.BaseUri).GetLeftPart(UriPartial.Authority);
 
             try
             {

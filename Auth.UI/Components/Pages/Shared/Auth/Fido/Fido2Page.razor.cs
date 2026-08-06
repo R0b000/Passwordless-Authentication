@@ -1,18 +1,13 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
+using global::Auth.Model.Models.Auth;
+using global::Auth.UI.Components.Pages.Shared.Auth.Passkey;
 using System.Text.Json.Serialization;
-using global::Auth.UI.Manager.Interface.Auth;
-using Auth.Model.Models.Auth;
 
 namespace Auth.UI.Components.Pages.Shared.Auth.Fido
 {
-    public partial class Fido2Page : ComponentBase
+    public partial class Fido2Page 
     {
-        public enum PasskeyState { Idle, Requesting, Awaiting, Verifying, Success, Error }
-
-        [Inject] private IAuthManager AuthManager { get; set; } = default!;
-        [Inject] private NavigationManager NavigationManager { get; set; } = default!;
-        [Inject] private IJSRuntime JsRuntime { get; set; } = default!;
 
         [Parameter] public int? UserIdParam { get; set; }
 
@@ -44,7 +39,7 @@ namespace Auth.UI.Components.Pages.Shared.Auth.Fido
         {
             if (firstRender)
             {
-                _webAuthnModule = await JsRuntime.InvokeAsync<IJSObjectReference>("import", "./js/webauthn.js");
+                _webAuthnModule = await _js.InvokeAsync<IJSObjectReference>("import", "./js/webauthn.js");
 
                 if (UserIdParam.HasValue)
                 {
@@ -128,7 +123,7 @@ namespace Auth.UI.Components.Pages.Shared.Auth.Fido
             State = PasskeyState.Requesting;
             StatusDetail = "Contacting the server to prepare your passkey challengeâ€¦";
 
-            var origin = new Uri(NavigationManager.BaseUri).GetLeftPart(UriPartial.Authority);
+var origin = new Uri(Navigation.BaseUri).GetLeftPart(UriPartial.Authority);
             var result = await AuthManager.CreateFido2ChallengeAsync(UserId, origin);
             if (!result.Succeeded || result.Data is null)
             {
@@ -159,7 +154,7 @@ namespace Auth.UI.Components.Pages.Shared.Auth.Fido
                 VerifyModel.AuthenticatorData = cred.response.authenticatorData;
                 VerifyModel.Signature = cred.response.signature;
                 VerifyModel.UserId = UserId;
-                VerifyModel.Origin = new Uri(NavigationManager.BaseUri).GetLeftPart(UriPartial.Authority);
+VerifyModel.Origin = new Uri(Navigation.BaseUri).GetLeftPart(UriPartial.Authority);
 
                 await VerifyAsync();
             }
@@ -185,8 +180,8 @@ namespace Auth.UI.Components.Pages.Shared.Auth.Fido
             if (result.Succeeded)
             {
                 State = PasskeyState.Success;
-                StatusDetail = result.Data?.Message ?? "You're signed in.";
-                NavigationManager.NavigateTo("/profile");
+StatusDetail = result.Data?.Message ?? "You're signed in.";
+                Navigation.NavigateTo("/profile");
                 return;
             }
 

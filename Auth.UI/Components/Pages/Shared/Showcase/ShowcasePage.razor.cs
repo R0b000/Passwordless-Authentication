@@ -29,13 +29,11 @@ using global::Shared.UI.Components.Table;
 using global::Shared.UI.Components.Steps;
 using global::Shared.UI.Components.Carousel;
 using global::Shared.UI.Components.Menu;
-using global::Shared.UI.Components.Toaster;
 
 namespace Auth.UI.Components.Pages.Shared.Showcase;
 
-public partial class ShowcasePage : ComponentBase
+public partial class ShowcasePage 
 {
-    [Inject] private ToasterService ToasterService { get; set; } = default!;
 
     private Modal _modal = default!;
     private ConfirmationModal _confirm = default!;
@@ -104,7 +102,7 @@ public partial class ShowcasePage : ComponentBase
         };
     }
 
-    private void Notify(string message) => ToasterService.ShowInfo(message);
+    private void Notify(string message) => Toaster.ShowInfo(message);
 
     private Task OpenModal() => _modal.ShowAsync();
     private Task OpenConfirm() => _confirm.ShowAsync();
@@ -112,19 +110,19 @@ public partial class ShowcasePage : ComponentBase
     private async Task SaveAsync()
     {
         await Task.Delay(400);
-        ToasterService.ShowSuccess($"Saved '{ItemName}'");
+        Toaster.ShowSuccess($"Saved '{ItemName}'");
         await _modal.HideAsync();
     }
 
     private Task ConfirmedAsync()
     {
-        ToasterService.ShowDanger("Item deleted");
+        Toaster.ShowDanger("Item deleted");
         return Task.CompletedTask;
     }
 
     private Task DeclinedAsync()
     {
-        ToasterService.ShowWarning("Delete cancelled");
+        Toaster.ShowWarning("Delete cancelled");
         return Task.CompletedTask;
     }
 

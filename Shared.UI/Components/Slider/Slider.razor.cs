@@ -7,7 +7,7 @@ namespace Shared.UI.Components.Slider
 {
     public partial class Slider : ComponentBase
     {
-        [Inject] private IJSRuntime JsRuntime { get; set; } = default!;
+        [Inject] private IJSRuntime _js { get; set; } = default!;
 
         [Parameter] public double Min { get; set; } = 0;
         [Parameter] public double Max { get; set; } = 100;
@@ -34,7 +34,7 @@ namespace Shared.UI.Components.Slider
         {
             if (Disabled) return;
 
-            var bounds = await JsRuntime.InvokeAsync<ElementRect>("getElementRect", _trackElement);
+            var bounds = await _js.InvokeAsync<ElementRect>("getElementRect", _trackElement);
             var ratio = (clientX - bounds.Left) / bounds.Width;
             ratio = Math.Clamp(ratio, 0, 1);
             var rawValue = Min + ratio * (Max - Min);

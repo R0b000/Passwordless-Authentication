@@ -1,15 +1,11 @@
-using global::Shared.UI.Components.Toaster;
 using Microsoft.AspNetCore.Components;
 using global::Auth.UI.Manager.Interface.Auth;
 using Auth.Model.Models.Auth;
 
 namespace Auth.UI.Components.Pages.Shared.Auth.Register
 {
-    public partial class SignupPage : ComponentBase
+    public partial class SignupPage 
     {
-        [Inject] private IAccountManager AccountManager { get; set; } = default!;
-        [Inject] private ToasterService Toaster { get; set; } = default!;
-        [Inject] private NavigationManager Navigation { get; set; } = default!;
 
         protected RegisterRequest Model { get; set; } = new();
         protected string ConfirmPassword { get; set; } = string.Empty;
@@ -68,7 +64,7 @@ namespace Auth.UI.Components.Pages.Shared.Auth.Register
 
             if (result.Succeeded)
             {
-                Toaster.ShowSuccess("Account created. Please sign in.");
+Toaster.ShowSuccess("Account created. Please sign in.");
                 Navigation.NavigateTo("/login");
             }
             else

@@ -1,15 +1,12 @@
 using global::Shared.UI.Components.Modal;
-using global::Shared.UI.Components.Toaster;
 using Microsoft.AspNetCore.Components;
 using global::Auth.UI.Manager.Interface.Auth;
 using Auth.Model.Models.Account;
 
 namespace Auth.UI.Components.Pages.Customer.Account.Privacy
 {
-    public partial class PrivacyPage : ComponentBase
+    public partial class PrivacyPage 
     {
-        [Inject] private IAccountManager AccountManager { get; set; } = default!;
-        [Inject] private ToasterService Toaster { get; set; } = default!;
 
         protected PrivacySettings Settings { get; set; } = new();
         protected string StatusMessage { get; set; } = string.Empty;

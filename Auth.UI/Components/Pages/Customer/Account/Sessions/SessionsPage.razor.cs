@@ -1,14 +1,12 @@
-using global::Shared.UI.Components.Toaster;
 using Microsoft.AspNetCore.Components;
 using global::Auth.UI.Manager.Interface.Auth;
+using global::Shared.UI.Components.Toaster;
 using Auth.Model.Models.Security;
 
 namespace Auth.UI.Components.Pages.Customer.Account.Sessions
 {
-    public partial class SessionsPage : ComponentBase
+    public partial class SessionsPage 
     {
-        [Inject] private ISecurityManager SecurityManager { get; set; } = default!;
-        [Inject] private ToasterService Toaster { get; set; } = default!;
 
         protected List<SessionInfo> SessionItems { get; set; } = new();
 
