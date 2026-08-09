@@ -49,7 +49,7 @@ namespace Auth.UI.Manager.Implementation.Auth
         {
             try
             {
-                var result = await _httpService.PostAsJsonAsync<UserProfile>(AccountRoute.Profile, profile);
+                var result = await _httpService.PutAsJsonAsync<UserProfile>(AccountRoute.Profile, profile);
                 if (result.Succeeded && result.Data is not null)
                 {
                     return Response<UserProfile>.Success(result.Data, "Profile updated");

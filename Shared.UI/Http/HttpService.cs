@@ -96,12 +96,87 @@ namespace Shared.UI.Http
                 throw new ApplicationException(ex.Message);
             }
         }
+        public async Task<IResponse<T>> PutAsJsonAsync<T>(string url, object Data)
+        {
+            try
+            {
+                await SetHeader();
+                var response = await _httpClient.PutAsJsonAsync(url, Data);
+                var responseAsString = await response.Content.ReadAsStringAsync();
+                if (!response.IsSuccessStatusCode)
+                {
+                    if (((int)response.StatusCode) == 401)
+                    {
+                        _navigationManager.NavigateTo("/login", true);
+                    }
+                    else
+                    {
+                        HandleErrorResponse(response);
+                    }
+                }
+                var responseObject = JsonSerializer.Deserialize<Response<T>>(responseAsString, new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true,
+                    ReferenceHandler = ReferenceHandler.Preserve
+                });
+                return responseObject!;
+            }
+            catch (NavigationException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _toastService.ShowWarning(ex.Message);
+                throw new ApplicationException(ex.Message);
+            }
+        }
         public async Task<IResponse<T>> DeleteAsync<T>(string url)
         {
             try
             {
                 await SetHeader();
                 var response = await _httpClient.DeleteAsync(url);
+                var responseAsString = await response.Content.ReadAsStringAsync();
+                if (!response.IsSuccessStatusCode)
+                {
+                    if (((int)response.StatusCode) == 401)
+                    {
+                        _navigationManager.NavigateTo("/login", true);
+                    }
+                    else
+                    {
+                        HandleErrorResponse(response);
+                    }
+                }
+                var responseObject = JsonSerializer.Deserialize<Response<T>>(responseAsString, new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true,
+                    ReferenceHandler = ReferenceHandler.Preserve
+                });
+                return responseObject!;
+            }
+            catch (NavigationException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _toastService.ShowWarning(ex.Message);
+                throw new ApplicationException(ex.Message);
+            }
+        }
+
+        public async Task<IResponse<T>> DeleteAsJsonAsync<T>(string url, object Data)
+        {
+            try
+            {
+                await SetHeader();
+                var request = new HttpRequestMessage(HttpMethod.Delete, url)
+                {
+                    Content = JsonContent.Create(Data)
+                };
+                var response = await _httpClient.SendAsync(request);
                 var responseAsString = await response.Content.ReadAsStringAsync();
                 if (!response.IsSuccessStatusCode)
                 {

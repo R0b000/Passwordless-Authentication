@@ -1,4 +1,4 @@
-﻿using global::Shared.UI.Components.Toaster;
+using global::Shared.UI.Components.Toaster;
 using global::Auth.Model.Token;
 using global::Auth.API.Utility.Auth;
 using global::Shared.UI.Http;
@@ -24,9 +24,10 @@ builder.Services.AddScoped<ITokenStore, ProtectedSessionTokenStore>();
 builder.Services.AddScoped<IHttpServices, HttpServices>();
 builder.Services.AddScoped<IAuthManager, AuthManager>();
 builder.Services.AddScoped<IAccountManager, AccountManager>();
-builder.Services.AddScoped<ISecurityManager, SecurityManager>();
-
-builder.Services.AddScoped<ToasterService>();
+            builder.Services.AddScoped<ISecurityManager, SecurityManager>();
+            builder.Services.AddScoped<IRbacManager, RbacManager>();
+            
+            builder.Services.AddScoped<ToasterService>();
 
 var app = builder.Build();
 

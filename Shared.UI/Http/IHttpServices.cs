@@ -6,7 +6,9 @@ namespace Shared.UI.Http
     {
         Task<IResponse<T>> GetAsync<T>(string url);
         Task<IResponse<T>> PostAsJsonAsync<T>(string url, object Data);
+        Task<IResponse<T>> PutAsJsonAsync<T>(string url, object Data);
         Task<IResponse<T>> DeleteAsync<T>(string url);
+        Task<IResponse<T>> DeleteAsJsonAsync<T>(string url, object Data);
     }
 }
 

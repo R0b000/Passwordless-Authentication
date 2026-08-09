@@ -1,0 +1,107 @@
+@page "/admin/dashboard"
+
+@namespace Auth.UI.Components.Pages.Admin
+@layout MainLayout
+@using global::Shared.UI.Components.Table
+@using global::Shared.UI.Components.Tabs
+@using global::Shared.UI.Components.Modal
+@using global::Shared.UI.Components.Button
+@using global::Shared.UI.Components.Icons
+@using global::Shared.UI.Components.Toaster
+@using global::Auth.Model.Models.Rbac
+
+<PageTitle>Admin Dashboard - Passwordless Auth</PageTitle>
+
+<div class="admin-dashboard">
+    <div class="admin-header mb-4">
+        <h2>Admin Dashboard</h2>
+        <p class="text-muted">Manage system users, role memberships, and security permissions.</p>
+    </div>
+
+    @if (IsLoading)
+    {
+        <div class="d-flex justify-content-center p-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    }
+    else
+    {
+        <Tabs TabItems="@TabItems" ActiveTab="@ActiveTab" ActiveTabChanged="OnTabChanged">
+            <ChildContent>
+                <div class="mt-4">
+                    @if (ActiveTab.Title == "Users")
+                    {
+                        <div class="dashboard-section p-4">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <div>
+                                    <h4>System Users</h4>
+                                    <span class="text-muted small">Manage user roles and authorization.</span>
+                                </div>
+                            </div>
+                            
+                            <Table Items="@Users" Columns="@UserColumns" PageSize="10" />
+                        </div>
+                    }
+                    else if (ActiveTab.Title == "Roles & Permissions")
+                    {
+                        <div class="dashboard-section p-4">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <div>
+                                    <h4>Roles &amp; Access Controls</h4>
+                                    <span class="text-muted small">Overview of available system roles and their assigned permission mappings.</span>
+                                </div>
+                            </div>
+
+                            <Table Items="@Roles" Columns="@RoleColumns" PageSize="10" />
+                        </div>
+                    }
+                    else if (ActiveTab.Title == "Permissions")
+                    {
+                        <div class="dashboard-section p-4">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <div>
+                                    <h4>System Permissions Reference</h4>
+                                    <span class="text-muted small">Granular system operations allowed across modules.</span>
+                                </div>
+                            </div>
+
+                            <Table Items="@Permissions" Columns="@PermissionColumns" PageSize="15" />
+                        </div>
+                    }
+                </div>
+            </ChildContent>
+        </Tabs>
+    }
+</div>
+
+@* Edit User Role Modal *@
+<Modal @ref="RoleModal" Title="Manage User Role" Size="ModalSize.Medium" SubmitText="Save Changes" OnSubmit="SaveUserRoleAsync">
+    <ChildContent>
+        @if (SelectedUser != null)
+        {
+            <div class="mb-3">
+                <label class="form-label font-semibold">User</label>
+                <div class="form-control-plaintext">@SelectedUser.Username (@SelectedUser.Email)</div>
+            </div>
+            <div class="mb-3">
+                <label class="form-label font-semibold">Current Role</label>
+                <div class="form-control-plaintext text-info">@(string.IsNullOrEmpty(SelectedUser.Role) ? "None (Public User)" : SelectedUser.Role)</div>
+            </div>
+            <div class="mb-3">
+                <label class="form-label font-semibold">Assign New Role</label>
+                <select class="form-select form-control" @bind="TargetRoleId">
+                    <option value="0">-- Select Role --</option>
+                    @foreach (var role in Roles)
+                    {
+                        <option value="@role.Id">@role.Name</option>
+                    }
+                </select>
+                <div class="form-text text-muted mt-1">Assigning a new role grants the user the associated set of system permissions.</div>
+            </div>
+        }
+    </ChildContent>
+</Modal>
+
+<Toaster Position="ToastPosition.TopRight" />

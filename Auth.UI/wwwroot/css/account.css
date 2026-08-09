@@ -121,20 +121,29 @@
 .profile-meta {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: .75rem 1.5rem;
-    margin: 1rem 0;
+    gap: 1.25rem 1.5rem;
+    margin: 1.25rem 0;
+}
+
+.profile-meta .meta-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
 }
 
 .profile-meta .meta-item .meta-label {
-    font-size: .76rem;
+    font-size: .78rem;
+    font-weight: 600;
     text-transform: uppercase;
     letter-spacing: .05em;
-    color: var(--lp-muted);
+    color: #6b7a6f;
 }
 
 .profile-meta .meta-item .meta-value {
+    font-size: .95rem;
     font-weight: 600;
     color: #2c3a30;
+    min-height: 1.4rem;
 }
 
 /* ---------- Sessions ---------- */

@@ -45,6 +45,7 @@ namespace Auth.API.Controller.Account
         }
 
         [HttpPut("profile")]
+        [HttpPost("profile")]
         public async Task<IActionResult> UpdateProfile([FromBody] UpdateProfileRequest request)
         {
             var userId = User.GetUserId();

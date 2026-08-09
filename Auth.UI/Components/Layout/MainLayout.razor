@@ -2,25 +2,31 @@
 @inherits LayoutComponentBase
 @using global::Shared.UI.Components.Menu
 @using global::Shared.UI.Components.Icons
+@using global::Shared.UI.Components.Toaster
 @using global::Auth.Model.Token
 @using global::Auth.UI.Manager.Interface.Auth
 @using Auth.Model.Models.Account
 
+<Toaster Position="ToastPosition.TopRight" />
+
 <div class="main-layout">
-    <header class="layout-header">
-        <h1 class="page-title">@Title</h1>
-        <div class="account-menu-container">
-            <div class="account-avatar" @onclick="ToggleAccountMenu">
-                @AccountInitial
-            </div>
-            @if (AccountMenuOpen)
-            {
-                <div class="account-dropdown">
-                    <shared-menu Items="MenuItems" OnAction="OnMenuAction" />
+    @if (!IsAuthPage)
+    {
+        <header class="layout-header">
+            <h1 class="page-title">@Title</h1>
+            <div class="account-menu-container">
+                <div class="account-avatar" @onclick="ToggleAccountMenu">
+                    @AccountInitial
                 </div>
-            }
-        </div>
-    </header>
+                @if (AccountMenuOpen)
+                {
+                    <div class="account-dropdown">
+                        <shared-menu Items="MenuItems" OnAction="OnMenuAction" />
+                    </div>
+                }
+            </div>
+        </header>
+    }
 
     <main class="layout-content">
         @Body
