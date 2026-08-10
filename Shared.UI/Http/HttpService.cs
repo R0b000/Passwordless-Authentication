@@ -37,7 +37,8 @@ namespace Shared.UI.Http
                 {
                     if (((int)response.StatusCode) == 401)
                     {
-                        _navigationManager.NavigateTo("/login", true);
+                        _navigationManager.NavigateTo("/login");
+                        return Response<T>.Fail("Unauthorized");
                     }
                     else
                     {
@@ -57,7 +58,6 @@ namespace Shared.UI.Http
             }
             catch (Exception ex)
             {
-                _toastService.ShowWarning(ex.Message);
                 throw new ApplicationException(ex.Message);
             }
         }
@@ -72,7 +72,8 @@ namespace Shared.UI.Http
                 {
                     if (((int)response.StatusCode) == 401)
                     {
-                        _navigationManager.NavigateTo("/login", true);
+                        _navigationManager.NavigateTo("/login");
+                        return Response<T>.Fail("Unauthorized");
                     }
                     else
                     {
@@ -92,7 +93,6 @@ namespace Shared.UI.Http
             }
             catch (Exception ex)
             {
-                _toastService.ShowWarning(ex.Message);
                 throw new ApplicationException(ex.Message);
             }
         }
@@ -107,7 +107,8 @@ namespace Shared.UI.Http
                 {
                     if (((int)response.StatusCode) == 401)
                     {
-                        _navigationManager.NavigateTo("/login", true);
+                        _navigationManager.NavigateTo("/login");
+                        return Response<T>.Fail("Unauthorized");
                     }
                     else
                     {
@@ -127,7 +128,6 @@ namespace Shared.UI.Http
             }
             catch (Exception ex)
             {
-                _toastService.ShowWarning(ex.Message);
                 throw new ApplicationException(ex.Message);
             }
         }
@@ -142,7 +142,8 @@ namespace Shared.UI.Http
                 {
                     if (((int)response.StatusCode) == 401)
                     {
-                        _navigationManager.NavigateTo("/login", true);
+                        _navigationManager.NavigateTo("/login");
+                        return Response<T>.Fail("Unauthorized");
                     }
                     else
                     {
@@ -162,7 +163,6 @@ namespace Shared.UI.Http
             }
             catch (Exception ex)
             {
-                _toastService.ShowWarning(ex.Message);
                 throw new ApplicationException(ex.Message);
             }
         }
@@ -182,7 +182,8 @@ namespace Shared.UI.Http
                 {
                     if (((int)response.StatusCode) == 401)
                     {
-                        _navigationManager.NavigateTo("/login", true);
+                        _navigationManager.NavigateTo("/login");
+                        return Response<T>.Fail("Unauthorized");
                     }
                     else
                     {
@@ -202,7 +203,6 @@ namespace Shared.UI.Http
             }
             catch (Exception ex)
             {
-                _toastService.ShowWarning(ex.Message);
                 throw new ApplicationException(ex.Message);
             }
         }

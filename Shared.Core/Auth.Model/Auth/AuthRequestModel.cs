@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 
 namespace Auth.Model.Models.Auth
 {
@@ -20,7 +20,6 @@ namespace Auth.Model.Models.Auth
     public class LoginRequest
     {
         [Required]
-        [EmailAddress]
         public string Email { get; set; } = string.Empty;
 
         [Required]

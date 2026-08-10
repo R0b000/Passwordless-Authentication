@@ -21,14 +21,22 @@ namespace Auth.UI.Components.Pages.Shared.Auth.Forgot
                 return;
             }
 
-            IsSubmitting = true;
-            var result = await AccountManager.RequestPasswordResetAsync(RequestModel);
-            IsSubmitting = false;
+            try
+            {
+                IsSubmitting = true;
+                Loader.Show("Sending verification code...");
+                var result = await AccountManager.RequestPasswordResetAsync(RequestModel);
 
-            Succeeded = result.Succeeded;
-            StatusMessage = result.Messages ?? string.Empty;
-            if (result.Succeeded) Toaster.ShowSuccess(StatusMessage);
-            else Toaster.ShowDanger(StatusMessage);
+                Succeeded = result.Succeeded;
+                StatusMessage = result.Messages ?? string.Empty;
+                if (result.Succeeded) Toaster.ShowSuccess(StatusMessage);
+                else Toaster.ShowDanger(StatusMessage);
+            }
+            finally
+            {
+                IsSubmitting = false;
+                Loader.Hide();
+            }
         }
     }
 }

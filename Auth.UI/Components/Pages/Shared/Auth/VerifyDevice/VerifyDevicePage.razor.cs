@@ -19,26 +19,32 @@ namespace Auth.UI.Components.Pages.Shared.Auth.VerifyDevice
 
         protected async Task VerifyAsync()
         {
-            var result = await SecurityManager.VerifyDeviceAsync(new VerifyDeviceRequest
+            try
             {
-                Code = Code,
-                TrustDevice = TrustDevice
-            });
+                Loader.Show("Verifying device...");
+                var result = await SecurityManager.VerifyDeviceAsync(new VerifyDeviceRequest
+                {
+                    Code = Code,
+                    TrustDevice = TrustDevice
+                });
 
-            Succeeded = result.Succeeded;
-            StatusMessage = result.Messages ?? string.Empty;
+                Succeeded = result.Succeeded;
+                StatusMessage = result.Messages ?? string.Empty;
 
-            if (result.Succeeded)
-            {
-Toaster.ShowSuccess(StatusMessage);
-                Navigation.NavigateTo("/");
+                if (result.Succeeded)
+                {
+                    Toaster.ShowSuccess(StatusMessage);
+                    Navigation.NavigateTo("/");
+                }
+                else
+                {
+                    Toaster.ShowDanger(StatusMessage);
+                }
             }
-            else
+            finally
             {
-                Toaster.ShowDanger(StatusMessage);
+                Loader.Hide();
             }
         }
     }
 }
-
-

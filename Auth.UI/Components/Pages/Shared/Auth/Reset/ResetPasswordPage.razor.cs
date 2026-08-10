@@ -103,27 +103,35 @@ namespace Auth.UI.Components.Pages.Shared.Auth.Reset
                 return;
             }
 
-            IsSubmitting = true;
-            var result = await AccountManager.ResetPasswordAsync(new ResetPasswordRequest
+            try
             {
-                Email = Email.Trim(),
-                Otp = RequestModel.Otp.Trim(),
-                NewPassword = RequestModel.NewPassword,
-                ConfirmPassword = RequestModel.ConfirmPassword
-            });
-            IsSubmitting = false;
+                IsSubmitting = true;
+                Loader.Show("Resetting password...");
+                var result = await AccountManager.ResetPasswordAsync(new ResetPasswordRequest
+                {
+                    Email = Email.Trim(),
+                    Otp = RequestModel.Otp.Trim(),
+                    NewPassword = RequestModel.NewPassword,
+                    ConfirmPassword = RequestModel.ConfirmPassword
+                });
 
-            Succeeded = result.Succeeded;
-            StatusMessage = result.Messages ?? string.Empty;
+                Succeeded = result.Succeeded;
+                StatusMessage = result.Messages ?? string.Empty;
 
-            if (result.Succeeded)
-            {
-Toaster.ShowSuccess("Password reset successful. Please sign in.");
-                Navigation.NavigateTo("/login");
+                if (result.Succeeded)
+                {
+                    Toaster.ShowSuccess("Password reset successful. Please sign in.");
+                    Navigation.NavigateTo("/login");
+                }
+                else
+                {
+                    Toaster.ShowDanger(StatusMessage);
+                }
             }
-            else
+            finally
             {
-                Toaster.ShowDanger(StatusMessage);
+                IsSubmitting = false;
+                Loader.Hide();
             }
         }
     }

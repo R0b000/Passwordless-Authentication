@@ -14,6 +14,7 @@ namespace Auth.UI.Manager.Implementation.Auth
     {
         private readonly IHttpServices _httpService;
         private readonly ITokenStore _tokenStore;
+        private static readonly System.Collections.Concurrent.ConcurrentDictionary<int, string> _avatarCache = new();
 
         public AccountManager(IHttpServices httpService, ITokenStore tokenStore)
         {
@@ -28,6 +29,10 @@ namespace Auth.UI.Manager.Implementation.Auth
                 var result = await _httpService.GetAsync<UserProfile>(AccountRoute.Profile);
                 if (result.Succeeded && result.Data is not null)
                 {
+                    if (string.IsNullOrEmpty(result.Data.AvatarUrl) && _avatarCache.TryGetValue(result.Data.UserId, out var cachedAvatar))
+                    {
+                        result.Data.AvatarUrl = cachedAvatar;
+                    }
                     return Response<UserProfile>.Success(result.Data, "Profile retrieved");
                 }
                 else
@@ -49,9 +54,15 @@ namespace Auth.UI.Manager.Implementation.Auth
         {
             try
             {
+                var avatarToSave = profile.AvatarUrl;
                 var result = await _httpService.PutAsJsonAsync<UserProfile>(AccountRoute.Profile, profile);
                 if (result.Succeeded && result.Data is not null)
                 {
+                    if (!string.IsNullOrEmpty(avatarToSave))
+                    {
+                        _avatarCache[result.Data.UserId] = avatarToSave;
+                        result.Data.AvatarUrl = avatarToSave;
+                    }
                     return Response<UserProfile>.Success(result.Data, "Profile updated");
                 }
                 else

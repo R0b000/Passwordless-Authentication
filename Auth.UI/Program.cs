@@ -1,4 +1,5 @@
 using global::Shared.UI.Components.Toaster;
+using global::Shared.UI.Components.Loader;
 using global::Auth.Model.Token;
 using global::Auth.API.Utility.Auth;
 using global::Shared.UI.Http;
@@ -28,6 +29,7 @@ builder.Services.AddScoped<IAccountManager, AccountManager>();
             builder.Services.AddScoped<IRbacManager, RbacManager>();
             
             builder.Services.AddScoped<ToasterService>();
+            builder.Services.AddScoped<LoaderService>();
 
 var app = builder.Build();
 

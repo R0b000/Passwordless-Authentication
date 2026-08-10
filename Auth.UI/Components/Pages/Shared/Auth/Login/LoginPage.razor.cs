@@ -20,6 +20,7 @@ namespace Auth.UI.Components.Pages.Shared.Auth.Login
         protected bool IsVerificationMode { get; set; }
         protected string LoggedInUsername { get; set; } = string.Empty;
         protected bool _redirectToProfile;
+        protected bool IsSubmitting { get; set; }
 
         protected override async Task OnAfterRenderAsync(bool firstRender)
         {
@@ -27,7 +28,7 @@ namespace Auth.UI.Components.Pages.Shared.Auth.Login
             {
                 if (await TokenStore.GetToken() is not null)
                 {
-_redirectToProfile = true;
+                    _redirectToProfile = true;
                     Navigation.NavigateTo("/profile", replace: true);
                 }
             }
@@ -49,50 +50,89 @@ _redirectToProfile = true;
 
         protected async Task RegisterAsync()
         {
+            if (IsSubmitting) return;
             StatusMessage = string.Empty;
 
-            var result = await AuthManager.RegisterAsync(RegisterModel);
-            Succeeded = result.Succeeded;
-            StatusMessage = result.Data?.Message ?? result.Messages ?? "Registration failed";
-
-            if (result.Succeeded && result.Data is not null)
+            try
             {
-                Mode = "login";
-                LoginModel.Email = RegisterModel.Email;
-                StatusMessage = "Registration successful. You can now sign in with your credentials and add a passkey from your profile.";
+                IsSubmitting = true;
+                Loader.Show("Creating your account...");
+
+                var result = await AuthManager.RegisterAsync(RegisterModel);
+                Succeeded = result.Succeeded;
+                StatusMessage = result.Data?.Message ?? result.Messages ?? "Registration failed";
+
+                if (result.Succeeded && result.Data is not null)
+                {
+                    Mode = "login";
+                    LoginModel.Email = RegisterModel.Email;
+                    Toaster.ShowSuccess("Registration successful! You can now log in.");
+                }
+                else
+                {
+                    Toaster.ShowDanger(StatusMessage);
+                }
+            }
+            catch (Exception ex)
+            {
+                Toaster.ShowDanger($"Registration error: {ex.Message}");
+            }
+            finally
+            {
+                IsSubmitting = false;
+                Loader.Hide();
             }
         }
 
         protected async Task LoginAsync()
         {
+            if (IsSubmitting) return;
             StatusMessage = string.Empty;
 
-            var result = await AuthManager.LoginAsync(LoginModel);
-            Succeeded = result.Succeeded;
-            StatusMessage = result.Data?.Message ?? result.Messages ?? "Login failed";
-
-            if (result.Succeeded)
+            try
             {
-                if (result.Data?.RequiresFido2 == true)
+                IsSubmitting = true;
+                Loader.Show("Signing in...");
+
+                var result = await AuthManager.LoginAsync(LoginModel);
+                Succeeded = result.Succeeded;
+                StatusMessage = result.Data?.Message ?? result.Messages ?? "Login failed";
+
+                if (result.Succeeded)
                 {
-                    // EXISTING: User has passkey, needs to VERIFY
-                    LoggedInUserId = result.Data.UserId;
-                    IsVerificationMode = true;
-                    PasskeyVisible = true;
-                }
-                else if (result.Data?.RequiresFido2Registration == true)
-                {
-                    // NEW: User doesn't have passkey, needs to REGISTER
-                    LoggedInUserId = result.Data.UserId;
-                    LoggedInUsername = LoginModel.Email;
-                    IsVerificationMode = false;
-                    PasskeyVisible = true;
+                    Toaster.ShowSuccess("Signed in successfully!");
+
+                    if (result.Data?.RequiresFido2 == true)
+                    {
+                        LoggedInUserId = result.Data.UserId;
+                        IsVerificationMode = true;
+                        PasskeyVisible = true;
+                    }
+                    else if (result.Data?.RequiresFido2Registration == true)
+                    {
+                        LoggedInUserId = result.Data.UserId;
+                        LoggedInUsername = LoginModel.Email;
+                        IsVerificationMode = false;
+                        PasskeyVisible = true;
+                    }
+                    else
+                    {
+                        Navigation.NavigateTo("/profile");
+                    }
                 }
                 else
                 {
-// Standard login without FIDO2
-                    Navigation.NavigateTo("/profile");
+                    Toaster.ShowDanger(StatusMessage);
                 }
+            }
+            catch (Exception ex)
+            {
+                Toaster.ShowDanger($"Login error: {ex.Message}");
+            }
+            finally
+            {
+                IsSubmitting = false;
+                Loader.Hide();
             }
         }
 

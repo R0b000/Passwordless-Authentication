@@ -3,11 +3,13 @@
 @using global::Shared.UI.Components.Menu
 @using global::Shared.UI.Components.Icons
 @using global::Shared.UI.Components.Toaster
+@using global::Shared.UI.Components.Loader
 @using global::Auth.Model.Token
 @using global::Auth.UI.Manager.Interface.Auth
 @using Auth.Model.Models.Account
 
 <Toaster Position="ToastPosition.TopRight" />
+<GlobalLoader />
 
 <div class="main-layout">
     @if (!IsAuthPage)
@@ -16,7 +18,14 @@
             <h1 class="page-title">@Title</h1>
             <div class="account-menu-container">
                 <div class="account-avatar" @onclick="ToggleAccountMenu">
-                    @AccountInitial
+                    @if (!string.IsNullOrWhiteSpace(Profile?.AvatarUrl))
+                    {
+                        <img src="@Profile.AvatarUrl" alt="Avatar" style="width:100%;height:100%;border-radius:50%;object-fit:cover;" />
+                    }
+                    else
+                    {
+                        @AccountInitial
+                    }
                 </div>
                 @if (AccountMenuOpen)
                 {

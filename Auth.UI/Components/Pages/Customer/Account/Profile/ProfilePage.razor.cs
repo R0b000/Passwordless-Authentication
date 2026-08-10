@@ -67,9 +67,26 @@ namespace Auth.UI.Components.Pages.Customer.Account.Profile
             else Toaster.ShowDanger(StatusMessage);
         }
 
-        protected void OnAvatarSelected(IBrowserFile file)
+        protected async Task OnAvatarSelected(IBrowserFile file)
         {
-            Toaster.ShowInfo("Profile picture updated (demo)");
+            if (file is null || Model is null) return;
+            try
+            {
+                var format = file.ContentType;
+                if (string.IsNullOrEmpty(format)) format = "image/png";
+                var resizedFile = await file.RequestImageFileAsync(format, 300, 300);
+                using var stream = resizedFile.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024);
+                using var ms = new MemoryStream();
+                await stream.CopyToAsync(ms);
+                var base64 = Convert.ToBase64String(ms.ToArray());
+                Model.AvatarUrl = $"data:{format};base64,{base64}";
+                Toaster.ShowSuccess("Profile picture updated!");
+                StateHasChanged();
+            }
+            catch (Exception ex)
+            {
+                Toaster.ShowDanger($"Failed to process image: {ex.Message}");
+            }
         }
 
         protected async Task Logout()

@@ -71,10 +71,10 @@
 
                 <EditForm Model="@LoginModel" OnValidSubmit="@LoginAsync" FormName="login">
                     <div class="lp-field">
-                        <label class="lp-label" for="login-id">Email</label>
+                        <label class="lp-label" for="login-id">Email or Username</label>
                         <div class="lp-input">
                             <Icon Name="user" Size="Icon.IconSize.Small" />
-                            <InputText id="login-id" class="lp-control" @bind-Value="LoginModel.Email" placeholder="you@example.com" />
+                            <InputText id="login-id" class="lp-control" @bind-Value="LoginModel.Email" placeholder="you@example.com or username" />
                         </div>
                     </div>
 
@@ -89,7 +89,13 @@
                         </div>
                     </div>
 
-                    <button type="submit" class="lp-submit">Log in</button>
+                    <button type="submit" class="lp-submit" disabled="@IsSubmitting">
+                        @if (IsSubmitting)
+                        {
+                            <span class="ui-spinner" aria-hidden="true" style="margin-right: 0.5rem;"></span>
+                        }
+                        Log in
+                    </button>
                 </EditForm>
 
                 <div class="lp-footer">
@@ -126,7 +132,13 @@
                             </button>
                         </div>
                     </div>
-                    <button type="submit" class="lp-submit">Create account</button>
+                    <button type="submit" class="lp-submit" disabled="@IsSubmitting">
+                        @if (IsSubmitting)
+                        {
+                            <span class="ui-spinner" aria-hidden="true" style="margin-right: 0.5rem;"></span>
+                        }
+                        Create account
+                    </button>
                 </EditForm>
             }
         </div>

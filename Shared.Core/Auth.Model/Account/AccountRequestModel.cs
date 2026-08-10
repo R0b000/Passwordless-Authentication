@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 
 namespace Auth.Model.Models.Account
 {
@@ -9,6 +9,7 @@ namespace Auth.Model.Models.Account
         public string Email { get; set; } = string.Empty;
         public string Phone { get; set; } = string.Empty;
         public string Bio { get; set; } = string.Empty;
+        public string AvatarUrl { get; set; } = string.Empty;
     }
 
     public class UpdateSettingsRequest

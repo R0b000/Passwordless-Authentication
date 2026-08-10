@@ -15,6 +15,7 @@
 @using global::Shared.UI.Components.Breadcrumb
 @using global::Shared.UI.Components.Table
 @using global::Shared.UI.Components.Toaster
+@using global::Shared.UI.Components.Loader
 @using global::Shared.UI.Components.AutocompleteSelect
 @using global::Shared.UI.Components.Graph
 @using global::Shared.UI.Components.Menu
@@ -47,5 +48,6 @@
 @inject ISecurityManager SecurityManager
 @inject ITokenStore TokenStore
 @inject ToasterService Toaster
+@inject LoaderService Loader
 @inject NavigationManager Navigation
 @inject IJSRuntime _js

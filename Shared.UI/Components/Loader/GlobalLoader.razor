@@ -1,0 +1,14 @@
+@namespace Shared.UI.Components.Loader
+
+@if (Service.IsLoading)
+{
+    <div class="ui-global-loader-overlay" role="status" aria-live="polite">
+        <div class="ui-global-loader-card">
+            <span class="ui-global-loader-spinner" aria-hidden="true"></span>
+            @if (!string.IsNullOrWhiteSpace(Service.Message))
+            {
+                <span class="ui-global-loader-message">@Service.Message</span>
+            }
+        </div>
+    </div>
+}

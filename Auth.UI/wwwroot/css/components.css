@@ -1985,3 +1985,42 @@
     0% { background-position: 200% 0; }
     100% { background-position: -200% 0; }
 }
+
+/* ---------- Global Loader Overlay ---------- */
+.ui-global-loader-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 25, 20, 0.45);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    animation: ui-fade-in .2s ease-out;
+}
+
+.ui-global-loader-card {
+    background: #ffffff;
+    border-radius: 14px;
+    padding: 1.25rem 2rem;
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.2);
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.ui-global-loader-spinner {
+    width: 1.5rem;
+    height: 1.5rem;
+    border: 3px solid rgba(60, 123, 77, 0.2);
+    border-top-color: #3c7b4d;
+    border-radius: 50%;
+    display: inline-block;
+    animation: ui-spin .7s linear infinite;
+}
+
+.ui-global-loader-message {
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: #14241a;
+}

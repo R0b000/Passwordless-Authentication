@@ -128,9 +128,16 @@ namespace Auth.API.Service.Implementation.Auth
                 ProcedureName,
                 new { AuthType = DbConstants.AuthTypes.Login, Email = request.Email });
 
+            if (userDetails == null || !userDetails.Succeeded || userDetails.Data == null)
+            {
+                userDetails = await _authRepository.QuerySingleAsync<User>(
+                    ProcedureName,
+                    new { AuthType = DbConstants.AuthTypes.Login, Username = request.Email });
+            }
+
             if (userDetails == null || !userDetails.Succeeded || userDetails.Data == null || string.IsNullOrEmpty(userDetails.Data.PasswordHash))
             {
-                return Response<AuthResponse>.Fail("Invalid email or password");
+                return Response<AuthResponse>.Fail("Invalid email/username or password");
             }
 
             if (!_passwordHash.VerifyPassword(request.Password, userDetails.Data.PasswordHash))
