@@ -14,7 +14,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Test.API\Test.API.csproj" />
+    <ProjectReference Include="..\Shared.Core\Shared.Core.csproj" />
+    <ProjectReference Include="..\Shared.Data\Shared.Data.csproj" />
+    <ProjectReference Include="..\Shared.Database\Shared.Database.csproj" />
   </ItemGroup>
 
 </Project>

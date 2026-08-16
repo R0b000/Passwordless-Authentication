@@ -40,7 +40,8 @@ app.UseStaticFiles();
 app.UseAntiforgery();
 
 app.MapRazorComponents<Auth.UI.Components.App>()
-    .AddInteractiveServerRenderMode();
+    .AddInteractiveServerRenderMode()
+    .AddAdditionalAssemblies(typeof(global::Test.HtmlCode).Assembly);
 
 app.Run();
 

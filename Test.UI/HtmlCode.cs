@@ -2,7 +2,7 @@ namespace Test
 {
     public static class HtmlCode
     {
-        public const string Source = """
+        public static readonly string Source = """
            <!DOCTYPE html>
 <html lang = "en" >
 < head >
@@ -1062,6 +1062,6 @@ background:#0A0A0C; }
 </body>
 </html>
 
-"""
+""";
     }
 }

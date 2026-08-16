@@ -5,7 +5,6 @@
   <Project Path="Shared.Data/Shared.Data.csproj" />
   <Project Path="Shared.Database/Shared.Database.csproj" />
   <Project Path="Shared.UI/Shared.UI.csproj" />
-  <Project Path="Shared.UI/Shared.UI.csproj" />
   <Project Path="Test.API/Test.API.csproj" />
   <Project Path="Test.UI/Test.UI.csproj" />
 </Solution>

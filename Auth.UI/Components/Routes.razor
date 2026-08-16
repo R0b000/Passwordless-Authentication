@@ -2,9 +2,18 @@
 @using Microsoft.AspNetCore.Components.Routing
 @using Microsoft.AspNetCore.Components.Web
 
-<Router AppAssembly="@typeof(App).Assembly">
+<Router AppAssembly="@typeof(App).Assembly" AdditionalAssemblies="rclAssemblies">
     <Found Context="routeData">
         <RouteView RouteData="@routeData" />
         <FocusOnNavigate RouteData="@routeData" Selector="h1" />
     </Found>
 </Router>
+
+@code {
+    // Additional assemblies whose [RouteAttribute] components should be discovered.
+    // Test.UI is a Razor Class Library, so its "/test" page must be registered here.
+    private static readonly System.Reflection.Assembly[] rclAssemblies = new[]
+    {
+        typeof(global::Test.HtmlCode).Assembly
+    };
+}
