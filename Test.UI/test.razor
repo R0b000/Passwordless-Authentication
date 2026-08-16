@@ -1,0 +1,18 @@
+@page "/test"
+@using Test
+@using Microsoft.JSInterop
+@inject IJSRuntime JS
+
+<div>
+    <button class="btn" @onclick="() => handleDownloadClick()">Download PDF</button>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.2/html2pdf.bundle.min.js"></script>
+<script src="./wwwroot/test.js"></script>
+
+@code {
+    private async Task handleDownloadClick()
+    {
+        await JS.InvokeVoidAsync("downloadHtmlAsPdf", HtmlCode.Source, "novapulse.pdf");
+    }
+}
