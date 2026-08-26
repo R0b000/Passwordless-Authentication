@@ -1,4 +1,4 @@
-﻿using global::Shared.UI.Components.Toaster;
+using global::Shared.UI.Components.Toaster;
 using global::Auth.Model.Token;
 using global::Auth.API.Utility.Auth;
 using global::Shared.UI.Http;
@@ -43,4 +43,3 @@ app.MapRazorComponents<Auth.UI.Components.App>()
     .AddInteractiveServerRenderMode();
 
 app.Run();
-

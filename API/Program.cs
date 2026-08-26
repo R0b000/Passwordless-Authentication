@@ -143,8 +143,6 @@ app.UseExceptionHandler(appError =>
     });
 });
 
-// Update RemoteIpAddress / scheme from the proxy so rate limiting and audit
-// logs capture the real client, not the proxy itself.
 app.UseForwardedHeaders(new ForwardedHeadersOptions
 {
     ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
