@@ -151,6 +151,7 @@
         {
             <!-- User HAS a passkey, needs to VERIFY it -->
             <PasskeyLoginPage UserId="@(LoggedInUserId > 0 ? LoggedInUserId : null)"
+                              Email="@LoginModel.Email"
                               AutoStart="false"
                               OnCompleted="HandlePasskeyCompleted" />
         }
