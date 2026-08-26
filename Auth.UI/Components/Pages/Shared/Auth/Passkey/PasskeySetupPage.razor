@@ -1,47 +1,47 @@
-
 @namespace Auth.UI.Components.Pages.Shared.Auth.Passkey
 @using global::Shared.UI.Components.Icons
-<div class="lp-passkey">
+
+<div class="text-center p-2">
     @if (!string.IsNullOrEmpty(StatusMessage))
     {
-        <div class="lp-alert lp-alert-danger" role="alert">@StatusMessage</div>
+        <div class="p-3 mb-4 rounded-xl text-xs bg-red-50 text-red-700 text-left border border-red-100" role="alert">@StatusMessage</div>
     }
     
     @if (State == SetupState.Idle)
     {
-        <div class="lp-passkey-hero">
-            <div class="lp-biometric is-static">
+        <div class="flex flex-col items-center mb-5">
+            <div class="w-14 h-14 rounded-full border-2 border-emerald-100 inline-flex items-center justify-center text-emerald-700 bg-emerald-50 mb-2">
                 <Icon Name="fingerprint" Size="Icon.IconSize.Large" />
             </div>
-            <h2 class="lp-passkey-title">Secure your account</h2>
-            <p class="lp-passkey-sub">Create a passkey for fast, passwordless sign-in next time.</p>
+            <h2 class="text-base font-bold text-emerald-950 mb-0.5">Secure your account</h2>
+            <p class="text-xs text-gray-500 max-w-[280px] mx-auto">Create a passkey for fast, passwordless sign-in next time.</p>
         </div>
-        <button class="lp-submit" @onclick="StartRegistrationAsync" type="button">
+        <button class="w-full py-2 bg-emerald-800 hover:bg-emerald-900 text-white rounded-xl font-bold text-sm shadow-md hover:shadow-lg transition-all active:scale-[0.99] flex items-center justify-center gap-2" @onclick="StartRegistrationAsync" type="button">
             <Icon Name="fingerprint" Size="Icon.IconSize.Small" /> Create Passkey
         </button>
-        <button class="lp-passkey-ghost w-100 mt-2" @onclick="SkipSetup" type="button">
+        <button class="inline-flex items-center justify-center gap-2 w-full py-2 border border-gray-200 rounded-xl bg-white hover:border-emerald-600 transition-colors text-xs font-semibold text-emerald-850 mt-2" @onclick="SkipSetup" type="button">
             Skip for now
         </button>
     }
     else if (State == SetupState.Processing)
     {
-        <div class="lp-passkey-hero">
-            <div class="lp-biometric">
+        <div class="flex flex-col items-center mb-5">
+            <div class="w-14 h-14 rounded-full border-2 border-emerald-100 inline-flex items-center justify-center text-emerald-750 bg-emerald-50 mb-2 animate-pulse">
                 <Icon Name="fingerprint" Size="Icon.IconSize.Large" />
             </div>
-            <h2 class="lp-passkey-title">Follow the prompt</h2>
-            <p class="lp-passkey-sub">@StatusDetail</p>
+            <h2 class="text-base font-bold text-emerald-950 mb-0.5">Follow the prompt</h2>
+            <p class="text-xs text-gray-500 max-w-[280px] mx-auto">@StatusDetail</p>
         </div>
     }
     else if (State == SetupState.Success)
     {
-        <div class="lp-passkey-hero">
-            <div class="lp-biometric is-static is-success">
+        <div class="flex flex-col items-center mb-5">
+            <div class="w-14 h-14 rounded-full border-2 border-green-100 inline-flex items-center justify-center text-green-700 bg-green-50 mb-2">
                 <Icon Name="check-circle" Size="Icon.IconSize.Large" />
             </div>
-            <h2 class="lp-passkey-title">Passkey Created!</h2>
-            <p class="lp-passkey-sub">You can now sign in with your passkey.</p>
+            <h2 class="text-base font-bold text-emerald-950 mb-0.5">Passkey Created!</h2>
+            <p class="text-xs text-gray-500 max-w-[280px] mx-auto">You can now sign in with your passkey.</p>
         </div>
-        <button class="lp-submit" @onclick="FinishSetup" type="button">Continue</button>
+        <button class="w-full py-2 bg-emerald-800 hover:bg-emerald-900 text-white rounded-xl font-bold text-sm shadow-md hover:shadow-lg transition-all active:scale-[0.99]" @onclick="FinishSetup" type="button">Continue</button>
     }
 </div>

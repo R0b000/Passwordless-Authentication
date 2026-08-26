@@ -39,7 +39,8 @@ if (!app.Environment.IsDevelopment())
 app.UseStaticFiles();
 app.UseAntiforgery();
 
-app.MapRazorComponents<Auth.UI.Components.App>()
-    .AddInteractiveServerRenderMode();
+app.MapRazorComponents<UI.Components.App>()
+    .AddInteractiveServerRenderMode()
+    .AddAdditionalAssemblies(typeof(Auth.UI.Components.Layout.MainLayout).Assembly);
 
 app.Run();
