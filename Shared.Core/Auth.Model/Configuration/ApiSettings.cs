@@ -1,4 +1,4 @@
-namespace Auth.API.Configuration
+namespace Auth.Model.Configuration
 {
     /// <summary>
     /// Centralized, strongly typed configuration for API-related settings.

@@ -1,4 +1,4 @@
-namespace Auth.API.Configuration
+namespace Auth.Model.Configuration
 {
     public class SmtpSettings
     {

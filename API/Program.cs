@@ -8,7 +8,7 @@ using Shared.Data.Repository.Interface;
 using Shared.Data.Repository;
 using Shared.Data.Configuration;
 using Auth.API.Middleware;
-using Auth.API.Configuration;
+using Auth.Model.Configuration;
 using Auth.API.Authorization;
 using Auth.API.Utility.Jwt;
 using Auth.API.Utility.PasswordHash;

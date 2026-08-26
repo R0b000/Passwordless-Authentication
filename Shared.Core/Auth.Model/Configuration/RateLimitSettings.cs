@@ -1,4 +1,4 @@
-namespace Auth.API.Configuration
+namespace Auth.Model.Configuration
 {
     /// <summary>
     /// Configuration for the named rate-limiting policies. Bound from the

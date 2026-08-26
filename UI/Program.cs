@@ -13,8 +13,11 @@ builder.Services.AddRazorComponents()
 
 builder.Services.AddHttpClient("ApiGateway", client =>
 {
-    var baseUrl = builder.Configuration["ApiSettings:BaseUrl"] ?? "http://localhost:5000";
+    var baseUrl = builder.Configuration["ApiSettings:BaseUrl"] ?? "https://localhost:5001";
     client.BaseAddress = new Uri(baseUrl);
+}).ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+{
+    ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
 });
 
 

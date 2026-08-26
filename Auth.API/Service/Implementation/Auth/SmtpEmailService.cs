@@ -1,4 +1,4 @@
-using Auth.API.Configuration;
+using Auth.Model.Configuration;
 using Auth.API.Service.Interface.Security;
 using MailKit.Net.Smtp;
 using MailKit.Security;
