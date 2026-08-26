@@ -7,7 +7,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\PasswordlessApi\PasswordlessApi.csproj" />
     <ProjectReference Include="..\Auth.API\Auth.API.csproj" />
   </ItemGroup>
 

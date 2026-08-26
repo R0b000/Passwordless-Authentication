@@ -13,20 +13,9 @@
 <Toaster />
 
 <div class="lp">
-    <section class="lp-art" aria-hidden="true">
-        @if (!PasskeyVisible)
-        {
-            <img src="svg/login.svg" alt="Login" />
-        }
-        else
-        {
-            <img src="svg/biometric.svg" alt="Login" />
-        }
-
-    </section>
-
-    <section class="lp-panel">
-        <div class="lp-card">
+    <div class="lp-container">
+        <section class="lp-panel">
+            <div class="lp-card">
 
             <ul class="lp-tabs" role="tablist">
                 <li>
@@ -133,6 +122,19 @@
             }
         </div>
     </section>
+
+    <section class="lp-art" aria-hidden="true">
+        @if (!PasskeyVisible)
+        {
+            <img src="svg/login.svg" alt="Login" />
+        }
+        else
+        {
+            <img src="svg/biometric.svg" alt="Login" />
+        }
+    </section>
+</div>
+
 
     <Modal @ref="PasskeyModal" Title="@PasskeyModalTitle"
            Size="ModalSize.Medium" ShowSubmitButton="false" CancelText="Close"
