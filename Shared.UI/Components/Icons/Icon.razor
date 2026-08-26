@@ -1,8 +1,17 @@
 @namespace Shared.UI.Components.Icons
 
-<span class="ui-icon @(Size != IconSize.Medium ? $"ui-icon-{Size.ToString().ToLowerInvariant()}" : "")" style="@(Width != null ? $"width:{Width}px;height:{Width}px;" : "")">
+<span class="inline-flex items-center justify-center leading-none text-current @SizeClass" style="@(Width != null ? $"width:{Width}px;height:{Width}px;" : "")">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="@StrokeWidth"
-         stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="@(Name)" class="ui-icon-svg">
+         stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="@(Name)" class="block w-full h-full">
         @((MarkupString)InnerSvg)
     </svg>
 </span>
+
+@code {
+    private string SizeClass => Size switch
+    {
+        IconSize.Small => "w-[0.85em] h-[0.85em]",
+        IconSize.Large => "w-[1.6em] h-[1.6em]",
+        _ => "w-[1.15em] h-[1.15em]" // Medium
+    };
+}

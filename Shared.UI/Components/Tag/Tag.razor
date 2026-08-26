@@ -1,6 +1,6 @@
 @namespace Shared.UI.Components.Tag
 
-<span class="ui-tag ui-tag-@Variant.ToString().ToLowerInvariant()">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 border rounded-lg text-xs font-semibold @VariantClass">
     @if (!string.IsNullOrWhiteSpace(TagIcon))
     {
         <Icon Name="@TagIcon" Size="Icon.IconSize.Small" />
@@ -8,8 +8,20 @@
     <span>@ChildContent</span>
     @if (Closable)
     {
-        <button class="ui-tag-close" @onclick="Close" aria-label="Close">
+        <button class="bg-transparent border-none cursor-pointer p-0 inline-flex text-current opacity-70 hover:opacity-100" @onclick="Close" aria-label="Close">
             <Icon Name="x" Size="Icon.IconSize.Small" />
         </button>
     }
 </span>
+
+@code {
+    private string VariantClass => Variant switch
+    {
+        TagVariant.Primary => "bg-emerald-50 text-emerald-700 border-emerald-200",
+        TagVariant.Success => "bg-green-50 text-green-700 border-green-200",
+        TagVariant.Danger => "bg-red-50 text-red-700 border-red-200",
+        TagVariant.Warning => "bg-amber-50 text-amber-705 border-amber-200",
+        TagVariant.Info => "bg-blue-50 text-blue-700 border-blue-200",
+        _ => "bg-gray-50 text-gray-700 border-gray-200" // Secondary
+    };
+}

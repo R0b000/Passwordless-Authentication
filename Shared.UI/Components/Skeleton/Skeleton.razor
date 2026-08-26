@@ -5,27 +5,27 @@
     {
         @for (int i = 0; i < Lines; i++)
         {
-            <div class="ui-skeleton ui-skeleton-text" style="width:@(100 - (i * 10))%"></div>
+            <div class="animate-pulse bg-gray-200 rounded-xl h-3.5 mb-2" style="width:@(100 - (i * 10))%"></div>
         }
     }
     else if (Variant == SkeletonVariant.Rectangle)
     {
-        <div class="ui-skeleton" style="width:@Width;height:@Height;"></div>
+        <div class="animate-pulse bg-gray-200 rounded-xl" style="width:@Width;height:@Height;"></div>
     }
     else if (Variant == SkeletonVariant.Circle)
     {
-        <div class="ui-skeleton ui-skeleton-avatar"></div>
+        <div class="animate-pulse bg-gray-200 rounded-full w-10 h-10"></div>
     }
     else if (Variant == SkeletonVariant.Image)
     {
-        <div class="ui-skeleton ui-skeleton-image"></div>
+        <div class="animate-pulse bg-gray-200 rounded-xl w-full h-40"></div>
     }
     else if (Variant == SkeletonVariant.Button)
     {
-        <div class="ui-skeleton ui-skeleton-button"></div>
+        <div class="animate-pulse bg-gray-200 rounded-xl w-20 h-9"></div>
     }
     else
     {
-        <div class="ui-skeleton ui-skeleton-text" style="width:100%"></div>
+        <div class="animate-pulse bg-gray-200 rounded-xl h-3.5" style="width:100%"></div>
     }
 </div>

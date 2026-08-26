@@ -1,12 +1,12 @@
 @namespace Shared.UI.Components.Breadcrumb
 
 <nav aria-label="breadcrumb">
-    <ol class="ui-breadcrumb">
+    <ol class="flex flex-wrap items-center gap-1.5 list-none p-2 m-0">
         @for (var i = 0; i < Items.Count; i++)
         {
             var item = Items[i];
             var isLast = i == Items.Count - 1;
-            <li class="ui-breadcrumb-item @(isLast ? "active" : "")">
+            <li class="inline-flex items-center gap-1.5 text-sm @(isLast ? "text-gray-900 font-semibold" : "text-gray-500")">
                 @if (isLast || string.IsNullOrWhiteSpace(item.Url))
                 {
                     if (!string.IsNullOrWhiteSpace(item.Icon))
@@ -21,11 +21,11 @@
                     {
                         <Icon Name="@item.Icon" Size="Icon.IconSize.Small" />
                     }
-                    <a href="@item.Url">@item.Text</a>
+                    <a class="text-emerald-700 hover:underline hover:text-emerald-900" href="@item.Url">@item.Text</a>
                 }
                 @if (!isLast)
                 {
-                    <Icon Name="chevron-right" Size="Icon.IconSize.Small" />
+                    <span class="text-gray-300"><Icon Name="chevron-right" Size="Icon.IconSize.Small" /></span>
                 }
             </li>
         }
