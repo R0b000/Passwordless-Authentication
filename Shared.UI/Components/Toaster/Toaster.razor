@@ -1,16 +1,36 @@
 @namespace Shared.UI.Components.Toaster
 
-<div class="ui-toaster ui-toaster-@Position.ToString().ToLowerInvariant()">
+<div class="fixed z-[1080] flex flex-col gap-2 max-w-[360px] pointer-events-none @PositionClass">
     @foreach (var toast in Toasts)
     {
-        <div class="ui-toast ui-toast-@toast.Type.ToString().ToLowerInvariant()" role="alert">
-            <span class="ui-toast-icon">
+        <div class="pointer-events-auto flex items-start gap-3 bg-white border border-gray-250 border-l-4 rounded-xl shadow-lg p-3.5 text-sm @ToastClass(toast.Type)" role="alert">
+            <span class="inline-flex mt-0.5">
                 <Icon Name="@IconFor(toast.Type)" Size="Icon.IconSize.Small" />
             </span>
-            <span class="ui-toast-message">@toast.Message</span>
-            <button type="button" class="ui-toast-close" aria-label="Close" @onclick="@(() => Service.Remove(toast.Id))">
+            <span class="flex-1 text-gray-700 font-medium">@toast.Message</span>
+            <button type="button" class="text-gray-400 hover:text-gray-800 transition-colors p-0.5 rounded" aria-label="Close" @onclick="@(() => Service.Remove(toast.Id))">
                 <Icon Name="x" Size="Icon.IconSize.Small" />
             </button>
         </div>
     }
 </div>
+
+@code {
+    private string PositionClass => Position switch
+    {
+        ToastPosition.TopLeft => "top-4 left-4",
+        ToastPosition.TopCenter => "top-4 left-1/2 -translate-x-1/2",
+        ToastPosition.BottomLeft => "bottom-4 left-4",
+        ToastPosition.BottomRight => "bottom-4 right-4",
+        ToastPosition.BottomCenter => "bottom-4 left-1/2 -translate-x-1/2",
+        _ => "top-4 right-4" // Default TopRight
+    };
+
+    private string ToastClass(ToastType type) => type switch
+    {
+        ToastType.Success => "border-l-emerald-600 text-emerald-650",
+        ToastType.Warning => "border-l-amber-500 text-amber-600",
+        ToastType.Danger => "border-l-red-500 text-red-600",
+        _ => "border-l-blue-500 text-blue-600"
+    };
+}
