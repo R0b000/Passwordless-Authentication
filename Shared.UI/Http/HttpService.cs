@@ -37,7 +37,7 @@ namespace Shared.UI.Http
                 {
                     if (((int)response.StatusCode) == 401)
                     {
-                        _navigationManager.NavigateTo("/login", true);
+                        _navigationManager.NavigateTo("/login");
                     }
                     else
                     {

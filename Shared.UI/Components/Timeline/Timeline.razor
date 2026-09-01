@@ -1,22 +1,23 @@
 @namespace Shared.UI.Components.Timeline
 
-<div class="ui-timeline">
+<div class="relative pl-6">
+    <div class="absolute left-1.5 top-1 bottom-1 w-0.5 bg-gray-200"></div>
     @foreach (var item in Items)
     {
-        <div class="ui-timeline-item">
-            <div class="ui-timeline-dot" style="background:@(string.IsNullOrWhiteSpace(item.Color) ? "var(--ui-primary)" : item.Color)"></div>
-            <div class="ui-timeline-content">
+        <div class="relative pb-5 last:pb-0">
+            <div class="absolute -left-[21px] top-1.5 w-2.5 h-2.5 rounded-full border-2 border-white bg-emerald-700" style="@(string.IsNullOrWhiteSpace(item.Color) ? "" : $"background-color:{item.Color};")"></div>
+            <div class="text-xs text-gray-700">
                 @if (!string.IsNullOrWhiteSpace(item.Time))
                 {
-                    <div class="ui-timeline-time">@item.Time</div>
+                    <div class="text-[10px] text-gray-400 mb-0.5">@item.Time</div>
                 }
                 @if (!string.IsNullOrWhiteSpace(item.Title))
                 {
-                    <strong>@item.Title</strong>
+                    <strong class="text-gray-900 block mb-0.5">@item.Title</strong>
                 }
                 @if (item.Content is not null)
                 {
-                    <div>@item.Content</div>
+                    <div class="text-gray-500">@item.Content</div>
                 }
             </div>
         </div>

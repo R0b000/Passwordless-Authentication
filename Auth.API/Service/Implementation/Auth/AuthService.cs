@@ -15,7 +15,7 @@ using Auth.API.Service.Interface.Auth;
 using Auth.API.Service.Interface.Rbac;
 using Auth.API.Service.Interface.Security;
 using Auth.API.Config;
-using Auth.API.Configuration;
+using Auth.Model.Configuration;
 using Auth.API.Utility.Http;
 using Auth.API.Utility.Jwt;
 using Auth.API.Utility.OtpGenerator;

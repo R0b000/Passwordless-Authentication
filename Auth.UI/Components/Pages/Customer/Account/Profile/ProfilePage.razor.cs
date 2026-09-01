@@ -27,15 +27,15 @@ namespace Auth.UI.Components.Pages.Customer.Account.Profile
             }
         }
 
-        protected override async Task OnInitializedAsync()
+        protected override Task OnInitializedAsync()
         {
-            var result = await AccountManager.GetProfileAsync();
-            Model = result.Succeeded ? result.Data : new UserProfile();
+            Model = new UserProfile();
+            return Task.CompletedTask;
         }
 
         protected override async Task OnAfterRenderAsync(bool firstRender)
         {
-            if (firstRender && (Model is null || string.IsNullOrEmpty(Model.Username)))
+            if (firstRender)
             {
                 await ReloadAsync();
                 StateHasChanged();

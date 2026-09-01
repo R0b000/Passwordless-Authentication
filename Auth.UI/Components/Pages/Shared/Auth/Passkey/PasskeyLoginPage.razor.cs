@@ -18,7 +18,7 @@ namespace Auth.UI.Components.Pages.Shared.Auth.Passkey
         protected string AssertionOptions { get; set; } = string.Empty;
         protected string StatusDetail { get; set; } = string.Empty;
 
-        protected string Email { get; set; } = string.Empty;
+        [Parameter] public string Email { get; set; } = string.Empty;
         protected bool IsEmailResolved { get; set; }
         protected bool IsResolving { get; set; }
         protected string? ResolvedUsername { get; set; }

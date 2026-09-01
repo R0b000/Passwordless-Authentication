@@ -9,7 +9,7 @@ using Auth.Model.Models.Auth;
 using Shared.Data.Repository.Interface;
 using Shared.Data.Wrapper;
 using Auth.API.Config;
-using Auth.API.Configuration;
+using Auth.Model.Configuration;
 using Auth.API.Service.Interface.Auth;
 
 namespace Auth.API.Service.Implementation.Auth

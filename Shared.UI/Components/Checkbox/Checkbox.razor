@@ -1,6 +1,6 @@
 @namespace Shared.UI.Components.Checkbox
 
-<label class="ui-checkbox @(Disabled ? "is-disabled" : "")">
-    <input type="checkbox" checked="@Checked" disabled="@Disabled" @onchange="OnChanged" />
+<label class="inline-flex items-center gap-2 select-none text-sm text-gray-700 @(Disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer")">
+    <input type="checkbox" checked="@Checked" disabled="@Disabled" @onchange="OnChanged" class="w-4 h-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500" />
     <span>@ChildContent</span>
 </label>

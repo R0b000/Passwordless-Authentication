@@ -1,11 +1,11 @@
 @namespace Shared.UI.Components.Progress
 
-<div class="ui-progress">
-    <div class="ui-progress-track">
-        <div class="ui-progress-bar" style="width:@Percent%"></div>
+<div class="flex flex-col gap-1.5">
+    <div class="h-2 bg-gray-100 rounded-full overflow-hidden">
+        <div class="h-full bg-emerald-600 rounded-full transition-all duration-300" style="width:@Percent%"></div>
     </div>
     @if (ShowLabel)
     {
-        <div class="ui-progress-label">@LabelText</div>
+        <div class="text-xs text-gray-500">@LabelText</div>
     }
 </div>

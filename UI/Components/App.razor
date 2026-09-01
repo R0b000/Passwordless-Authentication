@@ -1,0 +1,26 @@
+@namespace UI.Components
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Passwordless Auth UI</title>
+    <base href="/" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="css/app.css" />
+    <link rel="stylesheet" href="UI.styles.css" />
+</head>
+<body>
+    <Routes />
+    <script src="_framework/blazor.web.js"></script>
+    <script src="webauthn.js"></script>
+    <script>
+        window.getElementRect = function (el) {
+            if (!el) return { left: 0, width: 1 };
+            var r = el.getBoundingClientRect();
+            return { left: r.left, width: r.width };
+        };
+    </script>
+</body>
+</html>

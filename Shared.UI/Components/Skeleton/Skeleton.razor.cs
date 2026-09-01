@@ -17,7 +17,7 @@ namespace Shared.UI.Components.Skeleton
         {
             get
             {
-                var classes = new List<string> { "ui-skeleton-wrapper" };
+                var classes = new List<string>();
                 if (Attributes.TryGetValue("class", out var extra)) classes.Add(extra?.ToString() ?? string.Empty);
                 return string.Join(" ", classes);
             }
