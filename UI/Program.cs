@@ -30,6 +30,7 @@ builder.Services.AddScoped<IAccountManager, AccountManager>();
 builder.Services.AddScoped<ISecurityManager, SecurityManager>();
 
 builder.Services.AddScoped<ToasterService>();
+builder.Services.AddScoped<global::Shared.UI.Components.Loader.LoaderService>();
 
 var app = builder.Build();
 

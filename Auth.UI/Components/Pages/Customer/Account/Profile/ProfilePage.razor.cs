@@ -72,9 +72,16 @@ namespace Auth.UI.Components.Pages.Customer.Account.Profile
             Toaster.ShowInfo("Profile picture updated (demo)");
         }
 
-        protected async Task Logout()
+        protected bool LogoutModalVisible { get; set; }
+
+        protected void Logout()
         {
-await TokenStore.Clear();
+            LogoutModalVisible = true;
+        }
+
+        protected async Task ConfirmLogout()
+        {
+            await TokenStore.Clear();
             Navigation.NavigateTo("/login", replace: true, forceLoad: true);
         }
     }
