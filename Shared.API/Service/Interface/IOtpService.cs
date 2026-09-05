@@ -1,7 +1,7 @@
 using Auth.Model.Models.Auth;
 using Shared.Data.Wrapper;
 
-namespace Auth.API.Service.Interface.Auth
+namespace Shared.API.Service.Interface
 {
     public interface IOtpService
     {

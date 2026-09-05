@@ -38,6 +38,7 @@
     <ProjectReference Include="..\Shared.Core\Shared.Core.csproj" />
     <ProjectReference Include="..\Shared.Data\Shared.Data.csproj" />
     <ProjectReference Include="..\Shared.Database\Shared.Database.csproj" />
+    <ProjectReference Include="..\Shared.API\Shared.API.csproj" />
   </ItemGroup>
 
 </Project>

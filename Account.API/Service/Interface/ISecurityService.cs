@@ -5,7 +5,7 @@ using Auth.API.Config;
 using Auth.API.Utility.PasswordHash;
 using Auth.API.Service.Interface.Security;
 
-namespace Auth.API.Service.Interface.Auth
+namespace Account.API.Service.Interface
 {
     public interface ISecurityService
     {

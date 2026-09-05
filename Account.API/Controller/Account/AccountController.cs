@@ -4,11 +4,13 @@ using Microsoft.AspNetCore.RateLimiting;
 using Auth.API.Config;
 using Auth.API.Middleware;
 using Auth.API.Service.Interface.Auth;
+using Account.API.Service.Interface;
+using Shared.API.Service.Interface;
 using Auth.Model.Models.Account;
 using Auth.Model.Models.Auth;
 using Shared.Data.Wrapper;
 
-namespace Auth.API.Controller.Account
+namespace Account.API.Controller.Account
 {
     [Route("api/[controller]")]
     [ApiController]

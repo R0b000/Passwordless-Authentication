@@ -2,11 +2,13 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Auth.API.Config;
 using Auth.API.Service.Interface.Auth;
+using Account.API.Service.Interface;
+using Shared.API.Service.Interface;
 using Auth.Model.Models.Account;
 using Auth.Model.Models.Security;
 using Shared.Data.Wrapper;
 
-namespace Auth.API.Controller.Security
+namespace Account.API.Controller.Security
 {
     [Route("api/[controller]")]
     [ApiController]

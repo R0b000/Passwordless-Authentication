@@ -1,4 +1,4 @@
-namespace Auth.API.Service.Interface.Security
+namespace Shared.API.Service.Interface
 {
     public interface IEmailService
     {

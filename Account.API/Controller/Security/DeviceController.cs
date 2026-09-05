@@ -5,7 +5,7 @@ using Auth.API.Service.Interface.Auth;
 using Auth.Model.Models.Common;
 using Shared.Data.Wrapper;
 
-namespace Auth.API.Controller.Security
+namespace Account.API.Controller.Security
 {
     [ApiController]
     [Route("api/auth/devices")]

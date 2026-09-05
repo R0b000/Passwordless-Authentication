@@ -12,7 +12,7 @@ using Auth.API.Config;
 using Auth.Model.Configuration;
 using Auth.API.Service.Interface.Auth;
 
-namespace Auth.API.Service.Implementation.Auth
+namespace Auth.API.Service.Implementation.Fido2
 {
     public class Fido2Service : IFido2Service
     {
@@ -82,7 +82,7 @@ namespace Auth.API.Service.Implementation.Auth
             try
             {
                 var config = BuildConfig(origin);
-                var fido2 = new Fido2(config);
+                var fido2 = new Fido2NetLib.Fido2(config);
                 var user = new Fido2User
                 {
                     Id = GetUserHandle(userId),
@@ -187,7 +187,7 @@ namespace Auth.API.Service.Implementation.Auth
 
             try
             {
-                var result = await new Fido2(config).MakeNewCredentialAsync(makeCredentialParams);
+                var result = await new Fido2NetLib.Fido2(config).MakeNewCredentialAsync(makeCredentialParams);
 
                 // DB stores Standard Base64
                 var credentialId = Convert.ToBase64String(result.Id);
@@ -262,7 +262,7 @@ namespace Auth.API.Service.Implementation.Auth
 
                 //Build the config only when required 
                 var config = BuildConfig(origin);
-                var fido2 = new Fido2(config);
+                var fido2 = new Fido2NetLib.Fido2(config);
 
                 var options = fido2.GetAssertionOptions(new GetAssertionOptionsParams
                 {
@@ -417,7 +417,7 @@ namespace Auth.API.Service.Implementation.Auth
 
             try
             {
-                var fido2 = new Fido2(config);
+                var fido2 = new Fido2NetLib.Fido2(config);
                 var result = await fido2.MakeAssertionAsync(makeAssertionParams);
 
                 if (result.SignCount < storedCount)

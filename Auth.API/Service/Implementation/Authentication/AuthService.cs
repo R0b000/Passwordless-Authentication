@@ -12,8 +12,11 @@ using Auth.Model.Models.Rbac;
 using Shared.Data.Repository.Interface;
 using Shared.Data.Wrapper;
 using Auth.API.Service.Interface.Auth;
+
+using Shared.API.Service.Interface;
 using Auth.API.Service.Interface.Rbac;
 using Auth.API.Service.Interface.Security;
+using Shared.API.Service.Interface;
 using Auth.API.Config;
 using Auth.Model.Configuration;
 using Auth.API.Utility.Http;
@@ -22,7 +25,7 @@ using Auth.API.Utility.OtpGenerator;
 using Auth.API.Utility.PasswordHash;
 using Auth.API.Utility.TokenHash;
 
-namespace Auth.API.Service.Implementation.Auth
+namespace Auth.API.Service.Implementation.Authentication
 {
     public class AuthService : IAuthService
     {

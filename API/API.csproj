@@ -8,6 +8,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Auth.API\Auth.API.csproj" />
+    <ProjectReference Include="..\Shared.API\Shared.API.csproj" />
+    <ProjectReference Include="..\Account.API\Account.API.csproj" />
   </ItemGroup>
 
 </Project>

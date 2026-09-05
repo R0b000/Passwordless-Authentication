@@ -1,7 +1,7 @@
 using Auth.Model.Models.Entities;
 using Shared.Data.Wrapper;
 
-namespace Auth.API.Service.Interface.Security
+namespace Shared.API.Service.Interface
 {
     public interface IAuditLogService
     {

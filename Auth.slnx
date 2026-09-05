@@ -7,4 +7,6 @@
   <Project Path="Shared.Database/Shared.Database.csproj" />
   <Project Path="Shared.UI/Shared.UI.csproj" />
   <Project Path="UI/UI.csproj" />
+  <Project Path="Shared.API/Shared.API.csproj" />
+  <Project Path="Account.API/Account.API.csproj" />
 </Solution>

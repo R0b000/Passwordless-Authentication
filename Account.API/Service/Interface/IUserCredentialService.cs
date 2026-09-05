@@ -1,7 +1,7 @@
 using Auth.Model.Models.Entities;
 using Shared.Data.Wrapper;
 
-namespace Auth.API.Service.Interface.Auth
+namespace Account.API.Service.Interface
 {
     public interface IUserCredentialService
     {

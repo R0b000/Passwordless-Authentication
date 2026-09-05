@@ -1,7 +1,7 @@
 using Shared.Data.Wrapper;
 using Auth.Model.Models.Account;
 
-namespace Auth.API.Service.Interface.Auth
+namespace Account.API.Service.Interface
 {
     public interface IUserProfileService
     {
