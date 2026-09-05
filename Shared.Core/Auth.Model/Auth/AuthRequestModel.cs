@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 
 namespace Auth.Model.Models.Auth
 {
@@ -31,6 +31,7 @@ namespace Auth.Model.Models.Auth
     {
         public int UserId { get; set; }
         public string? Origin { get; set; }
+        public string? AppName { get; set; }
     }
 
     public class Fido2AttestationOptionsRequest
@@ -38,6 +39,7 @@ namespace Auth.Model.Models.Auth
         public int UserId { get; set; }
         public string Username { get; set; } = string.Empty;
         public string? Origin { get; set; }
+        public string? AppName { get; set; }
     }
 
     public class Fido2RegisterRequest
@@ -48,6 +50,7 @@ namespace Auth.Model.Models.Auth
         public string AttestationChallenge { get; set; } = string.Empty;
         public string Transports { get; set; } = string.Empty;
         public string? Origin { get; set; }
+        public string? AppName { get; set; }
     }
 
     public class Fido2VerifyRequest
@@ -60,6 +63,7 @@ namespace Auth.Model.Models.Auth
         public long? Counter { get; set; }
         public string Challenge { get; set; } = string.Empty;
         public string? Origin { get; set; }
+        public string? AppName { get; set; }
     }
 
     public class OtpRequest

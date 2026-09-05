@@ -7,6 +7,7 @@ namespace Auth.UI.Components.Pages.Shared.Auth.Passkey
 {
     public partial class PasskeySetupPage 
     {
+        [Inject] public Microsoft.Extensions.Configuration.IConfiguration Configuration { get; set; } = default!;
 
         [Parameter] public int UserId { get; set; }
         [Parameter] public string Username { get; set; } = string.Empty;
@@ -42,7 +43,8 @@ var origin = new Uri(Navigation.BaseUri).GetLeftPart(UriPartial.Authority);
                 {
                     UserId = UserId,
                     Username = Username,
-                    Origin = origin
+                    Origin = origin,
+                    AppName = Configuration["AppName"] ?? "Passwordless Authentication"
                 });
 
                 if (result.Succeeded && result.Data is not null)
@@ -102,7 +104,8 @@ var origin = new Uri(Navigation.BaseUri).GetLeftPart(UriPartial.Authority);
                     AttestationResponse = JsonSerializer.Serialize(cred),
                     AttestationChallenge = _attestationOptions.Challenge,
                     Transports = string.Empty,
-                    Origin = origin
+                    Origin = origin,
+                    AppName = Configuration["AppName"] ?? "Passwordless Authentication"
                 });
 
                 if (verifyResult.Succeeded)
@@ -129,5 +132,6 @@ var origin = new Uri(Navigation.BaseUri).GetLeftPart(UriPartial.Authority);
         protected void FinishSetup() => OnCompleted.InvokeAsync();
     }
 }
+
 
 

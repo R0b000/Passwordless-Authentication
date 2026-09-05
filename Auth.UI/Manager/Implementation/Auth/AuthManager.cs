@@ -169,13 +169,14 @@ namespace Auth.UI.Manager.Implementation.Auth
             }
         }
 
-        public async Task<IResponse<Fido2ChallengeResponse>> CreateFido2ChallengeAsync(int userId, string origin)
+        public async Task<IResponse<Fido2ChallengeResponse>> CreateFido2ChallengeAsync(int userId, string origin, string? appName = null)
         {
             try
             {
                 var param = new Fido2ChallengeRequest { 
                     UserId = userId, 
-                    Origin = origin 
+                    Origin = origin,
+                    AppName = appName
                 };
 
                 var result = await _httpService.PostAsJsonAsync<Fido2ChallengeResponse>(

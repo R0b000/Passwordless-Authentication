@@ -12,10 +12,14 @@ using Auth.Model.Configuration;
 using Auth.API.Authorization;
 using Auth.API.Utility.Jwt;
 using Auth.API.Utility.PasswordHash;
-using Auth.API.Service.Implementation.Auth;
+using Auth.API.Service.Implementation.Authentication;
+using Auth.API.Service.Implementation.Fido2;
+using Account.API.Service.Implementation;
 using Auth.API.Service.Implementation.Rbac;
 using Auth.API.Service.Implementation.Security;
 using Auth.API.Service.Interface.Auth;
+using Shared.API.Service.Interface;
+using Account.API.Service.Interface;
 using Auth.API.Service.Interface.Rbac;
 using Auth.API.Service.Interface.Security;
 

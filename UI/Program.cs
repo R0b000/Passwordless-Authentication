@@ -1,6 +1,5 @@
 using global::Shared.UI.Components.Toaster;
 using global::Auth.Model.Token;
-using global::Auth.API.Utility.Auth;
 using global::Shared.UI.Http;
 using global::Auth.UI.Manager.Implementation.Auth;
 using global::Auth.UI.Manager.Interface.Auth;
@@ -22,7 +21,7 @@ builder.Services.AddHttpClient("ApiGateway", client =>
 
 
 // 3. Register your services
-builder.Services.AddScoped<ITokenHelper, TokenHelper>();
+builder.Services.AddScoped<ITokenHelper, global::Auth.UI.Utility.TokenHelper>();
 builder.Services.AddScoped<ITokenStore, ProtectedSessionTokenStore>();
 builder.Services.AddScoped<IHttpServices, HttpServices>();
 builder.Services.AddScoped<IAuthManager, AuthManager>();

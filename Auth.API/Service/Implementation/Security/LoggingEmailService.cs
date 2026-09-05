@@ -1,4 +1,5 @@
 using Auth.API.Service.Interface.Security;
+using Shared.API.Service.Interface;
 using Microsoft.Extensions.Logging;
 
 namespace Auth.API.Service.Implementation.Security

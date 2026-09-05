@@ -8,6 +8,7 @@ namespace Auth.UI.Components.Pages.Shared.Auth.Fido
 {
     public partial class Fido2Page 
     {
+        [Inject] public Microsoft.Extensions.Configuration.IConfiguration Configuration { get; set; } = default!;
 
         [Parameter] public int? UserIdParam { get; set; }
 
@@ -124,7 +125,7 @@ namespace Auth.UI.Components.Pages.Shared.Auth.Fido
             StatusDetail = "Contacting the server to prepare your passkey challengeâ€¦";
 
 var origin = new Uri(Navigation.BaseUri).GetLeftPart(UriPartial.Authority);
-            var result = await AuthManager.CreateFido2ChallengeAsync(UserId, origin);
+            var result = await AuthManager.CreateFido2ChallengeAsync(UserId, origin, Configuration["AppName"]);
             if (!result.Succeeded || result.Data is null)
             {
                 State = PasskeyState.Error;
@@ -202,5 +203,7 @@ StatusDetail = result.Data?.Message ?? "You're signed in.";
         }
     }
 }
+
+
 
 
