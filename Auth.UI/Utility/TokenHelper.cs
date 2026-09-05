@@ -1,6 +1,6 @@
-﻿using Auth.Model.Token;
+using Auth.Model.Token;
 
-namespace Auth.API.Utility.Auth
+namespace Auth.UI.Utility
 {
     public class TokenHelper : ITokenHelper
     {

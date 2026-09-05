@@ -309,7 +309,7 @@ namespace Auth.API.Service.Implementation.Authentication
         {
             try
             {
-                return Response<Fido2ChallengeResponse>.Success((await _fido2Service.RequestAttestationOptionsAsync(request.UserId, request.Username, request.Origin ?? string.Empty)).Data);
+                return Response<Fido2ChallengeResponse>.Success((await _fido2Service.RequestAttestationOptionsAsync(request.UserId, request.Username, request.Origin ?? string.Empty, request.AppName)).Data);
             }
             catch (Exception ex)
             {
@@ -321,7 +321,7 @@ namespace Auth.API.Service.Implementation.Authentication
         {
             try
             {
-                return Response<Fido2VerifyResponse>.Success((await _fido2Service.RegisterCredentialAsync(request, request.Origin ?? string.Empty)).Data);
+                return Response<Fido2VerifyResponse>.Success((await _fido2Service.RegisterCredentialAsync(request, request.Origin ?? string.Empty, request.AppName)).Data);
             }
             catch (Exception ex)
             {
@@ -333,7 +333,7 @@ namespace Auth.API.Service.Implementation.Authentication
         {
             try
             {
-                var response = (await _fido2Service.CreateChallengeAsync(request.UserId, request.Origin ?? string.Empty));
+                var response = (await _fido2Service.CreateChallengeAsync(request.UserId, request.Origin ?? string.Empty, request.AppName));
                 if (response != null)
                 {
                     return Response<Fido2ChallengeResponse>.Success(response.Data);
@@ -353,7 +353,7 @@ namespace Auth.API.Service.Implementation.Authentication
         {
             try
             {
-                var response = await _fido2Service.VerifyAssertionAsync(request);
+                var response = await _fido2Service.VerifyAssertionAsync(request, request.AppName);
 
                 if (response == null || !response.Succeeded || response.Data == null)
                 {

@@ -57,7 +57,7 @@ namespace Auth.API.Service.Implementation.Fido2
             return domain;
         }
 
-        private Fido2Configuration BuildConfig(string origin)
+        private Fido2Configuration BuildConfig(string origin, string? appName = null)
         {
             var rpId = string.IsNullOrEmpty(origin)
                 ? _apiSettings.ResolveServerDomain()
@@ -70,18 +70,18 @@ namespace Auth.API.Service.Implementation.Fido2
             return new Fido2Configuration
             {
                 ServerDomain = rpId,
-                ServerName = _apiSettings.ServerName,
+                ServerName = !string.IsNullOrEmpty(appName) ? appName : _apiSettings.ServerName,
                 TimestampDriftTolerance = 300,
                 ChallengeSize = 32,
                 Origins = origins
             };
         }
 
-        public async Task<IResponse<Fido2ChallengeResponse>> RequestAttestationOptionsAsync(int userId, string username, string origin)
+        public async Task<IResponse<Fido2ChallengeResponse>> RequestAttestationOptionsAsync(int userId, string username, string origin, string? appName = null)
         {
             try
             {
-                var config = BuildConfig(origin);
+                var config = BuildConfig(origin, appName);
                 var fido2 = new Fido2NetLib.Fido2(config);
                 var user = new Fido2User
                 {
@@ -125,7 +125,7 @@ namespace Auth.API.Service.Implementation.Fido2
             }
         }
 
-        public async Task<IResponse<Fido2VerifyResponse>> RegisterCredentialAsync(Fido2RegisterRequest request, string origin)
+        public async Task<IResponse<Fido2VerifyResponse>> RegisterCredentialAsync(Fido2RegisterRequest request, string origin, string? appName = null)
         {
             if (request.UserId <= 0)
             {
@@ -143,7 +143,7 @@ namespace Auth.API.Service.Implementation.Fido2
             }
 
             var originalChallenge = Convert.FromBase64String(stored.Challenge);
-            var config = BuildConfig(origin);
+            var config = BuildConfig(origin, appName);
 
             var originalOptions = CredentialCreateOptions.Create(
                 config,
@@ -227,7 +227,7 @@ namespace Auth.API.Service.Implementation.Fido2
             }
         }
 
-        public async Task<IResponse<Fido2ChallengeResponse>> CreateChallengeAsync(int userId, string origin)
+        public async Task<IResponse<Fido2ChallengeResponse>> CreateChallengeAsync(int userId, string origin, string? appName = null)
         {
             try
             {
@@ -261,7 +261,7 @@ namespace Auth.API.Service.Implementation.Fido2
                 }).ToList();
 
                 //Build the config only when required 
-                var config = BuildConfig(origin);
+                var config = BuildConfig(origin, appName);
                 var fido2 = new Fido2NetLib.Fido2(config);
 
                 var options = fido2.GetAssertionOptions(new GetAssertionOptionsParams
@@ -299,7 +299,7 @@ namespace Auth.API.Service.Implementation.Fido2
             }
         }
 
-        public async Task<IResponse<Fido2VerifyResponse>> VerifyAssertionAsync(Fido2VerifyRequest request)
+        public async Task<IResponse<Fido2VerifyResponse>> VerifyAssertionAsync(Fido2VerifyRequest request, string? appName = null)
         {
             if (request.UserId <= 0)
             {
@@ -364,7 +364,7 @@ namespace Auth.API.Service.Implementation.Fido2
                 );
             }).ToList();
 
-            var config = BuildConfig(request.Origin ?? string.Empty);
+            var config = BuildConfig(request.Origin ?? string.Empty, appName ?? request.AppName);
             var originalOptions = string.IsNullOrEmpty(storedChallenge.AssertionOptionsJson)
                 ? AssertionOptions.Create(
                     config,

@@ -7,6 +7,7 @@ namespace Auth.UI.Components.Pages.Shared.Auth.Passkey
 {
     public partial class PasskeyLoginPage 
     {
+        [Inject] public Microsoft.Extensions.Configuration.IConfiguration Configuration { get; set; } = default!;
 
         [Parameter] public int? UserId { get; set; }
         [Parameter] public bool AutoStart { get; set; } = true;
@@ -160,7 +161,7 @@ namespace Auth.UI.Components.Pages.Shared.Auth.Passkey
         //    StatusDetail = "Contacting the server to prepare your passkey challengeâ€¦";
 
         //    var origin = new Uri(NavigationManager.BaseUri).GetLeftPart(UriPartial.Authority);
-        //    var result = await AuthManager.CreateFido2ChallengeAsync(ResolvedUserId, origin);
+        //    var result = await AuthManager.CreateFido2ChallengeAsync(ResolvedUserId, origin, Configuration["AppName"]);
         //    if (!result.Succeeded || result.Data is null)
         //    {
         //        State = PasskeyState.Error;
@@ -216,7 +217,7 @@ var origin = new Uri(Navigation.BaseUri).GetLeftPart(UriPartial.Authority);
 
             try
             {
-                var result = await AuthManager.CreateFido2ChallengeAsync(ResolvedUserId, origin);
+                var result = await AuthManager.CreateFido2ChallengeAsync(ResolvedUserId, origin, Configuration["AppName"]);
 
                 if (!result.Succeeded || result.Data is null)
                 {
@@ -247,6 +248,7 @@ var origin = new Uri(Navigation.BaseUri).GetLeftPart(UriPartial.Authority);
                     VerifyModel.Signature = cred.response.signature;
                     VerifyModel.UserId = ResolvedUserId;
                     VerifyModel.Origin = origin;
+                    VerifyModel.AppName = Configuration["AppName"] ?? "Passwordless Authentication";
 
                     await VerifyAsync();
                 }
@@ -295,5 +297,7 @@ var origin = new Uri(Navigation.BaseUri).GetLeftPart(UriPartial.Authority);
         }
     }
 }
+
+
 
 
