@@ -1,6 +1,21 @@
 namespace Shared.UI.Components.Toaster;
 
-public enum ToastType { Success, Warning, Danger, Info }
+public enum ToastLevel { Success, Warning, Danger, Info }
+
+public static class ToastType
+{
+    public static Toast Success(string message, ToastPosition position = ToastPosition.TopRight, int durationMs = 3000)
+        => new Toast { Message = message, Type = ToastLevel.Success, Position = position, DurationMs = durationMs };
+
+    public static Toast Warning(string message, ToastPosition position = ToastPosition.TopRight, int durationMs = 3000)
+        => new Toast { Message = message, Type = ToastLevel.Warning, Position = position, DurationMs = durationMs };
+
+    public static Toast Danger(string message, ToastPosition position = ToastPosition.TopRight, int durationMs = 3000)
+        => new Toast { Message = message, Type = ToastLevel.Danger, Position = position, DurationMs = durationMs };
+
+    public static Toast Info(string message, ToastPosition position = ToastPosition.TopRight, int durationMs = 3000)
+        => new Toast { Message = message, Type = ToastLevel.Info, Position = position, DurationMs = durationMs };
+}
 
 public enum ToastPosition
 {
@@ -11,7 +26,7 @@ public class Toast
 {
     public Guid Id { get; init; } = Guid.NewGuid();
     public string Message { get; init; } = string.Empty;
-    public ToastType Type { get; init; } = ToastType.Info;
+    public ToastLevel Type { get; init; } = ToastLevel.Info;
     public ToastPosition Position { get; init; } = ToastPosition.TopRight;
     public int DurationMs { get; init; } = 3000;
 }
@@ -30,7 +45,7 @@ public class ToasterService
         Current = this;
     }
 
-    public void Show(string message, ToastType type = ToastType.Info,
+    public void Show(string message, ToastLevel type = ToastLevel.Info,
         ToastPosition position = ToastPosition.TopRight, int durationMs = 3000)
     {
         _toasts.Add(new Toast
@@ -44,16 +59,16 @@ public class ToasterService
     }
 
     public void ShowSuccess(string message, ToastPosition position = ToastPosition.TopRight)
-        => Show(message, ToastType.Success, position);
+        => Show(message, ToastLevel.Success, position);
 
     public void ShowWarning(string message, ToastPosition position = ToastPosition.TopRight)
-        => Show(message, ToastType.Warning, position);
+        => Show(message, ToastLevel.Warning, position);
 
     public void ShowDanger(string message, ToastPosition position = ToastPosition.TopRight)
-        => Show(message, ToastType.Danger, position);
+        => Show(message, ToastLevel.Danger, position);
 
     public void ShowInfo(string message, ToastPosition position = ToastPosition.TopRight)
-        => Show(message, ToastType.Info, position);
+        => Show(message, ToastLevel.Info, position);
 
     public void Notify(Toast toast)
     {

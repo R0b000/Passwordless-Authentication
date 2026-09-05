@@ -26,11 +26,11 @@
         _ => "top-4 right-4" // Default TopRight
     };
 
-    private string ToastClass(ToastType type) => type switch
+    private string ToastClass(ToastLevel type) => type switch
     {
-        ToastType.Success => "border-l-emerald-600 text-emerald-650",
-        ToastType.Warning => "border-l-amber-500 text-amber-600",
-        ToastType.Danger => "border-l-red-500 text-red-600",
+        ToastLevel.Success => "border-l-emerald-600 text-emerald-650",
+        ToastLevel.Warning => "border-l-amber-500 text-amber-600",
+        ToastLevel.Danger => "border-l-red-500 text-red-600",
         _ => "border-l-blue-500 text-blue-600"
     };
 }

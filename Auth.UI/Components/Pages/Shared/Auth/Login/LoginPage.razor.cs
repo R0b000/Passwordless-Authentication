@@ -49,50 +49,75 @@ _redirectToProfile = true;
 
         protected async Task RegisterAsync()
         {
-            StatusMessage = string.Empty;
-
-            var result = await AuthManager.RegisterAsync(RegisterModel);
-            Succeeded = result.Succeeded;
-            StatusMessage = result.Data?.Message ?? result.Messages ?? "Registration failed";
-
-            if (result.Succeeded && result.Data is not null)
+            loader.Show();
+            try
             {
-                Mode = "login";
-                LoginModel.Email = RegisterModel.Email;
-                StatusMessage = "Registration successful. You can now sign in with your credentials and add a passkey from your profile.";
+                StatusMessage = string.Empty;
+
+                var result = await AuthManager.RegisterAsync(RegisterModel);
+                Succeeded = result.Succeeded;
+                StatusMessage = result.Data?.Message ?? result.Messages ?? "Registration failed";
+
+                if (result.Succeeded && result.Data is not null)
+                {
+                    Mode = "login";
+                    LoginModel.Email = RegisterModel.Email;
+                    StatusMessage = "Registration successful. You can now sign in with your credentials and add a passkey from your profile.";
+                    Toaster.ShowSuccess(StatusMessage);
+                }
+                else
+                {
+                    Toaster.ShowDanger(StatusMessage);
+                }
+            }
+            finally
+            {
+                loader.Hide();
             }
         }
 
         protected async Task LoginAsync()
         {
-            StatusMessage = string.Empty;
-
-            var result = await AuthManager.LoginAsync(LoginModel);
-            Succeeded = result.Succeeded;
-            StatusMessage = result.Data?.Message ?? result.Messages ?? "Login failed";
-
-            if (result.Succeeded)
+            loader.Show();
+            try
             {
-                if (result.Data?.RequiresFido2 == true)
+                StatusMessage = string.Empty;
+
+                var result = await AuthManager.LoginAsync(LoginModel);
+                Succeeded = result.Succeeded;
+                StatusMessage = result.Data?.Message ?? result.Messages ?? "Login failed";
+
+                if (result.Succeeded)
                 {
-                    // EXISTING: User has passkey, needs to VERIFY
-                    LoggedInUserId = result.Data.UserId;
-                    IsVerificationMode = true;
-                    PasskeyVisible = true;
-                }
-                else if (result.Data?.RequiresFido2Registration == true)
-                {
-                    // NEW: User doesn't have passkey, needs to REGISTER
-                    LoggedInUserId = result.Data.UserId;
-                    LoggedInUsername = LoginModel.Email;
-                    IsVerificationMode = false;
-                    PasskeyVisible = true;
+                    if (result.Data?.RequiresFido2 == true)
+                    {
+                        // EXISTING: User has passkey, needs to VERIFY
+                        LoggedInUserId = result.Data.UserId;
+                        IsVerificationMode = true;
+                        PasskeyVisible = true;
+                    }
+                    else if (result.Data?.RequiresFido2Registration == true)
+                    {
+                        // NEW: User doesn't have passkey, needs to REGISTER
+                        LoggedInUserId = result.Data.UserId;
+                        LoggedInUsername = LoginModel.Email;
+                        IsVerificationMode = false;
+                        PasskeyVisible = true;
+                    }
+                    else
+                    {
+                        // Standard login without FIDO2
+                        Navigation.NavigateTo("/profile");
+                    }
                 }
                 else
                 {
-// Standard login without FIDO2
-                    Navigation.NavigateTo("/profile");
+                    Toaster.ShowDanger(StatusMessage);
                 }
+            }
+            finally
+            {
+                loader.Hide();
             }
         }
 
@@ -114,7 +139,8 @@ _redirectToProfile = true;
         {
             PasskeyVisible = false;
             StatusMessage = string.Empty;
-// Redirect to profile after successful setup or verification
+            // Redirect to profile after successful setup or verification
+            Toaster.ShowSuccess("Login successful!");
             Navigation.NavigateTo("/profile");
         }
 
@@ -123,7 +149,7 @@ _redirectToProfile = true;
             PasskeyVisible = false;
             StatusMessage = string.Empty;
             LoggedInUserId = 0;
-IsVerificationMode = false;
+            IsVerificationMode = false;
             Navigation.NavigateTo("/profile");
         }
 

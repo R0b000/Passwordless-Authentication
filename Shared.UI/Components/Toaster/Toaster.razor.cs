@@ -10,7 +10,7 @@ public partial class Toaster : ComponentBase, IDisposable
     [Parameter] public ToastPosition Position { get; set; } = ToastPosition.TopRight;
 
     [Parameter] public string? Message { get; set; }
-    [Parameter] public ToastType Type { get; set; } = ToastType.Info;
+    [Parameter] public ToastLevel Type { get; set; } = ToastLevel.Info;
     [Parameter] public int DurationMs { get; set; } = 3000;
 
     private IReadOnlyList<Toast> Toasts => Service.Toasts.Where(t => t.Position == Position).ToList();
@@ -21,7 +21,7 @@ public partial class Toaster : ComponentBase, IDisposable
         Service.OnChanged += StateHasChanged;
         if (!string.IsNullOrWhiteSpace(Message))
         {
-            Service.Show(Message, Type, Position, DurationMs);
+            Service.Notify(new Toast { Message = Message, Type = Type, Position = Position, DurationMs = DurationMs });
         }
     }
 
@@ -48,11 +48,11 @@ public partial class Toaster : ComponentBase, IDisposable
         });
     }
 
-    private static string IconFor(ToastType type) => type switch
+    private static string IconFor(ToastLevel type) => type switch
     {
-        ToastType.Success => "check-circle",
-        ToastType.Warning => "alert-triangle",
-        ToastType.Danger => "alert-circle",
+        ToastLevel.Success => "check-circle",
+        ToastLevel.Warning => "alert-triangle",
+        ToastLevel.Danger => "alert-circle",
         _ => "info-circle"
     };
 
